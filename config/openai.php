@@ -1,0 +1,3 @@
+<?php
+
+$OPENAI_API_KEY = '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';

@@ -1,0 +1,3 @@
+<?php
+
+$REMOVEBG_API_KEY = 'EZQ9URjF1ZyGKBVaYZXnh9LN';

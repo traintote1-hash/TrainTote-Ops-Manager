@@ -1,0 +1,17 @@
+.vscode/
+
+config/database.php
+
+uploads/
+uploads/temp/
+
+*.log
+error_log
+
+*.backup
+*.bak
+*.zip
+
+.env
+
+photo_editor/__pycache__/
