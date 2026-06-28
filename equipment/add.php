@@ -96,6 +96,130 @@ $industries =
 
 /*
 |--------------------------------------------------------------------------
+| Operations Service Options
+|--------------------------------------------------------------------------
+*/
+
+$operationsServiceOptions = [
+    'Covered Hopper' => [
+        'Grain',
+        'Cement',
+        'Sand / Gravel',
+        'Plastic Pellets',
+        'Feed',
+        'Flour',
+        'Fertilizer'
+    ],
+    'Open Hopper' => [
+        'Coal',
+        'Gravel',
+        'Sand',
+        'Aggregate',
+        'Ore',
+        'Ballast'
+    ],
+    'Gondola' => [
+        'Scrap Metal',
+        'Steel / Pipe',
+        'Rail',
+        'Aggregate',
+        'MOW / Riprap'
+    ],
+    'Tank Car' => [
+        'Vegetable Oil',
+        'Food Grade Liquid',
+        'Fuel',
+        'Propane',
+        'Chemicals',
+        'Asphalt',
+        'Corn Syrup'
+    ],
+    'Boxcar' => [
+        'General Freight',
+        'Paper',
+        'Food Products',
+        'Beer',
+        'Auto Parts',
+        'Furniture',
+        'Appliances'
+    ],
+    'Refrigerator Car' => [
+        'General Freight',
+        'Food Products'
+    ],
+    'Mechanical Refrigerator Car' => [
+        'General Freight',
+        'Food Products'
+    ],
+    'Flatcar' => [
+        'Lumber',
+        'Building Materials',
+        'Pipe',
+        'Machinery',
+        'Steel'
+    ],
+    'Bulkhead Flatcar' => [
+        'Lumber',
+        'Building Materials',
+        'Pipe',
+        'Machinery',
+        'Steel'
+    ],
+    'Centerbeam Flatcar' => [
+        'Lumber',
+        'Building Materials',
+        'Pipe',
+        'Machinery',
+        'Steel'
+    ]
+];
+
+function ttAddOperationsServiceOption(array &$options, string $equipmentType, string $serviceName): void
+{
+    $equipmentType = trim($equipmentType);
+    $serviceName = trim($serviceName);
+
+    if ($equipmentType === '' || $serviceName === '') {
+        return;
+    }
+
+    if (!isset($options[$equipmentType])) {
+        $options[$equipmentType] = [];
+    }
+
+    foreach ($options[$equipmentType] as $existingServiceName) {
+        if (strcasecmp($existingServiceName, $serviceName) === 0) {
+            return;
+        }
+    }
+
+    $options[$equipmentType][] = $serviceName;
+}
+
+$stmt = $pdo->prepare("
+    SELECT
+        equipment_type,
+        service_name
+    FROM operations_service_options
+    WHERE railroad_id = ?
+    OR is_default = 1
+    ORDER BY equipment_type, service_name
+");
+
+$stmt->execute([
+    $railroad['id']
+]);
+
+foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $serviceOption) {
+    ttAddOperationsServiceOption(
+        $operationsServiceOptions,
+        $serviceOption['equipment_type'] ?? '',
+        $serviceOption['service_name'] ?? ''
+    );
+}
+
+/*
+|--------------------------------------------------------------------------
 | AI Session Data
 |--------------------------------------------------------------------------
 */
@@ -436,6 +560,12 @@ $operations_service =
 
     ?? '';
 
+$operations_service_custom =
+
+    $_POST['operations_service_custom']
+
+    ?? '';
+
 $notes =
 
     $_POST['notes']
@@ -521,6 +651,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $operations_service = trim(
         $operations_service
     );
+
+    $operations_service_custom = trim(
+        $operations_service_custom
+    );
+
+    $operations_service_custom =
+        substr(
+            $operations_service_custom,
+            0,
+            100
+        );
+
+    $customOperationsServiceEntered =
+        $operations_service === 'Other'
+        && $operations_service_custom !== '';
+
+    if ($operations_service === 'Other') {
+        $operations_service = $operations_service_custom;
+    }
 
     $current_industry_id =
 
@@ -677,7 +826,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         substr(
             $operations_service,
             0,
-            255
+            100
         );
 
     /*
@@ -809,6 +958,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $notes
 
         ]);
+
+        if (
+            $customOperationsServiceEntered
+            && $operations_service !== ''
+            && $equipment_type !== ''
+        ) {
+            $stmt = $pdo->prepare("
+                SELECT id
+                FROM operations_service_options
+                WHERE railroad_id = ?
+                AND LOWER(equipment_type) = LOWER(?)
+                AND LOWER(service_name) = LOWER(?)
+                LIMIT 1
+            ");
+
+            $stmt->execute([
+                $railroad['id'],
+                $equipment_type,
+                $operations_service
+            ]);
+
+            if (!$stmt->fetchColumn()) {
+                $stmt = $pdo->prepare("
+                    INSERT INTO operations_service_options (
+                        railroad_id,
+                        equipment_type,
+                        service_name,
+                        is_default
+                    )
+                    VALUES (?, ?, ?, 0)
+                ");
+
+                $stmt->execute([
+                    $railroad['id'],
+                    $equipment_type,
+                    $operations_service
+                ]);
+            }
+        }
 
         /*
         |--------------------------------------------------------------------------
@@ -1461,13 +1649,34 @@ Operations Service
 
 </label>
 
+<select
+name="operations_service"
+id="operations_service"
+class="form-select">
+
+<option value="">
+
+Select Service
+
+</option>
+
+</select>
+
+<div
+id="operations_service_custom_div"
+class="mt-2"
+style="display:none;">
+
 <input
 type="text"
-name="operations_service"
-maxlength="255"
+name="operations_service_custom"
+id="operations_service_custom"
+maxlength="100"
 class="form-control"
-placeholder="General Freight, Grain, Sand / Gravel, Cement, Scrap Metal, Vegetable Oil, Fuel, Propane, Lumber, Paper"
+placeholder="Custom operations service"
 value="<?php echo htmlspecialchars($operations_service); ?>">
+
+</div>
 
 </div>
 
@@ -1643,6 +1852,21 @@ document.getElementById(
 'customManufacturerDiv'
 );
 
+const operationsService =
+document.getElementById(
+'operations_service'
+);
+
+const operationsServiceCustomDiv =
+document.getElementById(
+'operations_service_custom_div'
+);
+
+const operationsServiceCustom =
+document.getElementById(
+'operations_service_custom'
+);
+
 /*
 |--------------------------------------------------------------------------
 | Selected Type
@@ -1651,6 +1875,12 @@ document.getElementById(
 
 const selectedEquipmentType =
 "<?php echo addslashes($equipment_type); ?>";
+
+const selectedOperationsService =
+"<?php echo addslashes($operations_service); ?>";
+
+const operationsServiceOptions =
+<?php echo json_encode($operationsServiceOptions, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
 
 /*
 |--------------------------------------------------------------------------
@@ -1734,6 +1964,97 @@ option
 
 }
 
+function populateOperationsServices(preserveSelectedService = false) {
+
+operationsService.innerHTML =
+'<option value="">Select Service</option>';
+
+const typeServices =
+operationsServiceOptions[equipmentType.value] || [];
+
+const serviceToPreserve =
+preserveSelectedService ? selectedOperationsService : '';
+
+let matchedService = false;
+
+typeServices.forEach(
+
+function(serviceName){
+
+let option =
+document.createElement(
+'option'
+);
+
+option.value = serviceName;
+option.text = serviceName;
+
+if (
+serviceName ===
+serviceToPreserve
+) {
+
+option.selected = true;
+matchedService = true;
+
+}
+
+operationsService.add(
+option
+);
+
+}
+
+);
+
+let otherOption =
+document.createElement(
+'option'
+);
+
+otherOption.value = 'Other';
+otherOption.text = 'Other';
+
+if (
+serviceToPreserve !== ''
+&& !matchedService
+) {
+
+otherOption.selected = true;
+operationsServiceCustom.value =
+serviceToPreserve;
+
+}
+else if (!preserveSelectedService) {
+
+operationsServiceCustom.value = '';
+
+}
+
+operationsService.add(
+otherOption
+);
+
+toggleOperationsServiceCustom();
+
+}
+
+function toggleOperationsServiceCustom() {
+
+if (operationsService.value === 'Other') {
+
+operationsServiceCustomDiv.style.display = '';
+
+}
+
+else {
+
+operationsServiceCustomDiv.style.display = 'none';
+
+}
+
+}
+
 /*
 |--------------------------------------------------------------------------
 | Equipment Class Changed
@@ -1747,6 +2068,7 @@ equipmentClass.addEventListener(
 function(){
 
 populateTypes();
+populateOperationsServices();
 
 customTypeDiv.style.display =
 'none';
@@ -1786,7 +2108,17 @@ customTypeDiv.style.display =
 
 }
 
+populateOperationsServices();
+
 }
+
+);
+
+operationsService.addEventListener(
+
+'change',
+
+toggleOperationsServiceCustom
 
 );
 
@@ -1935,6 +2267,14 @@ setupCounter(
 
 setupCounter(
 
+'[name="operations_service_custom"]',
+
+100
+
+);
+
+setupCounter(
+
 '[name="notes"]',
 
 1000
@@ -1978,6 +2318,7 @@ this.value.replace(
 */
 
 populateTypes();
+populateOperationsServices(true);
 
 if (
 
