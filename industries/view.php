@@ -101,6 +101,16 @@ No Photo Uploaded
 </p>
 
 <p>
+<strong>Receives Services:</strong><br>
+<?php echo nl2br(htmlspecialchars($industry['receives_services'] ?? '')); ?>
+</p>
+
+<p>
+<strong>Ships Services:</strong><br>
+<?php echo nl2br(htmlspecialchars($industry['ships_services'] ?? '')); ?>
+</p>
+
+<p>
 <strong>Notes:</strong><br>
 <?php echo nl2br(htmlspecialchars($industry['notes'])); ?>
 </p>

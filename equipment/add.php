@@ -428,6 +428,14 @@ $load_status =
 
     ?? 'Empty';
 
+$operations_service =
+
+    $_POST['operations_service']
+
+    ?? $aiData['operations_service']
+
+    ?? '';
+
 $notes =
 
     $_POST['notes']
@@ -508,6 +516,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $load_status = trim(
         $load_status
+    );
+
+    $operations_service = trim(
+        $operations_service
     );
 
     $current_industry_id =
@@ -661,6 +673,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             50
         );
 
+    $operations_service =
+        substr(
+            $operations_service,
+            0,
+            255
+        );
+
     /*
     |--------------------------------------------------------------------------
     | Validation
@@ -731,6 +750,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             service,
 
+            operations_service,
+
             load_status,
 
             current_industry_id,
@@ -745,7 +766,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             ?,?,?,?,?,?,
             ?,?,?,?,?,?,
-            ?,?,?,?
+            ?,?,?,?,?
 
         )
 
@@ -776,6 +797,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $scale,
 
             $service,
+
+            $operations_service,
 
             $load_status,
 
@@ -1427,6 +1450,24 @@ name="service"
 maxlength="50"
 class="form-control"
 value="<?php echo htmlspecialchars($service); ?>">
+
+</div>
+
+<div class="col-md-6 mb-3">
+
+<label class="form-label">
+
+Operations Service
+
+</label>
+
+<input
+type="text"
+name="operations_service"
+maxlength="255"
+class="form-control"
+placeholder="General Freight, Grain, Sand / Gravel, Cement, Scrap Metal, Vegetable Oil, Fuel, Propane, Lumber, Paper"
+value="<?php echo htmlspecialchars($operations_service); ?>">
 
 </div>
 
