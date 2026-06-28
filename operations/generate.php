@@ -85,6 +85,7 @@ if (
 
 ?>
 
+<?php
 $pageTitle='Start Session';
 include '../assets/components/header.php';
 include '../assets/components/sidebar.php';
