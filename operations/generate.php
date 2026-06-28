@@ -23,6 +23,7 @@ $stmt->execute([
 $railroad = $stmt->fetch(PDO::FETCH_ASSOC);
 
 $sessionWaybills = [];
+$skippedCarDiagnostics = [];
 $skippedNoOperationsService = 0;
 $skippedNoCompatibleDestination = 0;
 $skippedNoOperatingBase = 0;
@@ -117,6 +118,21 @@ function buildLocomotiveLabel(array $locomotive): string
         . ' '
         . ($locomotive['equipment_type'] ?? '')
     );
+}
+
+function buildSkippedCarDiagnostic(array $car, string $reason, string $lookingFor): array
+{
+    return [
+        'reporting_marks' => $car['reporting_marks'] ?? '',
+        'road_number' => $car['road_number'] ?? '',
+        'equipment_type' => $car['equipment_type'] ?? '',
+        'load_status' => $car['load_status'] ?? '',
+        'operations_service' => $car['operations_service'] ?? '',
+        'origin_name' => $car['origin_name'] ?? '',
+        'current_track' => $car['current_track'] ?? '',
+        'reason' => $reason,
+        'looking_for' => $lookingFor
+    ];
 }
 
 function buildGeneratedMove(array $car, array $destination, string $moveType, string $instruction): array
@@ -372,6 +388,11 @@ if (
         foreach ($eligibleCars as $car) {
             if (trim($car['operations_service'] ?? '') === '') {
                 $skippedNoOperationsService++;
+                $skippedCarDiagnostics[] = buildSkippedCarDiagnostic(
+                    $car,
+                    'Missing Operations Service',
+                    'Add an Operations Service before this car can be matched to industry work'
+                );
                 continue;
             }
 
@@ -384,6 +405,18 @@ if (
 
                 if (count($destinationOptions) === 0) {
                     $skippedNoCompatibleDestination++;
+                    $setoutServiceField = strcasecmp($car['load_status'] ?? '', 'Loaded') === 0
+                        ? 'receives'
+                        : 'ships';
+                    $setoutReason = $setoutServiceField === 'receives'
+                        ? 'At operating base, loaded car needs an industry that receives this service'
+                        : 'At operating base, empty car needs an industry that ships this service';
+
+                    $skippedCarDiagnostics[] = buildSkippedCarDiagnostic(
+                        $car,
+                        $setoutReason,
+                        'Looking for industry that ' . $setoutServiceField . ' ' . $car['operations_service']
+                    );
                     continue;
                 }
 
@@ -405,6 +438,11 @@ if (
 
             if ($pullLoadStatus === null) {
                 $skippedNoCompatibleDestination++;
+                $skippedCarDiagnostics[] = buildSkippedCarDiagnostic(
+                    $car,
+                    'At industry, origin industry does not ship or receive this service',
+                    ($car['origin_name'] ?: 'Origin industry') . ' must ship ' . $car['operations_service'] . ' to pull as Loaded or receive ' . $car['operations_service'] . ' to pull as Empty'
+                );
                 continue;
             }
 
@@ -446,6 +484,7 @@ if (
         'no_operating_base' => $skippedNoOperatingBase,
         'no_locomotive' => $skippedNoLocomotive
     ];
+    $_SESSION['generated_skip_diagnostics'] = $skippedCarDiagnostics;
 }
 
 ?>
@@ -652,6 +691,51 @@ include '../assets/components/sidebar.php';
         <?php endif; ?>
     </div>
 
+    <?php if (!empty($skippedCarDiagnostics)): ?>
+    <section class="tt-panel tt-generated-session-panel">
+        <div class="tt-panel-heading">
+            <div>
+                <span class="tt-panel-kicker">Skipped Cars</span>
+                <h2>Skip Diagnostics</h2>
+            </div>
+        </div>
+
+        <div class="tt-generated-moves">
+            <?php foreach ($skippedCarDiagnostics as $diagnostic): ?>
+            <article class="tt-generated-move">
+                <div class="tt-generated-move-header">
+                    <span><?php echo htmlspecialchars($diagnostic['reason']); ?></span>
+                    <strong><?php echo htmlspecialchars(trim($diagnostic['reporting_marks'] . ' ' . $diagnostic['road_number']) ?: 'Unknown car'); ?></strong>
+                </div>
+                <p class="tt-muted-text"><?php echo htmlspecialchars($diagnostic['looking_for']); ?></p>
+                <dl>
+                    <div>
+                        <dt>Car Type</dt>
+                        <dd><?php echo htmlspecialchars($diagnostic['equipment_type'] ?: '-'); ?></dd>
+                    </div>
+                    <div>
+                        <dt>Load Status</dt>
+                        <dd><?php echo htmlspecialchars($diagnostic['load_status'] ?: '-'); ?></dd>
+                    </div>
+                    <div>
+                        <dt>Operations Service</dt>
+                        <dd><?php echo htmlspecialchars($diagnostic['operations_service'] ?: '-'); ?></dd>
+                    </div>
+                    <div>
+                        <dt>Current Location</dt>
+                        <dd><?php echo htmlspecialchars($diagnostic['origin_name'] ?: '-'); ?></dd>
+                    </div>
+                    <div>
+                        <dt>Current Track</dt>
+                        <dd><?php echo htmlspecialchars($diagnostic['current_track'] ?: '-'); ?></dd>
+                    </div>
+                </dl>
+            </article>
+            <?php endforeach; ?>
+        </div>
+    </section>
+    <?php endif; ?>
+
     <?php else: ?>
 
     <section class="tt-panel tt-generated-session-panel">
@@ -695,6 +779,51 @@ include '../assets/components/sidebar.php';
 
         <?php if ($skippedCarCount > 0): ?>
         <p class="tt-muted-text">Skipped <?php echo $skippedNoOperationsService; ?> car(s) missing Operations Service, <?php echo $skippedNoCompatibleDestination; ?> car(s) with no compatible move, <?php echo $skippedNoOperatingBase; ?> missing base, and <?php echo $skippedNoLocomotive; ?> missing locomotive.</p>
+        <?php endif; ?>
+
+        <?php if (!empty($skippedCarDiagnostics)): ?>
+        <section class="tt-panel tt-generated-session-panel">
+            <div class="tt-panel-heading">
+                <div>
+                    <span class="tt-panel-kicker">Skipped Cars</span>
+                    <h3>Skip Diagnostics</h3>
+                </div>
+            </div>
+
+            <div class="tt-generated-moves">
+                <?php foreach ($skippedCarDiagnostics as $diagnostic): ?>
+                <article class="tt-generated-move">
+                    <div class="tt-generated-move-header">
+                        <span><?php echo htmlspecialchars($diagnostic['reason']); ?></span>
+                        <strong><?php echo htmlspecialchars(trim($diagnostic['reporting_marks'] . ' ' . $diagnostic['road_number']) ?: 'Unknown car'); ?></strong>
+                    </div>
+                    <p class="tt-muted-text"><?php echo htmlspecialchars($diagnostic['looking_for']); ?></p>
+                    <dl>
+                        <div>
+                            <dt>Car Type</dt>
+                            <dd><?php echo htmlspecialchars($diagnostic['equipment_type'] ?: '-'); ?></dd>
+                        </div>
+                        <div>
+                            <dt>Load Status</dt>
+                            <dd><?php echo htmlspecialchars($diagnostic['load_status'] ?: '-'); ?></dd>
+                        </div>
+                        <div>
+                            <dt>Operations Service</dt>
+                            <dd><?php echo htmlspecialchars($diagnostic['operations_service'] ?: '-'); ?></dd>
+                        </div>
+                        <div>
+                            <dt>Current Location</dt>
+                            <dd><?php echo htmlspecialchars($diagnostic['origin_name'] ?: '-'); ?></dd>
+                        </div>
+                        <div>
+                            <dt>Current Track</dt>
+                            <dd><?php echo htmlspecialchars($diagnostic['current_track'] ?: '-'); ?></dd>
+                        </div>
+                    </dl>
+                </article>
+                <?php endforeach; ?>
+            </div>
+        </section>
         <?php endif; ?>
 
         <div class="tt-generated-moves">
