@@ -1,14 +1,2 @@
-/* TTDS Release 003 - Toolbar */
-.tt-toolbar{
- display:flex;
- justify-content:space-between;
- align-items:center;
- gap:1rem;
- margin-bottom:1.5rem;
- flex-wrap:wrap;
-}
-.tt-toolbar-left,.tt-toolbar-right{
- display:flex;
- gap:.75rem;
- align-items:center;
-}
+.tt-toolbar{display:flex;gap:.5rem;padding:.5rem 0;flex-wrap:wrap}
+.tt-toolbar .tt-btn{background:#8b1e1e;color:#fff;padding:.5rem .8rem;border-radius:6px;text-decoration:none}

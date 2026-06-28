@@ -1,0 +1,467 @@
+/*
+=========================================================
+LAYOUT
+=========================================================
+*/
+
+.list-layout {
+
+    display: flex;
+
+    gap: 20px;
+
+    align-items: flex-start;
+
+}
+
+.sidebar {
+
+    width: 300px;
+
+    flex-shrink: 0;
+
+}
+
+.main-content {
+
+    flex: 1;
+
+    min-width: 0;
+
+}
+
+/*
+=========================================================
+SIDEBAR
+=========================================================
+*/
+
+.sidebar-card {
+
+    position: sticky;
+
+    top: 75px;
+
+    overflow: visible;
+
+    max-height: none;
+
+}
+
+/*
+=========================================================
+FILTER SECTIONS
+=========================================================
+*/
+
+.filter-section {
+
+    margin-bottom: 18px;
+
+}
+
+.section-header {
+
+    display: flex;
+
+    align-items: center;
+
+    cursor: pointer;
+
+    padding: 8px 0;
+
+    border-bottom: 1px solid #e5e5e5;
+
+    font-size: .95rem;
+
+    font-weight: 600;
+
+    user-select: none;
+
+}
+
+.section-header:hover {
+
+    color: #000;
+
+}
+
+.arrow {
+
+    width: 18px;
+
+    margin-right: 6px;
+
+    color: #000;
+
+}
+
+/*
+=========================================================
+SECTION CONTENT
+=========================================================
+*/
+
+.section-content {
+
+    padding-top: 10px;
+
+    transition: .15s;
+
+}
+
+.section-content.collapsed {
+
+    display: none;
+
+}
+
+/*
+=========================================================
+NO INTERNAL SCROLLING
+=========================================================
+*/
+
+.filter-scroll {
+
+    max-height: none;
+
+    overflow: visible;
+
+}
+/*
+=========================================================
+CLICKABLE FILTER ROWS
+=========================================================
+*/
+
+.form-check {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 12px;
+
+    padding: 6px 12px 6px 30px;
+
+    border-radius: 6px;
+
+    cursor: pointer;
+
+    transition: .15s;
+
+}
+
+.form-check:hover {
+
+    background: #f7f7f7;
+
+}
+
+.form-check-label {
+
+    cursor: pointer;
+
+    font-size: .92rem;
+
+}
+
+/*
+=========================================================
+ACTIVE FILTER CHIPS
+=========================================================
+*/
+
+.filter-chip {
+
+    display: inline-block;
+
+    background: #f3f3f3;
+
+    color: #333;
+
+    text-decoration: none;
+
+    border-radius: 20px;
+
+    padding: 5px 12px;
+
+    margin: 3px;
+
+    font-size: .85rem;
+
+    transition: .15s;
+
+}
+
+.filter-chip:hover {
+
+    background: #e9e9e9;
+
+    color: #000;
+
+}
+
+/*
+=========================================================
+TOP TOOLBAR
+=========================================================
+*/
+
+.top-toolbar {
+
+    display: flex;
+
+    justify-content: flex-end;
+
+    align-items: center;
+
+    margin-bottom: 15px;
+
+}
+
+.toolbar-right {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 8px;
+
+}
+
+.toolbar-right select {
+
+    width: 85px;
+
+}
+
+/*
+=========================================================
+TABLE HEADER
+=========================================================
+*/
+
+.equipment-table thead th {
+
+    position: sticky;
+
+    top: 0;
+
+    background: #212529;
+
+    color: white;
+
+    z-index: 5;
+
+    box-shadow: inset 0 -1px 0 rgba(255,255,255,.15);
+
+}
+
+.sort-link {
+
+    color: #0d6efd;
+
+    text-decoration: none;
+
+    font-weight: 600;
+
+}
+
+.sort-link:hover {
+
+    color: #66aaff;
+
+    text-decoration: none;
+
+}
+
+.sort-link.active {
+
+    color: #ffc107;
+
+}
+/*
+=========================================================
+THUMBNAILS
+=========================================================
+*/
+
+.equipment-thumb {
+
+    width: 100px;
+
+    max-height: 70px;
+
+    object-fit: contain;
+
+}
+
+/*
+=========================================================
+ROW HOVER
+=========================================================
+*/
+
+.clickable-row {
+
+    cursor: pointer;
+
+    transition: .15s;
+
+}
+
+.clickable-row:hover {
+
+    background: #eef6ff !important;
+
+}
+
+/*
+=========================================================
+PAGINATION
+=========================================================
+*/
+
+.pagination-area {
+
+    margin-top: 25px;
+
+}
+
+.pagination-area .btn {
+
+    min-width: 38px;
+
+}
+
+/*
+=========================================================
+BUTTONS
+=========================================================
+*/
+
+.btn-success {
+
+    font-weight: 600;
+
+}
+
+/*
+=========================================================
+SHOW SELECT
+=========================================================
+*/
+
+#perPage {
+
+    width: 80px;
+
+}
+
+/*
+=========================================================
+TABLE LINKS
+=========================================================
+*/
+
+.equipment-table a {
+
+    text-decoration: none;
+
+}
+
+/*
+=========================================================
+TABLE CELL SIZE
+=========================================================
+*/
+
+.equipment-table td {
+
+    vertical-align: middle;
+
+    font-size: .95rem;
+
+}
+
+/*
+=========================================================
+CONTENT CARD
+=========================================================
+*/
+
+.content-card {
+
+    background: white;
+
+    padding: 20px;
+
+    border-radius: 8px;
+
+}
+
+/*
+=========================================================
+MOBILE
+=========================================================
+*/
+
+@media (max-width: 991px) {
+
+    .list-layout {
+
+        display: block;
+
+    }
+
+    .sidebar {
+
+        width: 100%;
+
+        margin-bottom: 20px;
+
+    }
+
+    .sidebar-card {
+
+        position: relative;
+
+        top: auto;
+
+    }
+
+}
+
+/*
+=========================================================
+PRINT BUTTON SPACING
+=========================================================
+*/
+
+.content-card .btn-success {
+
+    margin-right: 8px;
+
+}
+
+/*
+=========================================================
+SCROLLBAR
+=========================================================
+*/
+
+::-webkit-scrollbar {
+
+    width: 10px;
+
+}
+
+::-webkit-scrollbar-thumb {
+
+    background: #ccc;
+
+    border-radius: 5px;
+
+}
