@@ -23,6 +23,9 @@ $stmt->execute([
 $railroad = $stmt->fetch(PDO::FETCH_ASSOC);
 
 $sessionWaybills = [];
+$skippedNoOperationsService = 0;
+$skippedNoCompatibleDestination = 0;
+$skippedCarCount = 0;
 
 $difficulty = $_POST['difficulty'] ?? 'medium';
 $carCount = (int)($_POST['car_count'] ?? 5);
@@ -35,6 +38,61 @@ if ($carCount > 50) {
     $carCount = 50;
 }
 
+
+function normalizeOperationsServiceValue($value): string
+{
+    return strtolower(trim(preg_replace('/\s+/', ' ', (string)$value)));
+}
+
+function parseOperationsServiceList($value): array
+{
+    $parts = preg_split('/[\r\n,]+/', (string)$value);
+    $services = [];
+
+    foreach ($parts as $part) {
+        $service = normalizeOperationsServiceValue($part);
+
+        if ($service !== '') {
+            $services[] = $service;
+        }
+    }
+
+    return array_values(array_unique($services));
+}
+
+function industrySupportsOperationsService(array $industry, string $serviceField, string $operationsService): bool
+{
+    $service = normalizeOperationsServiceValue($operationsService);
+
+    if ($service === '') {
+        return false;
+    }
+
+    return in_array(
+        $service,
+        parseOperationsServiceList($industry[$serviceField] ?? ''),
+        true
+    );
+}
+
+function getCompatibleDestinations(array $industries, array $car): array
+{
+    $serviceField = strcasecmp($car['load_status'] ?? '', 'Loaded') === 0
+        ? 'receives_services'
+        : 'ships_services';
+
+    return array_values(array_filter(
+        $industries,
+        function ($industry) use ($car, $serviceField) {
+            return (int)$industry['id'] !== (int)$car['current_industry_id']
+                && industrySupportsOperationsService(
+                    $industry,
+                    $serviceField,
+                    $car['operations_service'] ?? ''
+                );
+        }
+    ));
+}
 if (
     $_SERVER['REQUEST_METHOD'] === 'POST'
     && $railroad
@@ -47,6 +105,7 @@ if (
             e.road_number,
             e.equipment_class,
             e.equipment_type,
+            e.operations_service,
             e.load_status,
             e.current_industry_id,
             e.current_track,
@@ -57,6 +116,7 @@ if (
         WHERE e.railroad_id = :railroad_id
             AND e.current_industry_id IS NOT NULL
             AND e.current_industry_id <> 0
+            AND e.active = 1
             AND (
                 e.equipment_class IS NULL
                 OR e.equipment_class = ''
@@ -81,7 +141,9 @@ if (
     $stmt = $pdo->prepare("
         SELECT
             id,
-            industry_name
+            industry_name,
+            receives_services,
+            ships_services
         FROM industries
         WHERE railroad_id = :railroad_id
         ORDER BY industry_name
@@ -97,16 +159,19 @@ if (
 
     foreach ($eligibleCars as $car) {
 
-        if (count($sessionWaybills) >= $carCount) {
-            break;
+        if (trim($car['operations_service'] ?? '') === '') {
+            $skippedNoOperationsService++;
+            continue;
         }
 
-        $destinationOptions = array_values(array_filter(
-            $industries,
-            fn($industry) => (int)$industry['id'] !== (int)$car['current_industry_id']
-        ));
+        $destinationOptions = getCompatibleDestinations($industries, $car);
 
         if (count($destinationOptions) === 0) {
+            $skippedNoCompatibleDestination++;
+            continue;
+        }
+
+        if (count($sessionWaybills) >= $carCount) {
             continue;
         }
 
@@ -119,6 +184,7 @@ if (
             'road_number' => $car['road_number'],
             'equipment_class' => $car['equipment_class'],
             'equipment_type' => $car['equipment_type'],
+            'operations_service' => $car['operations_service'],
             'load_status' => $car['load_status'],
             'origin_industry_id' => $car['current_industry_id'],
             'destination_industry_id' => $destination['id'],
@@ -132,9 +198,15 @@ if (
         ];
     }
 
+    $skippedCarCount = $skippedNoOperationsService + $skippedNoCompatibleDestination;
+
     $_SESSION['generated_session'] = $sessionWaybills;
     $_SESSION['generated_difficulty'] = $difficulty;
     $_SESSION['generated_car_count'] = $carCount;
+    $_SESSION['generated_skip_counts'] = [
+        'missing_operations_service' => $skippedNoOperationsService,
+        'no_compatible_destination' => $skippedNoCompatibleDestination
+    ];
 }
 
 ?>
@@ -294,8 +366,11 @@ include '../assets/components/sidebar.php';
     <?php if (count($sessionWaybills) == 0): ?>
 
     <div class="alert alert-warning tt-session-alert">
-        <strong>No cars with current locations available.</strong>
-        <span>Place cars at industries before generating an operating session.</span>
+        <strong>No compatible operating moves available.</strong>
+        <span>Add Operations Service values to cars and matching receives/ships services to industries before generating an operating session.</span>
+        <?php if ($skippedCarCount > 0): ?>
+        <span><?php echo $skippedCarCount; ?> car(s) skipped: <?php echo $skippedNoOperationsService; ?> missing Operations Service, <?php echo $skippedNoCompatibleDestination; ?> with no compatible destination.</span>
+        <?php endif; ?>
     </div>
 
     <?php else: ?>
@@ -317,7 +392,15 @@ include '../assets/components/sidebar.php';
                 <span>Cars Requested</span>
                 <strong><?php echo $carCount; ?></strong>
             </div>
+            <div>
+                <span>Cars Skipped</span>
+                <strong><?php echo $skippedCarCount; ?></strong>
+            </div>
         </div>
+
+        <?php if ($skippedCarCount > 0): ?>
+        <p class="tt-muted-text">Skipped <?php echo $skippedNoOperationsService; ?> car(s) missing Operations Service and <?php echo $skippedNoCompatibleDestination; ?> car(s) with no compatible destination.</p>
+        <?php endif; ?>
 
         <div class="tt-generated-moves">
             <?php foreach ($sessionWaybills as $index => $waybill): ?>
