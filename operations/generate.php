@@ -782,7 +782,7 @@ include '../assets/components/sidebar.php';
         <?php endif; ?>
 
         <?php if (!empty($skippedCarDiagnostics)): ?>
-        <section class="tt-panel tt-generated-session-panel">
+        <div class="tt-generated-skip-diagnostics">
             <div class="tt-panel-heading">
                 <div>
                     <span class="tt-panel-kicker">Skipped Cars</span>
@@ -823,7 +823,7 @@ include '../assets/components/sidebar.php';
                 </article>
                 <?php endforeach; ?>
             </div>
-        </section>
+        </div>
         <?php endif; ?>
 
         <div class="tt-generated-moves">
