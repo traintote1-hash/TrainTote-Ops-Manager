@@ -423,6 +423,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $operations_service_custom = trim($operations_service_custom);
 
+    $operations_service_custom =
+        substr(
+            $operations_service_custom,
+            0,
+            100
+        );
+
     $customOperationsServiceEntered =
         $operations_service === 'Other'
         && $operations_service_custom !== '';
@@ -430,6 +437,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($operations_service === 'Other') {
         $operations_service = $operations_service_custom;
     }
+
+    $operations_service =
+        substr(
+            $operations_service,
+            0,
+            100
+        );
 
     $current_industry_id =
         !empty($current_industry_id)
@@ -1211,7 +1225,7 @@ style="display:none;">
 type="text"
 name="operations_service_custom"
 id="operations_service_custom"
-maxlength="255"
+maxlength="100"
 class="form-control"
 placeholder="Custom operations service"
 value="<?php echo htmlspecialchars($operations_service); ?>">
@@ -1380,7 +1394,7 @@ const currentOperationsService =
 const operationsServiceOptions =
 <?php echo json_encode($operationsServiceOptions, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
 
-function populateTypes() {
+function populateTypes(preserveSelectedService = false) {
 
 typeField.innerHTML =
 '<option value="">Select Type</option>';
@@ -1443,17 +1457,20 @@ typeField.add(option);
 });
 
 showCustom();
-populateOperationsServices();
+populateOperationsServices(preserveSelectedService);
 
 }
 
-function populateOperationsServices() {
+function populateOperationsServices(preserveSelectedService = false) {
 
 operationsService.innerHTML =
 '<option value="">Select Service</option>';
 
 const typeServices =
 operationsServiceOptions[typeField.value] || [];
+
+const serviceToPreserve =
+preserveSelectedService ? currentOperationsService : '';
 
 let matchedService = false;
 
@@ -1471,7 +1488,7 @@ option.text = serviceName;
 
 if (
 serviceName ===
-currentOperationsService
+serviceToPreserve
 ) {
 
 option.selected = true;
@@ -1496,13 +1513,18 @@ otherOption.value = 'Other';
 otherOption.text = 'Other';
 
 if (
-currentOperationsService !== ''
+serviceToPreserve !== ''
 && !matchedService
 ) {
 
 otherOption.selected = true;
 operationsServiceCustom.value =
-currentOperationsService;
+serviceToPreserve;
+
+}
+else if (!preserveSelectedService) {
+
+operationsServiceCustom.value = '';
 
 }
 
@@ -1548,7 +1570,9 @@ customDiv.style.display = 'none';
 
 classField.addEventListener(
 'change',
-populateTypes
+function(){
+    populateTypes();
+}
 );
 
 typeField.addEventListener(
@@ -1564,8 +1588,7 @@ operationsService.addEventListener(
 toggleOperationsServiceCustom
 );
 
-populateTypes();
-populateOperationsServices();
+populateTypes(true);
 
 </script>
 
