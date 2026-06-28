@@ -42,6 +42,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $industry_type = trim($_POST['industry_type']);
     $location = trim($_POST['location']);
     $track_capacity = (int)$_POST['track_capacity'];
+    $receives_services = trim($_POST['receives_services'] ?? '');
+    $ships_services = trim($_POST['ships_services'] ?? '');
     $notes = trim($_POST['notes']);
 
     $stmt = $pdo->prepare("
@@ -51,6 +53,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             industry_type = :industry_type,
             location = :location,
             track_capacity = :track_capacity,
+            receives_services = :receives_services,
+            ships_services = :ships_services,
             notes = :notes
         WHERE id = :id
     ");
@@ -61,6 +65,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'industry_type' => $industry_type,
         'location' => $location,
         'track_capacity' => $track_capacity,
+        'receives_services' => $receives_services,
+        'ships_services' => $ships_services,
         'notes' => $notes,
         'id' => $id
 
@@ -335,6 +341,30 @@ type="number"
 name="track_capacity"
 class="form-control"
 value="<?php echo htmlspecialchars($industry['track_capacity']); ?>">
+
+</div>
+
+<div class="mb-3">
+
+<label>Receives Services</label>
+
+<textarea
+name="receives_services"
+class="form-control"
+rows="3"
+placeholder="Sand / Gravel, Cement, General Freight"><?php echo htmlspecialchars($industry['receives_services'] ?? ''); ?></textarea>
+
+</div>
+
+<div class="mb-3">
+
+<label>Ships Services</label>
+
+<textarea
+name="ships_services"
+class="form-control"
+rows="3"
+placeholder="Grain, Scrap Metal, Vegetable Oil"><?php echo htmlspecialchars($industry['ships_services'] ?? ''); ?></textarea>
 
 </div>
 

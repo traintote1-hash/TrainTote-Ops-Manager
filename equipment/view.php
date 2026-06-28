@@ -153,6 +153,14 @@ No Photo Uploaded
 
 <p>
 
+<strong>Operations Service:</strong>
+
+<?php echo htmlspecialchars($equipment['operations_service'] ?? ''); ?>
+
+</p>
+
+<p>
+
 <strong>Manufacturer:</strong>
 
 <?php echo htmlspecialchars($equipment['manufacturer']); ?>
