@@ -285,7 +285,7 @@ if ($activeSelected && !$inactiveSelected) {
     $where[] = 'e.active = 1';
 }
 elseif ($inactiveSelected && !$activeSelected) {
-    $where[] = 'e.active = 0';
+    $where[] = 'COALESCE(e.active, 0) = 0';
 }
 
 if (in_array('missing_service', $statusFilters, true)) {
@@ -383,7 +383,7 @@ $summaryStmt = $pdo->prepare("
     SELECT
         COUNT(*) AS total_cars,
         SUM(CASE WHEN active = 1 THEN 1 ELSE 0 END) AS active_cars,
-        SUM(CASE WHEN active = 0 THEN 1 ELSE 0 END) AS inactive_cars,
+        SUM(CASE WHEN COALESCE(active, 0) = 0 THEN 1 ELSE 0 END) AS inactive_cars,
         SUM(CASE WHEN active = 1
             AND current_industry_id IS NOT NULL
             AND current_industry_id <> 0
@@ -699,7 +699,7 @@ $isReady = (int)$car['active'] === 1
     <div class="text-muted small">
         <?= htmlspecialchars($car['road_name'] ?: '-') ?>
         <?php if (!empty($car['equipment_class'])): ?>
-            · <?= htmlspecialchars($car['equipment_class']) ?>
+            - <?= htmlspecialchars($car['equipment_class']) ?>
         <?php endif; ?>
     </div>
 </td>
