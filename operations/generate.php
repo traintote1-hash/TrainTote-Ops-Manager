@@ -130,6 +130,7 @@ function buildGeneratedMove(array $car, array $destination, string $moveType, st
         'equipment_type' => $car['equipment_type'],
         'operations_service' => $car['operations_service'],
         'load_status' => $car['load_status'],
+        'original_load_status' => $car['original_load_status'] ?? ($car['load_status'] ?? ''),
         'origin_industry_id' => $car['current_industry_id'],
         'destination_industry_id' => $destination['id'],
         'origin_industry_name' => $car['origin_name'],
@@ -165,21 +166,25 @@ function getCompatibleSetoutDestinations(array $industries, array $car, int $ope
     ));
 }
 
-function carIsReadyToPull(array $car): bool
+function getPullLoadStatus(array $car): ?string
 {
-    if (strcasecmp($car['load_status'] ?? '', 'Loaded') === 0) {
-        return industrySupportsOperationsService(
-            $car,
-            'origin_ships_services',
-            $car['operations_service'] ?? ''
-        );
+    if (industrySupportsOperationsService(
+        $car,
+        'origin_ships_services',
+        $car['operations_service'] ?? ''
+    )) {
+        return 'Loaded';
     }
 
-    return industrySupportsOperationsService(
+    if (industrySupportsOperationsService(
         $car,
         'origin_receives_services',
         $car['operations_service'] ?? ''
-    );
+    )) {
+        return 'Empty';
+    }
+
+    return null;
 }
 
 function chooseBalancedMoves(array $setoutMoves, array $pullMoves, int $carCount): array
@@ -396,19 +401,25 @@ if (
                 continue;
             }
 
-            if (!carIsReadyToPull($car)) {
+            $pullLoadStatus = getPullLoadStatus($car);
+
+            if ($pullLoadStatus === null) {
                 $skippedNoCompatibleDestination++;
                 continue;
             }
 
-            $loadText = strtolower($car['load_status'] ?: 'ready');
-            $serviceText = $car['operations_service'] ?: ($car['equipment_type'] ?: 'car');
+            $pullCar = $car;
+            $pullCar['original_load_status'] = $car['load_status'] ?? '';
+            $pullCar['load_status'] = $pullLoadStatus;
+
+            $loadText = strtolower($pullLoadStatus);
+            $serviceText = $pullCar['operations_service'] ?: ($pullCar['equipment_type'] ?: 'car');
 
             $pullMoves[] = buildGeneratedMove(
-                $car,
+                $pullCar,
                 $operatingBase,
                 'PULL',
-                'Pull ' . $loadText . ' ' . $serviceText . ' car from ' . $car['origin_name'] . ' to ' . $selectedOperatingBaseName
+                'Pull ' . $loadText . ' ' . $serviceText . ' car from ' . $pullCar['origin_name'] . ' to ' . $selectedOperatingBaseName
             );
         }
 
