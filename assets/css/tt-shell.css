@@ -79,3 +79,76 @@ body{margin:0;font:16px system-ui;background:var(--bg);color:var(--text)}
         display: none;
     }
 }
+
+/*=====================================================================
+ Sprint 001H - Remove Operations Shell Gap
+ Purpose:
+ - Keep the Operations left sidebar tight against the standard navbar.
+ - Match the feel of the existing list.php pages.
+=====================================================================*/
+
+.tt-shell {
+    margin-top: 0;
+}
+
+/*=====================================================================
+ Sprint 001I - Operations Sidebar Filter-Style Navigation
+ Purpose:
+ - Make Operations left navigation visually match the list.php filter panel.
+ - Keep it as navigation, not filters.
+=====================================================================*/
+
+.tt-sidebar.tt-module-nav {
+    background: #f3f6fa;
+    color: #1f2937;
+    border-right: 1px solid #d9dde3;
+    padding: 18px 14px;
+}
+
+.tt-module-nav-header {
+    margin-bottom: 14px;
+}
+
+.tt-module-nav-header h3 {
+    color: #1f2937;
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.tt-module-nav-list {
+    display: block;
+}
+
+.tt-module-nav-list a {
+    display: block;
+    color: #1f2937;
+    text-decoration: none;
+    padding: 12px 4px;
+    border-bottom: 1px solid #d9dde3;
+    font-weight: 600;
+}
+
+.tt-module-nav-list a:hover {
+    color: #0d6efd;
+    background: rgba(13, 110, 253, .04);
+    text-decoration: none;
+}
+
+.tt-module-nav-list a.active {
+    color: #0d6efd;
+    font-weight: 700;
+}
+
+.tt-module-nav-list a.active::before {
+    content: "▸";
+    display: inline-block;
+    margin-right: 7px;
+    color: #0d6efd;
+}
+
+@media(max-width:900px) {
+    .tt-sidebar.tt-module-nav {
+        display: none;
+    }
+}

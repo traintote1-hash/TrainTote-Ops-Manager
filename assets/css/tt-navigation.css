@@ -28,3 +28,16 @@ margin-bottom:1.5rem;
     font-size: 2rem;
     font-weight: 700;
 }
+
+/*=====================================================================
+ Sprint 001H - Standard Navbar Gap Fix
+ Purpose:
+ - includes/navbar.php uses Bootstrap's mb-4 class.
+ - On Operations shell pages, that created a white gap above the left sidebar.
+ - Override only the global navbar spacing so the shell begins immediately
+   below the navbar, matching the list.php page feel.
+=====================================================================*/
+
+body > nav.navbar.mb-4 {
+    margin-bottom: 0 !important;
+}
