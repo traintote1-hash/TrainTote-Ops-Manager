@@ -32,6 +32,56 @@ if (!$railroad) {
 
 /*
 |--------------------------------------------------------------------------
+| Update Car Operating Status
+|--------------------------------------------------------------------------
+*/
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $equipmentId = (int)($_POST['equipment_id'] ?? 0);
+    $active = ($_POST['active'] ?? '0') === '1' ? 1 : 0;
+    $currentIndustryId = !empty($_POST['current_industry_id'])
+        ? (int)$_POST['current_industry_id']
+        : null;
+    $currentTrack = substr(trim($_POST['current_track'] ?? ''), 0, 50);
+    $loadStatus = substr(trim($_POST['load_status'] ?? ''), 0, 20);
+    $operationsService = substr(trim($_POST['operations_service'] ?? ''), 0, 100);
+
+    if ($equipmentId > 0) {
+        $stmt = $pdo->prepare("
+            UPDATE equipment
+            SET
+                active = :active,
+                current_industry_id = :current_industry_id,
+                current_track = :current_track,
+                load_status = :load_status,
+                operations_service = :operations_service
+            WHERE id = :equipment_id
+            AND railroad_id = :railroad_id
+        ");
+
+        $stmt->execute([
+            ':active' => $active,
+            ':current_industry_id' => $currentIndustryId,
+            ':current_track' => $currentTrack,
+            ':load_status' => $loadStatus,
+            ':operations_service' => $operationsService,
+            ':equipment_id' => $equipmentId,
+            ':railroad_id' => $railroad['id']
+        ]);
+
+        $_SESSION['status_message'] = 'Car status updated.';
+    }
+
+    $returnQuery = str_replace(["\r", "\n"], '', $_POST['return_query'] ?? '');
+    header('Location: status.php' . ($returnQuery !== '' ? '?' . $returnQuery : ''));
+    exit;
+}
+
+$statusMessage = $_SESSION['status_message'] ?? '';
+unset($_SESSION['status_message']);
+
+/*
+|--------------------------------------------------------------------------
 | Search
 |--------------------------------------------------------------------------
 */
@@ -44,10 +94,19 @@ $search = trim($_GET['search'] ?? '');
 |--------------------------------------------------------------------------
 */
 
-$locationFilters  = array_values(array_filter(array_map('strval', (array)($_GET['location']    ?? []))));
-$loadFilters      = array_values(array_filter(array_map('strval', (array)($_GET['load_status'] ?? []))));
-$waybillFilters   = array_values(array_filter(array_map('strval', (array)($_GET['waybill']     ?? []))));
-$moveFilters      = array_values(array_filter(array_map('strval', (array)($_GET['move']        ?? []))));
+$statusFilters = array_values(array_filter(array_map('strval', (array)($_GET['status'] ?? []))));
+$locationFilters = array_values(array_filter(array_map('strval', (array)($_GET['location'] ?? []))));
+$loadFilters = array_values(array_filter(array_map('strval', (array)($_GET['load_status'] ?? []))));
+
+$allowedStatusFilters = [
+    'active',
+    'inactive',
+    'missing_service',
+    'missing_location',
+    'ready'
+];
+
+$statusFilters = array_values(array_intersect($statusFilters, $allowedStatusFilters));
 
 /*
 |--------------------------------------------------------------------------
@@ -57,19 +116,20 @@ $moveFilters      = array_values(array_filter(array_map('strval', (array)($_GET[
 
 $allowedSorts = [
     'car',
+    'active',
+    'ready',
     'location',
     'current_track',
     'load_status',
-    'commodity',
-    'destination',
-    'cycle',
-    'move'
+    'operations_service',
+    'equipment_type',
+    'road_name'
 ];
 
-$sort = $_GET['sort'] ?? 'location';
+$sort = $_GET['sort'] ?? 'active';
 
 if (!in_array($sort, $allowedSorts)) {
-    $sort = 'location';
+    $sort = 'active';
 }
 
 $dir = strtolower($_GET['dir'] ?? 'asc');
@@ -79,20 +139,22 @@ if (!in_array($dir, ['asc', 'desc'])) {
 }
 
 $orderBy = match ($sort) {
-    'car'           => 'car',
+    'car' => "CONCAT(e.reporting_marks, ' ', e.road_number)",
+    'ready' => "CASE WHEN e.active = 1 AND e.current_industry_id IS NOT NULL AND e.current_industry_id <> 0 AND TRIM(COALESCE(e.operations_service, '')) <> '' THEN 0 ELSE 1 END",
+    'location' => 'COALESCE(i.industry_name, "ZZZZ")',
     'current_track' => 'e.current_track',
-    'load_status'   => 'e.load_status',
-    'commodity'     => 'w.commodity',
-    'destination'   => 'd.industry_name',
-    'cycle'         => 'w.current_cycle',
-    'move'          => '(w.destination_industry_id IS NOT NULL AND w.destination_industry_id != e.current_industry_id) DESC',
-    default         => 'COALESCE(i.industry_name, "ZZZZ")',
+    'load_status' => 'e.load_status',
+    'operations_service' => 'e.operations_service',
+    'equipment_type' => 'e.equipment_type',
+    'road_name' => 'e.road_name',
+    default => 'e.active'
 };
 
-$orderBy .= match ($sort) {
-    'move'  => '',   // already has direction embedded
-    default => ' ' . strtoupper($dir),
-};
+$orderBy .= ' ' . strtoupper($dir);
+
+if ($sort === 'active') {
+    $orderBy .= ", COALESCE(i.industry_name, 'ZZZZ'), e.reporting_marks, e.road_number";
+}
 
 /*
 |--------------------------------------------------------------------------
@@ -100,7 +162,7 @@ $orderBy .= match ($sort) {
 |--------------------------------------------------------------------------
 */
 
-$page    = max(1, (int)($_GET['page'] ?? 1));
+$page = max(1, (int)($_GET['page'] ?? 1));
 $perPage = $_GET['per_page'] ?? 20;
 
 if ($perPage !== 'all') {
@@ -116,22 +178,45 @@ if ($perPage !== 'all') {
 |--------------------------------------------------------------------------
 */
 
-$locationOptions = $pdo->query("
-    SELECT DISTINCT industry_name
+$locationStmt = $pdo->prepare("
+    SELECT id, industry_name
     FROM industries
+    WHERE railroad_id = :railroad_id
     ORDER BY industry_name
-")->fetchAll(PDO::FETCH_COLUMN);
+");
 
-$loadOptions = $pdo->query("
+$locationStmt->execute([':railroad_id' => $railroad['id']]);
+$industryOptions = $locationStmt->fetchAll(PDO::FETCH_ASSOC);
+$locationOptions = array_column($industryOptions, 'industry_name');
+
+$loadStmt = $pdo->prepare("
     SELECT DISTINCT load_status
     FROM equipment
-    WHERE load_status <> ''
+    WHERE railroad_id = :railroad_id
+    AND load_status <> ''
     ORDER BY load_status
-")->fetchAll(PDO::FETCH_COLUMN);
+");
+
+$loadStmt->execute([':railroad_id' => $railroad['id']]);
+$loadOptions = array_values(array_unique(array_merge(
+    ['Empty', 'Loaded'],
+    $loadStmt->fetchAll(PDO::FETCH_COLUMN)
+)));
+
+$serviceStmt = $pdo->prepare("
+    SELECT DISTINCT operations_service
+    FROM equipment
+    WHERE railroad_id = :railroad_id
+    AND operations_service <> ''
+    ORDER BY operations_service
+");
+
+$serviceStmt->execute([':railroad_id' => $railroad['id']]);
+$operationsServiceOptions = $serviceStmt->fetchAll(PDO::FETCH_COLUMN);
 
 /*
 |--------------------------------------------------------------------------
-| Helper: safe IN() clause
+| Helpers
 |--------------------------------------------------------------------------
 */
 
@@ -139,11 +224,28 @@ function buildInClause(string $column, array $values, string $prefix, array &$pa
 {
     $placeholders = [];
     foreach ($values as $i => $v) {
-        $key            = ':' . $prefix . '_' . $i;
+        $key = ':' . $prefix . '_' . $i;
         $placeholders[] = $key;
-        $params[$key]   = $v;
+        $params[$key] = $v;
     }
     return $column . ' IN (' . implode(',', $placeholders) . ')';
+}
+
+function filterUrl(array $overrides): string
+{
+    return '?' . http_build_query(array_merge($_GET, $overrides));
+}
+
+function statusFilterLabel(string $filter): string
+{
+    return match ($filter) {
+        'active' => 'Active Cars',
+        'inactive' => 'Inactive Cars',
+        'missing_service' => 'Missing Operations Service',
+        'missing_location' => 'Missing Location',
+        'ready' => 'Ready for Session',
+        default => $filter
+    };
 }
 
 /*
@@ -152,17 +254,18 @@ function buildInClause(string $column, array $values, string $prefix, array &$pa
 |--------------------------------------------------------------------------
 */
 
-$where  = ["e.railroad_id = :railroad_id"];
+$where = ['e.railroad_id = :railroad_id'];
 $params = [':railroad_id' => $railroad['id']];
 
 if ($search !== '') {
     $where[] = "(
-        CONCAT(e.reporting_marks,' ',e.road_number) LIKE :search
-        OR i.industry_name  LIKE :search
-        OR e.current_track  LIKE :search
-        OR e.load_status    LIKE :search
-        OR w.commodity      LIKE :search
-        OR d.industry_name  LIKE :search
+        CONCAT(e.reporting_marks, ' ', e.road_number) LIKE :search
+        OR e.road_name LIKE :search
+        OR e.equipment_type LIKE :search
+        OR e.current_track LIKE :search
+        OR e.load_status LIKE :search
+        OR e.operations_service LIKE :search
+        OR i.industry_name LIKE :search
     )";
     $params[':search'] = '%' . $search . '%';
 }
@@ -175,20 +278,29 @@ if (!empty($loadFilters)) {
     $where[] = buildInClause('e.load_status', $loadFilters, 'load', $params);
 }
 
-if (!empty($waybillFilters)) {
-    if (in_array('yes', $waybillFilters) && !in_array('no', $waybillFilters)) {
-        $where[] = "w.commodity IS NOT NULL AND w.commodity <> ''";
-    } elseif (in_array('no', $waybillFilters) && !in_array('yes', $waybillFilters)) {
-        $where[] = "(w.commodity IS NULL OR w.commodity = '')";
-    }
+$activeSelected = in_array('active', $statusFilters, true);
+$inactiveSelected = in_array('inactive', $statusFilters, true);
+
+if ($activeSelected && !$inactiveSelected) {
+    $where[] = 'e.active = 1';
+}
+elseif ($inactiveSelected && !$activeSelected) {
+    $where[] = 'COALESCE(e.active, 0) = 0';
 }
 
-if (!empty($moveFilters)) {
-    if (in_array('yes', $moveFilters) && !in_array('no', $moveFilters)) {
-        $where[] = "(w.destination_industry_id IS NOT NULL AND w.destination_industry_id != e.current_industry_id)";
-    } elseif (in_array('no', $moveFilters) && !in_array('yes', $moveFilters)) {
-        $where[] = "(w.destination_industry_id IS NULL OR w.destination_industry_id = e.current_industry_id)";
-    }
+if (in_array('missing_service', $statusFilters, true)) {
+    $where[] = "TRIM(COALESCE(e.operations_service, '')) = ''";
+}
+
+if (in_array('missing_location', $statusFilters, true)) {
+    $where[] = '(e.current_industry_id IS NULL OR e.current_industry_id = 0)';
+}
+
+if (in_array('ready', $statusFilters, true)) {
+    $where[] = 'e.active = 1';
+    $where[] = 'e.current_industry_id IS NOT NULL';
+    $where[] = 'e.current_industry_id <> 0';
+    $where[] = "TRIM(COALESCE(e.operations_service, '')) <> ''";
 }
 
 $whereSQL = implode(' AND ', $where);
@@ -203,8 +315,6 @@ $countSql = "
     SELECT COUNT(*)
     FROM equipment e
     LEFT JOIN industries i ON e.current_industry_id = i.id
-    LEFT JOIN waybills w   ON e.id = w.equipment_id AND w.active = 1
-    LEFT JOIN industries d ON w.destination_industry_id = d.id
     WHERE $whereSQL
 ";
 
@@ -221,7 +331,7 @@ $totalRecords = (int)$countStmt->fetchColumn();
 $totalPages = 1;
 
 if ($perPage !== 'all') {
-    $totalPages = max(1, ceil($totalRecords / $perPage));
+    $totalPages = max(1, (int)ceil($totalRecords / $perPage));
     if ($page > $totalPages) {
         $page = $totalPages;
     }
@@ -240,19 +350,17 @@ $sql = "
         CONCAT(e.reporting_marks, ' ', e.road_number) AS car,
         e.reporting_marks,
         e.road_number,
+        e.road_name,
+        e.equipment_class,
+        e.equipment_type,
+        e.active,
         e.current_industry_id,
         e.current_track,
         e.load_status,
-        i.industry_name,
-        w.commodity,
-        w.current_cycle,
-        w.cycle_count,
-        w.destination_industry_id,
-        d.industry_name AS destination
+        e.operations_service,
+        i.industry_name
     FROM equipment e
     LEFT JOIN industries i ON e.current_industry_id = i.id
-    LEFT JOIN waybills w   ON e.id = w.equipment_id AND w.active = 1
-    LEFT JOIN industries d ON w.destination_industry_id = d.id
     WHERE $whereSQL
     ORDER BY $orderBy
 ";
@@ -267,26 +375,30 @@ $cars = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 /*
 |--------------------------------------------------------------------------
-| Summary Counts (always across all cars, ignoring pagination)
+| Summary Counts
 |--------------------------------------------------------------------------
 */
 
 $summaryStmt = $pdo->prepare("
     SELECT
-        COUNT(*)                                                         AS total_cars,
-        SUM(w.commodity IS NOT NULL AND w.commodity <> '')               AS active_waybills,
-        SUM(LOWER(e.load_status) = 'loaded')                             AS loaded_cars,
-        SUM(e.current_industry_id IS NOT NULL)                           AS located_cars,
-        SUM(w.destination_industry_id IS NOT NULL
-            AND w.destination_industry_id != e.current_industry_id)      AS moves_needed
-    FROM equipment e
-    LEFT JOIN industries i ON e.current_industry_id = i.id
-    LEFT JOIN waybills w   ON e.id = w.equipment_id AND w.active = 1
-    WHERE e.railroad_id = :railroad_id
+        COUNT(*) AS total_cars,
+        SUM(CASE WHEN active = 1 THEN 1 ELSE 0 END) AS active_cars,
+        SUM(CASE WHEN COALESCE(active, 0) = 0 THEN 1 ELSE 0 END) AS inactive_cars,
+        SUM(CASE WHEN active = 1
+            AND current_industry_id IS NOT NULL
+            AND current_industry_id <> 0
+            AND TRIM(COALESCE(operations_service, '')) <> ''
+            THEN 1 ELSE 0 END) AS ready_cars,
+        SUM(CASE WHEN TRIM(COALESCE(operations_service, '')) = '' THEN 1 ELSE 0 END) AS missing_service,
+        SUM(CASE WHEN current_industry_id IS NULL OR current_industry_id = 0 THEN 1 ELSE 0 END) AS missing_location
+    FROM equipment
+    WHERE railroad_id = :railroad_id
 ");
 
 $summaryStmt->execute([':railroad_id' => $railroad['id']]);
 $summary = $summaryStmt->fetch(PDO::FETCH_ASSOC);
+
+$returnQuery = $_SERVER['QUERY_STRING'] ?? '';
 
 ?>
 
@@ -304,42 +416,66 @@ $summary = $summaryStmt->fetch(PDO::FETCH_ASSOC);
 
 <div class="container-fluid mt-4">
 
+<?php if ($statusMessage !== ''): ?>
+<div class="alert alert-success">
+    <?= htmlspecialchars($statusMessage) ?>
+</div>
+<?php endif; ?>
+
 <!-- SUMMARY CARDS -->
 
 <div class="row mb-4 g-3">
 
-<div class="col-6 col-md-3">
+<div class="col-6 col-md-2">
 <div class="card text-center h-100">
 <div class="card-body">
-<h2 class="mb-0"><?= $summary['total_cars'] ?></h2>
+<h2 class="mb-0"><?= (int)$summary['total_cars'] ?></h2>
 <div class="text-muted small">Total Cars</div>
 </div>
 </div>
 </div>
 
-<div class="col-6 col-md-3">
+<div class="col-6 col-md-2">
 <div class="card text-center h-100">
 <div class="card-body">
-<h2 class="mb-0"><?= $summary['active_waybills'] ?></h2>
-<div class="text-muted small">Active Waybills</div>
+<h2 class="mb-0"><?= (int)$summary['active_cars'] ?></h2>
+<div class="text-muted small">Active / On Layout</div>
 </div>
 </div>
 </div>
 
-<div class="col-6 col-md-3">
+<div class="col-6 col-md-2">
 <div class="card text-center h-100">
 <div class="card-body">
-<h2 class="mb-0"><?= $summary['loaded_cars'] ?></h2>
-<div class="text-muted small">Loaded Cars</div>
+<h2 class="mb-0"><?= (int)$summary['inactive_cars'] ?></h2>
+<div class="text-muted small">Inactive / Off Layout</div>
 </div>
 </div>
 </div>
 
-<div class="col-6 col-md-3">
+<div class="col-6 col-md-2">
 <div class="card text-center h-100">
 <div class="card-body">
-<h2 class="mb-0"><?= $summary['moves_needed'] ?></h2>
-<div class="text-muted small">Moves Needed</div>
+<h2 class="mb-0"><?= (int)$summary['ready_cars'] ?></h2>
+<div class="text-muted small">Ready for Session</div>
+</div>
+</div>
+</div>
+
+<div class="col-6 col-md-2">
+<div class="card text-center h-100">
+<div class="card-body">
+<h2 class="mb-0"><?= (int)$summary['missing_service'] ?></h2>
+<div class="text-muted small">Missing Service</div>
+</div>
+</div>
+</div>
+
+<div class="col-6 col-md-2">
+<div class="card text-center h-100">
+<div class="card-body">
+<h2 class="mb-0"><?= (int)$summary['missing_location'] ?></h2>
+<div class="text-muted small">Missing Location</div>
 </div>
 </div>
 </div>
@@ -371,27 +507,21 @@ SIDEBAR
     <a href="status.php" class="btn btn-sm btn-outline-secondary">Clear All</a>
 </div>
 
+<?php foreach ($statusFilters as $filter): ?>
+<a class="filter-chip" href="<?= filterUrl(['status' => array_values(array_diff($statusFilters, [$filter])), 'page' => 1]) ?>">
+    &times; <?= htmlspecialchars(statusFilterLabel($filter)) ?>
+</a>
+<?php endforeach; ?>
+
 <?php foreach ($locationFilters as $filter): ?>
-<a class="filter-chip" href="?<?= http_build_query(array_merge($_GET, ['location' => array_values(array_diff($locationFilters, [$filter]))])) ?>">
-    × <?= htmlspecialchars($filter) ?>
+<a class="filter-chip" href="<?= filterUrl(['location' => array_values(array_diff($locationFilters, [$filter])), 'page' => 1]) ?>">
+    &times; <?= htmlspecialchars($filter) ?>
 </a>
 <?php endforeach; ?>
 
 <?php foreach ($loadFilters as $filter): ?>
-<a class="filter-chip" href="?<?= http_build_query(array_merge($_GET, ['load_status' => array_values(array_diff($loadFilters, [$filter]))])) ?>">
-    × <?= htmlspecialchars($filter) ?>
-</a>
-<?php endforeach; ?>
-
-<?php foreach ($waybillFilters as $filter): ?>
-<a class="filter-chip" href="?<?= http_build_query(array_merge($_GET, ['waybill' => array_values(array_diff($waybillFilters, [$filter]))])) ?>">
-    × Waybill: <?= $filter === 'yes' ? 'Has Waybill' : 'No Waybill' ?>
-</a>
-<?php endforeach; ?>
-
-<?php foreach ($moveFilters as $filter): ?>
-<a class="filter-chip" href="?<?= http_build_query(array_merge($_GET, ['move' => array_values(array_diff($moveFilters, [$filter]))])) ?>">
-    × Move: <?= $filter === 'yes' ? 'Move Needed' : 'No Move' ?>
+<a class="filter-chip" href="<?= filterUrl(['load_status' => array_values(array_diff($loadFilters, [$filter])), 'page' => 1]) ?>">
+    &times; <?= htmlspecialchars($filter) ?>
 </a>
 <?php endforeach; ?>
 
@@ -404,21 +534,37 @@ SIDEBAR
 <div class="section-content collapsed">
     <input type="text" name="search" class="form-control form-control-sm"
         value="<?= htmlspecialchars($search) ?>"
-        placeholder="Car, location, commodity…">
+        placeholder="Car, location, service...">
     <button type="submit" class="btn btn-sm btn-primary mt-2 w-100">Go</button>
+</div>
+</div>
+
+<!-- OPERATING STATUS -->
+
+<div class="filter-section">
+<div class="section-header"><span class="arrow">▼</span> Operating Status</div>
+<div class="section-content">
+<?php foreach ($allowedStatusFilters as $option): ?>
+<label class="form-check">
+    <input class="form-check-input auto-filter" type="checkbox" name="status[]"
+        value="<?= htmlspecialchars($option) ?>"
+        <?= in_array($option, $statusFilters, true) ? 'checked' : '' ?>>
+    <span class="form-check-label"><?= htmlspecialchars(statusFilterLabel($option)) ?></span>
+</label>
+<?php endforeach; ?>
 </div>
 </div>
 
 <!-- LOCATION -->
 
 <div class="filter-section">
-<div class="section-header"><span class="arrow">▼</span> Location</div>
-<div class="section-content filter-scroll">
+<div class="section-header"><span class="arrow">►</span> Location</div>
+<div class="section-content collapsed filter-scroll">
 <?php foreach ($locationOptions as $option): ?>
 <label class="form-check">
     <input class="form-check-input auto-filter" type="checkbox" name="location[]"
         value="<?= htmlspecialchars($option) ?>"
-        <?= in_array($option, $locationFilters) ? 'checked' : '' ?>>
+        <?= in_array($option, $locationFilters, true) ? 'checked' : '' ?>>
     <span class="form-check-label"><?= htmlspecialchars($option) ?></span>
 </label>
 <?php endforeach; ?>
@@ -434,46 +580,10 @@ SIDEBAR
 <label class="form-check">
     <input class="form-check-input auto-filter" type="checkbox" name="load_status[]"
         value="<?= htmlspecialchars($option) ?>"
-        <?= in_array($option, $loadFilters) ? 'checked' : '' ?>>
+        <?= in_array($option, $loadFilters, true) ? 'checked' : '' ?>>
     <span class="form-check-label"><?= htmlspecialchars($option) ?></span>
 </label>
 <?php endforeach; ?>
-</div>
-</div>
-
-<!-- WAYBILL -->
-
-<div class="filter-section">
-<div class="section-header"><span class="arrow">►</span> Waybill</div>
-<div class="section-content collapsed">
-<label class="form-check">
-    <input class="form-check-input auto-filter" type="checkbox" name="waybill[]" value="yes"
-        <?= in_array('yes', $waybillFilters) ? 'checked' : '' ?>>
-    <span class="form-check-label">Has Waybill</span>
-</label>
-<label class="form-check">
-    <input class="form-check-input auto-filter" type="checkbox" name="waybill[]" value="no"
-        <?= in_array('no', $waybillFilters) ? 'checked' : '' ?>>
-    <span class="form-check-label">No Waybill</span>
-</label>
-</div>
-</div>
-
-<!-- MOVE NEEDED -->
-
-<div class="filter-section">
-<div class="section-header"><span class="arrow">►</span> Move Needed</div>
-<div class="section-content collapsed">
-<label class="form-check">
-    <input class="form-check-input auto-filter" type="checkbox" name="move[]" value="yes"
-        <?= in_array('yes', $moveFilters) ? 'checked' : '' ?>>
-    <span class="form-check-label">Move Needed</span>
-</label>
-<label class="form-check">
-    <input class="form-check-input auto-filter" type="checkbox" name="move[]" value="no"
-        <?= in_array('no', $moveFilters) ? 'checked' : '' ?>>
-    <span class="form-check-label">No Move</span>
-</label>
 </div>
 </div>
 
@@ -493,7 +603,10 @@ MAIN CONTENT
 
 <div class="mb-4">
     <h1 class="mb-1">Car Status</h1>
-    <div class="text-muted mb-3">
+    <div class="text-muted mb-2">
+        Active cars are on the layout and available for Generate Session. Inactive cars are stored off-layout.
+    </div>
+    <div class="text-muted">
         Showing <strong><?= count($cars) ?></strong> of <strong><?= $totalRecords ?></strong> cars
     </div>
 </div>
@@ -505,14 +618,20 @@ MAIN CONTENT
 <div class="toolbar-right">
     <label class="small me-2">Show</label>
     <select id="perPage" class="form-select form-select-sm">
-        <option value="10"  <?= $perPage == 10    ? 'selected' : '' ?>>10</option>
-        <option value="20"  <?= $perPage == 20    ? 'selected' : '' ?>>20</option>
-        <option value="50"  <?= $perPage == 50    ? 'selected' : '' ?>>50</option>
-        <option value="100" <?= $perPage == 100   ? 'selected' : '' ?>>100</option>
-        <option value="all" <?= $perPage === 'all'? 'selected' : '' ?>>All</option>
+        <option value="10"  <?= $perPage == 10 ? 'selected' : '' ?>>10</option>
+        <option value="20"  <?= $perPage == 20 ? 'selected' : '' ?>>20</option>
+        <option value="50"  <?= $perPage == 50 ? 'selected' : '' ?>>50</option>
+        <option value="100" <?= $perPage == 100 ? 'selected' : '' ?>>100</option>
+        <option value="all" <?= $perPage === 'all' ? 'selected' : '' ?>>All</option>
     </select>
 </div>
 </div>
+
+<datalist id="operationsServiceOptions">
+<?php foreach ($operationsServiceOptions as $option): ?>
+    <option value="<?= htmlspecialchars($option) ?>">
+<?php endforeach; ?>
+</datalist>
 
 <div class="table-responsive">
 
@@ -520,107 +639,161 @@ MAIN CONTENT
 
 <thead>
 <tr>
-
 <th>
-<a class="sort-link" href="?<?= http_build_query(array_merge($_GET, ['sort' => 'car', 'dir' => ($sort === 'car' && $dir === 'asc') ? 'desc' : 'asc'])) ?>">
+<a class="sort-link" href="<?= filterUrl(['sort' => 'car', 'dir' => ($sort === 'car' && $dir === 'asc') ? 'desc' : 'asc']) ?>">
     Car ▲▼
 </a>
 </th>
-
 <th>
-<a class="sort-link" href="?<?= http_build_query(array_merge($_GET, ['sort' => 'location', 'dir' => ($sort === 'location' && $dir === 'asc') ? 'desc' : 'asc'])) ?>">
+<a class="sort-link" href="<?= filterUrl(['sort' => 'active', 'dir' => ($sort === 'active' && $dir === 'asc') ? 'desc' : 'asc']) ?>">
+    Active ▲▼
+</a>
+</th>
+<th>
+<a class="sort-link" href="<?= filterUrl(['sort' => 'ready', 'dir' => ($sort === 'ready' && $dir === 'asc') ? 'desc' : 'asc']) ?>">
+    Ready ▲▼
+</a>
+</th>
+<th>
+<a class="sort-link" href="<?= filterUrl(['sort' => 'location', 'dir' => ($sort === 'location' && $dir === 'asc') ? 'desc' : 'asc']) ?>">
     Location ▲▼
 </a>
 </th>
-
 <th>
-<a class="sort-link" href="?<?= http_build_query(array_merge($_GET, ['sort' => 'current_track', 'dir' => ($sort === 'current_track' && $dir === 'asc') ? 'desc' : 'asc'])) ?>">
+<a class="sort-link" href="<?= filterUrl(['sort' => 'current_track', 'dir' => ($sort === 'current_track' && $dir === 'asc') ? 'desc' : 'asc']) ?>">
     Track ▲▼
 </a>
 </th>
-
 <th>
-<a class="sort-link" href="?<?= http_build_query(array_merge($_GET, ['sort' => 'load_status', 'dir' => ($sort === 'load_status' && $dir === 'asc') ? 'desc' : 'asc'])) ?>">
-    Status ▲▼
+<a class="sort-link" href="<?= filterUrl(['sort' => 'load_status', 'dir' => ($sort === 'load_status' && $dir === 'asc') ? 'desc' : 'asc']) ?>">
+    Load ▲▼
 </a>
 </th>
-
 <th>
-<a class="sort-link" href="?<?= http_build_query(array_merge($_GET, ['sort' => 'commodity', 'dir' => ($sort === 'commodity' && $dir === 'asc') ? 'desc' : 'asc'])) ?>">
-    Commodity ▲▼
+<a class="sort-link" href="<?= filterUrl(['sort' => 'operations_service', 'dir' => ($sort === 'operations_service' && $dir === 'asc') ? 'desc' : 'asc']) ?>">
+    Operations Service ▲▼
 </a>
 </th>
-
 <th>
-<a class="sort-link" href="?<?= http_build_query(array_merge($_GET, ['sort' => 'destination', 'dir' => ($sort === 'destination' && $dir === 'asc') ? 'desc' : 'asc'])) ?>">
-    Destination ▲▼
+<a class="sort-link" href="<?= filterUrl(['sort' => 'equipment_type', 'dir' => ($sort === 'equipment_type' && $dir === 'asc') ? 'desc' : 'asc']) ?>">
+    Type ▲▼
 </a>
 </th>
-
-<th>
-<a class="sort-link" href="?<?= http_build_query(array_merge($_GET, ['sort' => 'cycle', 'dir' => ($sort === 'cycle' && $dir === 'asc') ? 'desc' : 'asc'])) ?>">
-    Cycle ▲▼
-</a>
-</th>
-
-<th>
-<a class="sort-link" href="?<?= http_build_query(array_merge($_GET, ['sort' => 'move', 'dir' => ($sort === 'move' && $dir === 'asc') ? 'desc' : 'asc'])) ?>">
-    Move? ▲▼
-</a>
-</th>
-
+<th></th>
 </tr>
 </thead>
 
 <tbody>
 
 <?php foreach ($cars as $car): ?>
-
-<tr class="clickable-row" data-href="view.php?id=<?= $car['id'] ?>">
-
-<td><strong><?= htmlspecialchars($car['car']) ?></strong></td>
-
-<td><?= htmlspecialchars($car['industry_name'] ?: '—') ?></td>
-
-<td><?= htmlspecialchars($car['current_track'] ?: '—') ?></td>
+<?php
+$formId = 'car-status-form-' . (int)$car['id'];
+$isReady = (int)$car['active'] === 1
+    && !empty($car['current_industry_id'])
+    && trim($car['operations_service'] ?? '') !== '';
+?>
+<tr class="<?= (int)$car['active'] === 1 ? '' : 'table-light' ?>">
 
 <td>
-<?php if (strtolower($car['load_status']) === 'loaded'): ?>
-    <span class="badge bg-success">Loaded</span>
-<?php else: ?>
-    <span class="badge bg-secondary">Empty</span>
-<?php endif; ?>
+    <strong><?= htmlspecialchars($car['car']) ?></strong>
+    <div class="text-muted small">
+        <?= htmlspecialchars($car['road_name'] ?: '-') ?>
+        <?php if (!empty($car['equipment_class'])): ?>
+            - <?= htmlspecialchars($car['equipment_class']) ?>
+        <?php endif; ?>
+    </div>
+</td>
+
+<td style="min-width: 150px;">
+    <select name="active" class="form-select form-select-sm" form="<?= $formId ?>">
+        <option value="1" <?= (int)$car['active'] === 1 ? 'selected' : '' ?>>Active - On Layout</option>
+        <option value="0" <?= (int)$car['active'] === 0 ? 'selected' : '' ?>>Inactive - Off Layout</option>
+    </select>
 </td>
 
 <td>
-<?php if (!empty($car['commodity'])): ?>
-    <?= htmlspecialchars($car['commodity']) ?>
-<?php else: ?>
-    <span class="badge bg-warning text-dark">No Waybill</span>
-<?php endif; ?>
+    <?php if ($isReady): ?>
+        <span class="badge bg-success">Ready</span>
+    <?php elseif ((int)$car['active'] !== 1): ?>
+        <span class="badge bg-secondary">Inactive</span>
+    <?php elseif (empty($car['current_industry_id'])): ?>
+        <span class="badge bg-warning text-dark">Needs Location</span>
+    <?php elseif (trim($car['operations_service'] ?? '') === ''): ?>
+        <span class="badge bg-warning text-dark">Needs Service</span>
+    <?php else: ?>
+        <span class="badge bg-secondary">Review</span>
+    <?php endif; ?>
 </td>
 
-<td><?= htmlspecialchars($car['destination'] ?: '—') ?></td>
+<td style="min-width: 190px;">
+    <select name="current_industry_id" class="form-select form-select-sm" form="<?= $formId ?>">
+        <option value="">No location</option>
+        <?php foreach ($industryOptions as $industry): ?>
+        <option value="<?= (int)$industry['id'] ?>" <?= (string)$car['current_industry_id'] === (string)$industry['id'] ? 'selected' : '' ?>>
+            <?= htmlspecialchars($industry['industry_name']) ?>
+        </option>
+        <?php endforeach; ?>
+    </select>
+</td>
 
-<td>
-<?php if (!empty($car['current_cycle'])): ?>
-    <?= $car['current_cycle'] ?> / <?= $car['cycle_count'] ?>
-<?php else: ?>
-    —
-<?php endif; ?>
+<td style="min-width: 130px;">
+    <input
+    type="text"
+    name="current_track"
+    maxlength="50"
+    class="form-control form-control-sm"
+    value="<?= htmlspecialchars($car['current_track'] ?? '') ?>"
+    placeholder="Track / spot"
+    form="<?= $formId ?>">
+</td>
+
+<td style="min-width: 120px;">
+    <select name="load_status" class="form-select form-select-sm" form="<?= $formId ?>">
+        <?php foreach ($loadOptions as $option): ?>
+        <option value="<?= htmlspecialchars($option) ?>" <?= $car['load_status'] === $option ? 'selected' : '' ?>>
+            <?= htmlspecialchars($option) ?>
+        </option>
+        <?php endforeach; ?>
+    </select>
+</td>
+
+<td style="min-width: 190px;">
+    <input
+    type="text"
+    name="operations_service"
+    maxlength="100"
+    class="form-control form-control-sm"
+    list="operationsServiceOptions"
+    value="<?= htmlspecialchars($car['operations_service'] ?? '') ?>"
+    placeholder="Operations Service"
+    form="<?= $formId ?>">
 </td>
 
 <td>
-<?php if (!empty($car['destination_industry_id']) && $car['destination_industry_id'] != $car['current_industry_id']): ?>
-    <span class="badge bg-primary">Move Needed</span>
-<?php else: ?>
-    —
-<?php endif; ?>
+    <?= htmlspecialchars($car['equipment_type'] ?: '-') ?>
+    <?php if (!empty($car['road_number'])): ?>
+    <div class="text-muted small">No. <?= htmlspecialchars($car['road_number']) ?></div>
+    <?php endif; ?>
+</td>
+
+<td>
+    <form id="<?= $formId ?>" method="post" class="d-flex gap-2 align-items-center">
+        <input type="hidden" name="equipment_id" value="<?= (int)$car['id'] ?>">
+        <input type="hidden" name="return_query" value="<?= htmlspecialchars($returnQuery) ?>">
+        <button type="submit" class="btn btn-sm btn-primary">Save</button>
+        <a href="view.php?id=<?= (int)$car['id'] ?>" class="btn btn-sm btn-outline-secondary">View</a>
+    </form>
 </td>
 
 </tr>
 
 <?php endforeach; ?>
+
+<?php if (empty($cars)): ?>
+<tr>
+    <td colspan="9" class="text-center text-muted py-4">No cars match the current filters.</td>
+</tr>
+<?php endif; ?>
 
 </tbody>
 
@@ -636,21 +809,21 @@ MAIN CONTENT
 
     <?php if ($page > 1): ?>
         <a class="btn btn-outline-secondary btn-sm"
-           href="?<?= http_build_query(array_merge($_GET, ['page' => $page - 1])) ?>">
+           href="<?= filterUrl(['page' => $page - 1]) ?>">
             &lt;
         </a>
     <?php endif; ?>
 
     <?php for ($i = 1; $i <= $totalPages; $i++): ?>
         <a class="btn btn-sm <?= $i === $page ? 'btn-primary' : 'btn-outline-secondary' ?>"
-           href="?<?= http_build_query(array_merge($_GET, ['page' => $i])) ?>">
+           href="<?= filterUrl(['page' => $i]) ?>">
             <?= $i ?>
         </a>
     <?php endfor; ?>
 
     <?php if ($page < $totalPages): ?>
         <a class="btn btn-outline-secondary btn-sm"
-           href="?<?= http_build_query(array_merge($_GET, ['page' => $page + 1])) ?>">
+           href="<?= filterUrl(['page' => $page + 1]) ?>">
             &gt;
         </a>
     <?php endif; ?>
