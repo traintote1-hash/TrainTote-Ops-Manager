@@ -1,0 +1,6 @@
+/* Navigation placeholder */
+.tt-toolbar{
+display:flex;justify-content:space-between;align-items:center;
+margin-bottom:1.5rem;
+}
+.tt-page-title{font-size:2rem;font-weight:700;}

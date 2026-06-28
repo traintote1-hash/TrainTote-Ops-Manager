@@ -1,0 +1,10 @@
+# ============================================================
+# TrainTote Ops - config/.htaccess
+# ============================================================
+# This is a second layer of protection specifically for the
+# config/ folder. Even if the root .htaccess is misconfigured
+# or bypassed, this will block all access to this directory.
+# ============================================================
+
+Order Allow,Deny
+Deny from all

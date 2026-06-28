@@ -60,42 +60,43 @@
 	</a>
 	</li>
 
-	<li class="nav-item">
-	<a
-	class="nav-link <?php echo navActive('/industries/'); ?>"
-	href="/industries/list.php">
-	Industries
-	</a>
-	</li>
+<li class="nav-item">
+<a
+class="nav-link <?php echo navActive('/equipment/status.php'); ?>"
+href="/equipment/status.php">
+Car Status
+</a>
+</li>
 
 	<li class="nav-item">
-	<a
-	class="nav-link <?php echo navActive('/waybills/'); ?>"
-	href="/waybills/list.php">
-	Waybills
-	</a>
-	<li class="nav-item">
-<a
-class="nav-link <?php echo navActive('/jobs/'); ?>"
-href="/jobs/list.php">
+<a class="nav-link <?php echo navActive('/industries/'); ?>" href="/industries/list.php">
+Industries
+</a>
+</li>
+
+<li class="nav-item">
+<a class="nav-link <?php echo navActive('/waybills/'); ?>" href="/waybills/list.php">
+Waybills
+</a>
+</li>
+
+<li class="nav-item">
+<a class="nav-link <?php echo navActive('/jobs/'); ?>" href="/jobs/list.php">
 Jobs
 </a>
 </li>
-	<a
-	class="nav-link <?php echo navActive('/operations/'); ?>"
-	href="/operations/generate.php">
-	Operations
-	</a>
-	</li>
 
-	<li class="nav-item">
-	<a
-	class="nav-link <?php echo navActive('/ai/'); ?>"
-	href="/ai/scan_equipment.php">
-	AI Scanner
-	</a>
-	</li>
+<li class="nav-item">
+<a class="nav-link <?php echo navActive('/operations/'); ?>" href="/operations/generate.php">
+Operations
+</a>
+</li>
 
+<li class="nav-item">
+<a class="nav-link <?php echo navActive('/ai/'); ?>" href="/ai/scan_equipment.php">
+AI Scanner
+</a>
+</li>
 	</ul>
 
 	<ul class="navbar-nav">

@@ -42,14 +42,15 @@ if ($type === 'equipment') {
         die('Equipment not found.');
     }
 
-    $photoFile = $record['photo_filename'];
-
     $title =
-        $record['reporting_marks'] .
-        ' ' .
-        $record['road_number'];
+        trim(
+            $record['reporting_marks'] .
+            ' ' .
+            $record['road_number']
+        );
 
-} else {
+}
+else {
 
     $stmt = $pdo->prepare("
         SELECT i.*
@@ -72,14 +73,20 @@ if ($type === 'equipment') {
         die('Industry not found.');
     }
 
-    $photoFile = $record['photo_filename'];
+    $title =
+        $record['industry_name'];
 
-    $title = $record['industry_name'];
 }
 
-if (empty($photoFile)) {
+if (empty($record['photo_filename'])) {
     die('No photo found.');
 }
+
+$imageUrl =
+    'https://ops.traintote.com/uploads/' .
+    $record['photo_filename'] .
+    '?v=' .
+    time();
 
 ?>
 
@@ -88,41 +95,31 @@ if (empty($photoFile)) {
 <title>Edit Photo</title>
 
 <link
-href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css"
-rel="stylesheet">
+rel="stylesheet"
+href="https://scaleflex.cloudimg.io/v7/plugins/filerobot-image-editor/latest/filerobot-image-editor.min.css">
 
 <style>
 
-.image-container {
-    max-width: 100%;
-    max-height: 70vh;
+#editor_container{
+    width:100%;
+    height:80vh;
+    border:1px solid #ddd;
+    border-radius:8px;
 }
 
-#image {
-    display: block;
-    max-width: 100%;
+#processingOverlay{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(255,255,255,.92);
+    z-index:99999;
 }
 
-.toolbar button {
-    margin-right: 8px;
-    margin-bottom: 8px;
+.FIE_topbar-save-button{
+    display:none !important;
 }
 
-#processingOverlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(255,255,255,.95);
-    z-index: 99999;
-}
-
-#processingMessage {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin-top: 20px;
-}
-
-</style><?php include '../includes/footer.php'; ?>
+</style>
 
 </head>
 
@@ -130,7 +127,7 @@ rel="stylesheet">
 
 <?php include '../includes/navbar.php'; ?>
 
-<div class="container mt-5">
+<div class="container-fluid mt-4">
 
 <h1>Edit Photo</h1>
 
@@ -140,79 +137,12 @@ rel="stylesheet">
 
 </h4>
 
-<div class="card">
-
-<div class="card-body">
-
-<div class="image-container">
-
-<img
-id="image"
-src="../uploads/<?php echo htmlspecialchars($photoFile); ?>">
-
-</div>
+<div id="editor_container"></div>
 
 <hr>
 
-<div class="toolbar">
-
-<button
-type="button"
-class="btn btn-secondary"
-onclick="cropper.rotate(-90)">
-
-Rotate Left
-
-</button>
-
-<button
-type="button"
-class="btn btn-secondary"
-onclick="cropper.rotate(90)">
-
-Rotate Right
-
-</button>
-
-<button
-type="button"
-class="btn btn-secondary"
-onclick="cropper.zoom(0.1)">
-
-Zoom In
-
-</button>
-
-<button
-type="button"
-class="btn btn-secondary"
-onclick="cropper.zoom(-0.1)">
-
-Zoom Out
-
-</button>
-
-<button
-
-type="button"
-class="btn btn-warning"
-onclick="cropper.reset()">
-
-Reset
-
-</button>
-<button
-type="button"
-class="btn btn-info"
-id="removeBgBtn">
-
-Remove Background
-
-</button>
-
-</div>
-
 <form
+id="saveForm"
 method="post"
 action="save.php">
 
@@ -247,182 +177,297 @@ Cancel
 
 </a>
 
+<button
+type="button"
+class="btn btn-info"
+id="removeBgBtn">
+
+Remove Background
+
+</button>
+
 </form>
 
+<div id="processingOverlay">
+
+<div class="d-flex justify-content-center align-items-center h-100">
+
+<div class="text-center">
+
+<div
+class="spinner-border text-primary"
+style="width:5rem;height:5rem;">
+</div>
+
+<div class="mt-3 fw-bold">
+
+Processing Image...
+
+</div>
+
+<div class="mt-2 text-muted">
+
+Please wait...
+
 </div>
 
 </div>
 
 </div>
 
-<script
-src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js">
-</script>
+</div>
 
+<script src="https://scaleflex.cloudimg.io/v7/plugins/filerobot-image-editor/latest/filerobot-image-editor.min.js"></script>
 
 <script>
 
-const image =
-    document.getElementById('image');
+const FilerobotImageEditor =
+    window.FilerobotImageEditor;
 
-let cropper =
-    new Cropper(
-        image,
-        {
-            viewMode: 1,
-            autoCropArea: 1,
-            responsive: true,
-            background: false
-        }
-    );
+let currentImage =
+    '<?php echo htmlspecialchars($imageUrl); ?>';
 
-document.querySelector('form')
-.addEventListener(
-    'submit',
-    function(e) {
+let editor = null;
 
-        const canvas =
-            cropper.getCroppedCanvas({
-                maxWidth: 600,
-                maxHeight: 600
-            });
+function openEditor() {
 
-        document
-            .getElementById('cropped_image')
-            .value =
-            canvas.toDataURL(
-                'image/png',
-                0.85
-            );
-    }
-);
+    const container =
+        document.getElementById(
+            'editor_container'
+        );
+
+    container.innerHTML = '';
+
+    editor =
+        new FilerobotImageEditor(
+
+            container,
+
+            {
+
+                source:
+                    currentImage,
+
+                showBackButton:
+                    false,
+
+                closeAfterSave:
+                    false,
+
+                onSave:
+                    () => {},
+
+                tabsIds: [
+
+                    'adjust',
+                    'finetune',
+                    'filters',
+                    'crop'
+
+                ]
+
+            }
+
+        );
+
+    editor.render();
+
+}
+
+openEditor();
 
 document
-.getElementById('removeBgBtn')
+.getElementById(
+    'saveForm'
+)
 .addEventListener(
-    'click',
-    async function() {
+    'submit',
+    async function(e){
+
+        e.preventDefault();
 
         const overlay =
             document.getElementById(
                 'processingOverlay'
             );
 
-        const message =
-            document.getElementById(
-                'processingMessage'
-            );
-
-        const messages = [
-
-            "🎨 Detecting train...",
-            "🖼️ Analyzing image...",
-            "✂️ Separating foreground...",
-            "🌲 Removing scenery...",
-            "🔍 Refining edges...",
-            "✨ Creating transparency...",
-            "🚂 Finalizing cutout..."
-
-        ];
-
         overlay.style.display = 'block';
-
-        this.disabled = true;
-
-        let index = 0;
-
-        const interval = setInterval(
-            function() {
-
-                index++;
-
-                if (
-                    index >= messages.length
-                ) {
-                    index =
-                        messages.length - 1;
-                }
-
-                message.innerText =
-                    messages[index];
-
-            },
-            1000
-        );
 
         try {
 
-            const canvas =
-                cropper.getCroppedCanvas({
-                    maxWidth: 800,
-                    maxHeight: 800
-                });
+            const imageObject =
+                await editor.getCurrentImgData();
+
+            if (
+                !imageObject ||
+                !imageObject.imageData ||
+                !imageObject.imageData.imageBase64
+            ) {
+
+                overlay.style.display =
+                    'none';
+
+                alert(
+                    'Unable to retrieve edited image.'
+                );
+
+                return;
+
+            }
+
+            document
+                .getElementById(
+                    'cropped_image'
+                )
+                .value =
+                imageObject
+                    .imageData
+                    .imageBase64;
+
+            HTMLFormElement
+                .prototype
+                .submit
+                .call(
+                    this
+                );
+
+        }
+        catch(err){
+
+            console.error(
+                err
+            );
+
+            overlay.style.display =
+                'none';
+
+            alert(
+                'Unable to save image.'
+            );
+
+        }
+
+    }
+);
+
+document
+.getElementById(
+    'removeBgBtn'
+)
+.addEventListener(
+    'click',
+    async function(){
+
+        const overlay =
+            document.getElementById(
+                'processingOverlay'
+            );
+
+        overlay.style.display =
+            'block';
+
+        this.disabled = true;
+
+        try {
+
+            const imageObject =
+                await editor.getCurrentImgData();
+
+            if (
+                !imageObject ||
+                !imageObject.imageData ||
+                !imageObject.imageData.imageBase64
+            ) {
+
+                overlay.style.display =
+                    'none';
+
+                this.disabled =
+                    false;
+
+                alert(
+                    'Unable to retrieve image.'
+                );
+
+                return;
+
+            }
 
             const formData =
                 new URLSearchParams();
 
             formData.append(
+
                 'image',
-                canvas.toDataURL('image/png')
+
+                imageObject
+                    .imageData
+                    .imageBase64
+
             );
 
             const response =
                 await fetch(
+
                     'remove_background.php',
+
                     {
-                        method: 'POST',
-                        credentials: 'same-origin',
-                        body: formData
+
+                        method:
+                            'POST',
+
+                        credentials:
+                            'same-origin',
+
+                        body:
+                            formData
+
                     }
+
                 );
 
             const result =
                 await response.json();
 
-            clearInterval(interval);
+            overlay.style.display =
+                'none';
 
-            overlay.style.display = 'none';
+            this.disabled =
+                false;
 
-            this.disabled = false;
-
-            if (!result.success) {
+            if (
+                !result.success
+            ) {
 
                 alert(
+
                     result.error ||
+
                     'Background removal failed.'
+
                 );
 
                 return;
+
             }
 
-            cropper.destroy();
-
-            image.src =
+            currentImage =
                 result.image;
 
-            image.onload =
-                function() {
+            openEditor();
 
-                    cropper =
-                        new Cropper(
-                            image,
-                            {
-                                viewMode: 1,
-                                autoCropArea: 1,
-                                responsive: true,
-                                background: false
-                            }
-                        );
+        }
+        catch(err){
 
-                };
+            console.error(
+                err
+            );
 
-        } catch (err) {
+            overlay.style.display =
+                'none';
 
-            clearInterval(interval);
-
-            overlay.style.display = 'none';
-
-            this.disabled = false;
+            this.disabled =
+                false;
 
             alert(
                 'Background removal failed.'
@@ -432,34 +477,7 @@ document
 
     }
 );
+
 </script>
-<div id="processingOverlay">
 
-    <div class="d-flex justify-content-center align-items-center h-100">
-
-        <div class="text-center">
-
-            <div
-                class="spinner-border text-primary"
-                role="status"
-                style="width:5rem;height:5rem;">
-            </div>
-
-            <div id="processingMessage">
-
-                🎨 Detecting train...
-
-            </div>
-
-            <div class="mt-2 text-muted">
-
-                This may take 5–20 seconds depending on image size.
-
-            </div>
-
-        </div>
-
-    </div>
-
-</div>
 <?php include '../includes/footer.php'; ?>

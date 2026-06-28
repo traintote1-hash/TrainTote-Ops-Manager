@@ -1,0 +1,13 @@
+/* TTDS Release 003 - Search */
+.tt-search{
+ width:320px;
+ max-width:100%;
+ padding:.75rem 1rem;
+ border:1px solid var(--tt-border);
+ border-radius:12px;
+ background:#fff;
+}
+.tt-search:focus{
+ outline:none;
+ border-color:var(--tt-engine-red);
+}

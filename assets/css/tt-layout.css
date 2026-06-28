@@ -1,0 +1,7 @@
+/* TTDS Layout */
+.tt-container{max-width:var(--tt-max-width);margin:auto;padding:var(--tt-space-4);}
+.tt-grid{display:grid;gap:var(--tt-space-4);}
+.tt-grid-2{grid-template-columns:repeat(auto-fit,minmax(320px,1fr));}
+.tt-grid-3{grid-template-columns:repeat(auto-fit,minmax(240px,1fr));}
+.tt-flex{display:flex;gap:var(--tt-space-3);align-items:center;}
+.tt-page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem;}

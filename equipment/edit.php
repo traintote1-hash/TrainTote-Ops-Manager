@@ -5,35 +5,91 @@ session_start();
 require_once '../config/database.php';
 
 if (!isset($_SESSION['user_id'])) {
+
     header('Location: ../login.php');
+
     exit;
+
 }
 
 if (!isset($_GET['id'])) {
+
     die('Equipment ID missing.');
+
 }
 
 $id = (int)$_GET['id'];
 
+/*
+|--------------------------------------------------------------------------
+| Load Equipment
+|--------------------------------------------------------------------------
+*/
+
 $stmt = $pdo->prepare("
-    SELECT e.*
-    FROM equipment e
-    JOIN railroads r
-        ON e.railroad_id = r.id
-    WHERE e.id = :id
-    AND r.user_id = :user_id
-    LIMIT 1
+
+SELECT e.*
+
+FROM equipment e
+
+JOIN railroads r
+
+ON e.railroad_id = r.id
+
+WHERE e.id = ?
+
+AND r.user_id = ?
+
+LIMIT 1
+
 ");
 
 $stmt->execute([
-    'id' => $id,
-    'user_id' => $_SESSION['user_id']
+
+    $id,
+
+    $_SESSION['user_id']
+
 ]);
 
 $equipment = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$equipment) {
+
     die('Equipment not found.');
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Load Railroad
+|--------------------------------------------------------------------------
+*/
+
+$stmt = $pdo->prepare("
+
+SELECT *
+
+FROM railroads
+
+WHERE user_id = ?
+
+LIMIT 1
+
+");
+
+$stmt->execute([
+
+    $_SESSION['user_id']
+
+]);
+
+$railroad = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$railroad) {
+
+    die('No railroad found.');
+
 }
 
 /*
@@ -42,107 +98,364 @@ if (!$equipment) {
 |--------------------------------------------------------------------------
 */
 
-$railroadStmt = $pdo->prepare("
-    SELECT id
-    FROM railroads
-    WHERE user_id = :user_id
-    LIMIT 1
+$stmt = $pdo->prepare("
+
+SELECT
+
+    id,
+
+    industry_name
+
+FROM industries
+
+WHERE railroad_id = ?
+
+ORDER BY industry_name
+
 ");
 
-$railroadStmt->execute([
-    'user_id' => $_SESSION['user_id']
+$stmt->execute([
+
+    $railroad['id']
+
 ]);
 
-$railroad = $railroadStmt->fetch(PDO::FETCH_ASSOC);
+$industries = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-$industryStmt = $pdo->prepare("
-    SELECT id, industry_name
-    FROM industries
-    WHERE railroad_id = :railroad_id
-    ORDER BY industry_name
-");
+/*
+|--------------------------------------------------------------------------
+| Equipment Classes
+|--------------------------------------------------------------------------
+*/
 
-$industryStmt->execute([
-    'railroad_id' => $railroad['id']
-]);
+$equipmentClasses = [
 
-$industries = $industryStmt->fetchAll(PDO::FETCH_ASSOC);
+    'Freight Car',
+
+    'Locomotive',
+
+    'Passenger Car',
+
+    'Caboose',
+
+    'MOW',
+
+    'Other'
+
+];
+
+/*
+|--------------------------------------------------------------------------
+| Manufacturers
+|--------------------------------------------------------------------------
+*/
+
+$manufacturers = [
+
+    'Athearn',
+
+    'Atlas',
+
+    'Rapido',
+
+    'ScaleTrains',
+
+    'InterMountain',
+
+    'Walthers',
+
+    'Broadway Limited',
+
+    'Bowser',
+
+    'Bachmann',
+
+    'Proto 2000',
+
+    'ExactRail',
+
+    'Accurail',
+
+    'Roundhouse',
+
+    'Kato',
+
+    'Lionel',
+
+    'MTH',
+
+    'Other'
+
+];
+
+/*
+|--------------------------------------------------------------------------
+| Existing Values
+|--------------------------------------------------------------------------
+*/
+
+$reporting_marks = $_POST['reporting_marks']
+    ?? $equipment['reporting_marks']
+    ?? '';
+
+$road_number = $_POST['road_number']
+    ?? $equipment['road_number']
+    ?? '';
+
+$road_name = $_POST['road_name']
+    ?? $equipment['road_name']
+    ?? '';
+
+$equipment_class = $_POST['equipment_class']
+    ?? $equipment['equipment_class']
+    ?? '';
+
+$equipment_type = $_POST['equipment_type']
+    ?? $equipment['equipment_type']
+    ?? '';
+
+$prototype = $_POST['prototype']
+    ?? $equipment['prototype']
+    ?? '';
+
+$manufacturer = $_POST['manufacturer']
+    ?? $equipment['manufacturer']
+    ?? '';
+
+$length_ft = $_POST['length_ft']
+    ?? $equipment['length_ft']
+    ?? '';
+
+$color = $_POST['color']
+    ?? $equipment['color']
+    ?? '';
+
+$scale = $_POST['scale']
+    ?? $equipment['scale']
+    ?? 'HO';
+
+$service = $_POST['service']
+    ?? $equipment['service']
+    ?? '';
+
+$load_status = $_POST['load_status']
+    ?? $equipment['load_status']
+    ?? 'Empty';
+
+$current_industry_id = $_POST['current_industry_id']
+    ?? $equipment['current_industry_id']
+    ?? '';
+
+$current_track = $_POST['current_track']
+    ?? $equipment['current_track']
+    ?? '';
+
+$notes = $_POST['notes']
+    ?? $equipment['notes']
+    ?? '';
+
+$errors = [];
+
+/*
+|--------------------------------------------------------------------------
+| Save Changes
+|--------------------------------------------------------------------------
+*/
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    $reporting_marks = trim($_POST['reporting_marks']);
-    $road_number = trim($_POST['road_number']);
-    $road_name = trim($_POST['road_name']);
-    $equipment_class = trim($_POST['equipment_class']);
-    $equipment_type = trim($_POST['equipment_type']);
-    $prototype = trim($_POST['prototype']);
-    $service = trim($_POST['service']);
-    $manufacturer = trim($_POST['manufacturer']);
-    $color = trim($_POST['color']);
-    $length_ft = trim($_POST['length_ft']);
-    $scale = trim($_POST['scale']);
-    $load_status = trim($_POST['load_status']);
+    $reporting_marks = strtoupper(trim($reporting_marks));
+
+    $road_number = trim($road_number);
+
+    $road_name = trim($road_name);
+
+    $equipment_class = trim($equipment_class);
+
+    $equipment_type = trim($equipment_type);
+
+    $prototype = trim($prototype);
+
+    $manufacturer = trim($manufacturer);
+
+    $length_ft = trim($length_ft);
+
+    $color = trim($color);
+
+    $scale = trim($scale);
+
+    $service = trim($service);
+
+    $load_status = trim($load_status);
 
     $current_industry_id =
-        !empty($_POST['current_industry_id'])
-        ? (int)$_POST['current_industry_id']
+        !empty($current_industry_id)
+        ? (int)$current_industry_id
         : null;
 
-    $current_track = trim($_POST['current_track']);
+    $current_track = trim($current_track);
 
-    $notes = trim($_POST['notes']);
+    $notes = trim($notes);
 
-    $stmt = $pdo->prepare("
+    if ($reporting_marks === '') {
+
+        $errors[] = 'Reporting marks required.';
+
+    }
+
+    if ($road_number === '') {
+
+        $errors[] = 'Road number required.';
+
+    }
+
+    if ($equipment_class === '') {
+
+        $errors[] = 'Equipment class required.';
+
+    }
+
+    if ($equipment_type === '') {
+
+        $errors[] = 'Equipment type required.';
+
+    }
+
+    if (empty($errors)) {
+
+        $stmt = $pdo->prepare("
+
         UPDATE equipment
+
         SET
-            reporting_marks = :reporting_marks,
-            road_number = :road_number,
-            road_name = :road_name,
-            equipment_class = :equipment_class,
-            equipment_type = :equipment_type,
-            prototype = :prototype,
-            service = :service,
-            manufacturer = :manufacturer,
-            color = :color,
-            length_ft = :length_ft,
-            scale = :scale,
-            load_status = :load_status,
-            current_industry_id = :current_industry_id,
-            current_track = :current_track,
-            notes = :notes
-        WHERE id = :id
-    ");
 
-    $stmt->execute([
+            reporting_marks = ?,
 
-        'reporting_marks' => $reporting_marks,
-        'road_number' => $road_number,
-        'road_name' => $road_name,
-        'equipment_class' => $equipment_class,
-        'equipment_type' => $equipment_type,
-        'prototype' => $prototype,
-        'service' => $service,
-        'manufacturer' => $manufacturer,
-        'color' => $color,
-        'length_ft' => $length_ft,
-        'scale' => $scale,
-        'load_status' => $load_status,
-        'current_industry_id' => $current_industry_id,
-        'current_track' => $current_track,
-        'notes' => $notes,
-        'id' => $id
+            road_number = ?,
 
-    ]);
+            road_name = ?,
 
-    header("Location: view.php?id=$id");
-    exit;
+            equipment_class = ?,
+
+            equipment_type = ?,
+
+            prototype = ?,
+
+            manufacturer = ?,
+
+            length_ft = ?,
+
+            color = ?,
+
+            scale = ?,
+
+            service = ?,
+
+            load_status = ?,
+
+            current_industry_id = ?,
+
+            current_track = ?,
+
+            notes = ?
+
+        WHERE id = ?
+
+        ");
+
+        $stmt->execute([
+
+            $reporting_marks,
+
+            $road_number,
+
+            $road_name,
+
+            $equipment_class,
+
+            $equipment_type,
+
+            $prototype,
+
+            $manufacturer,
+
+            $length_ft,
+
+            $color,
+
+            $scale,
+
+            $service,
+
+            $load_status,
+
+            $current_industry_id,
+
+            $current_track,
+
+            $notes,
+
+            $id
+
+        ]);
+
+        header("Location: view.php?id=$id");
+
+        exit;
+
+    }
+
 }
+
+include '../includes/header.php';
 
 ?>
 
-<?php include '../includes/header.php'; ?>
-
 <title>Edit Equipment</title>
+
+<style>
+
+.section-card {
+
+    border-radius: 12px;
+
+    margin-bottom: 25px;
+
+}
+
+.section-card .card-header {
+
+    font-weight: 600;
+
+    font-size: 1.1rem;
+
+}
+
+.equipment-header-photo {
+
+    width: 150px;
+
+    max-height: 120px;
+
+    object-fit: contain;
+
+    background: #fff;
+
+    border: 1px solid #ccc;
+
+    border-radius: 8px;
+
+    padding: 6px;
+
+}
+
+.bottom-buttons {
+
+    margin-bottom: 75px;
+
+}
+
+</style>
 
 </head>
 
@@ -150,221 +463,493 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <?php include '../includes/navbar.php'; ?>
 
-<div class="container mt-5">
-
-<h1>Edit Equipment</h1>
+<div class="container mt-4 mb-5">
 
 <form method="post">
-<div class="mb-3">
 
-<label>Reporting Marks</label>
+<h1 class="mb-4">
+
+Edit Equipment
+
+</h1>
+
+<?php if (!empty($errors)): ?>
+
+<div class="alert alert-danger">
+
+<ul class="mb-0">
+
+<?php foreach ($errors as $error): ?>
+
+<li>
+
+<?php echo htmlspecialchars($error); ?>
+
+</li>
+
+<?php endforeach; ?>
+
+</ul>
+
+</div>
+
+<?php endif; ?>
+
+<!-- ====================================================== -->
+<!-- TOP BUTTONS -->
+<!-- ====================================================== -->
+
+<div class="mb-4">
+
+<button
+type="submit"
+class="btn btn-success">
+
+Save Changes
+
+</button>
+
+<a
+href="view.php?id=<?php echo $id; ?>"
+class="btn btn-secondary">
+
+Cancel
+
+</a>
+
+</div>
+
+<!-- ====================================================== -->
+<!-- PHOTO -->
+<!-- ====================================================== -->
+
+<div class="card section-card">
+
+<div class="card-header bg-dark text-white">
+
+Photo
+
+</div>
+
+<div class="card-body">
+
+<div class="d-flex align-items-center gap-4">
+
+<?php if (!empty($equipment['photo_filename'])): ?>
+
+<img
+
+src="../uploads/<?php echo htmlspecialchars($equipment['photo_filename']); ?>"
+
+class="equipment-header-photo"
+
+alt="Equipment Photo">
+
+<?php else: ?>
+
+<img
+
+src="../assets/img/no-photo.png"
+
+class="equipment-header-photo"
+
+alt="No Photo">
+
+<?php endif; ?>
+
+<div>
+
+<a
+
+href="../photo_editor/edit.php?type=equipment&id=<?php echo $equipment['id']; ?>"
+
+class="btn btn-primary">
+
+Edit Photo
+
+</a>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<!-- ====================================================== -->
+<!-- RAILROAD INFORMATION -->
+<!-- ====================================================== -->
+
+<div class="card section-card">
+
+<div class="card-header bg-dark text-white">
+
+Railroad Information
+
+</div>
+
+<div class="card-body">
+
+<div class="row">
+
+<div class="col-md-4 mb-3">
+
+<label class="form-label">
+
+Reporting Marks
+
+</label>
 
 <input
 type="text"
 name="reporting_marks"
+maxlength="20"
 class="form-control"
-value="<?php echo htmlspecialchars($equipment['reporting_marks']); ?>"
-required>
+value="<?php echo htmlspecialchars($reporting_marks); ?>">
 
 </div>
 
-<div class="mb-3">
+<div class="col-md-4 mb-3">
 
-<label>Road Number</label>
+<label class="form-label">
+
+Road Number
+
+</label>
 
 <input
 type="text"
 name="road_number"
+maxlength="20"
 class="form-control"
-value="<?php echo htmlspecialchars($equipment['road_number']); ?>"
-required>
+value="<?php echo htmlspecialchars($road_number); ?>">
 
 </div>
 
-<div class="mb-3">
+<div class="col-md-4 mb-3">
 
-<label>Road Name</label>
+<label class="form-label">
+
+Road Name
+
+</label>
 
 <input
 type="text"
 name="road_name"
+maxlength="100"
 class="form-control"
-value="<?php echo htmlspecialchars($equipment['road_name']); ?>">
+value="<?php echo htmlspecialchars($road_name); ?>">
 
 </div>
 
-<div class="mb-3">
+</div>
 
-<label>Equipment Class</label>
+</div>
 
-<select name="equipment_class" class="form-select">
+</div>
 
-<?php
+<!-- ====================================================== -->
+<!-- CLASSIFICATION -->
+<!-- ====================================================== -->
 
-$classes = [
-    'Freight Car',
-    'Locomotive',
-    'Passenger Car',
-    'Caboose',
-    'MOW'
-];
+<div class="card section-card">
 
-foreach ($classes as $class) {
+<div class="card-header bg-dark text-white">
 
-    $selected =
-        ($equipment['equipment_class'] === $class)
-        ? 'selected'
-        : '';
+Classification
 
-    echo "<option value=\"$class\" $selected>$class</option>";
-}
+</div>
 
-?>
+<div class="card-body">
+
+<div class="row">
+
+<div class="col-md-3 mb-3">
+
+<label class="form-label">
+
+Equipment Class
+
+</label>
+
+<select
+name="equipment_class"
+id="equipment_class"
+class="form-select">
+
+<option value="">
+
+Select Class
+
+</option>
+
+<?php foreach ($equipmentClasses as $class): ?>
+
+<option
+value="<?php echo $class; ?>"
+<?php if ($equipment_class === $class) echo 'selected'; ?>>
+
+<?php echo $class; ?>
+
+</option>
+
+<?php endforeach; ?>
 
 </select>
 
 </div>
 
-<div class="mb-3">
+<div class="col-md-3 mb-3">
 
-<label>Equipment Type</label>
+<label class="form-label">
 
-<input
-type="text"
+Equipment Type
+
+</label>
+
+<select
 name="equipment_type"
-class="form-control"
-value="<?php echo htmlspecialchars($equipment['equipment_type']); ?>">
+id="equipment_type"
+class="form-select">
+
+<option value="">
+
+Select Type
+
+</option>
+
+</select>
 
 </div>
 
-<div class="mb-3">
+<div
+class="col-md-3 mb-3"
+id="custom_type_div"
+style="display:none;">
 
-<label>Prototype</label>
+<label class="form-label">
+
+Custom Type
+
+</label>
 
 <input
 type="text"
-name="prototype"
+name="custom_type"
+id="custom_type"
+maxlength="30"
 class="form-control"
-value="<?php echo htmlspecialchars($equipment['prototype']); ?>">
+value="<?php echo htmlspecialchars($equipment['custom_type'] ?? ''); ?>">
 
 </div>
 
-<div class="mb-3">
+<div class="col-md-2 mb-3">
 
-<label>Service</label>
+<label class="form-label">
 
-<input
-type="text"
-name="service"
-class="form-control"
-value="<?php echo htmlspecialchars($equipment['service']); ?>">
+Length
 
-</div>
-
-<div class="mb-3">
-
-<label>Manufacturer</label>
-
-<input
-type="text"
-name="manufacturer"
-class="form-control"
-value="<?php echo htmlspecialchars($equipment['manufacturer']); ?>">
-
-</div>
-
-<div class="mb-3">
-
-<label>Color</label>
-
-<input
-type="text"
-name="color"
-class="form-control"
-value="<?php echo htmlspecialchars($equipment['color']); ?>">
-
-</div>
-
-<div class="mb-3">
-
-<label>Length (Feet)</label>
+</label>
 
 <input
 type="text"
 name="length_ft"
 class="form-control"
-value="<?php echo htmlspecialchars($equipment['length_ft']); ?>">
+value="<?php echo htmlspecialchars($length_ft); ?>">
 
 </div>
 
-<div class="mb-3">
+<div class="col-md-4 mb-3">
 
-<label>Scale</label>
+<label class="form-label">
 
-<select name="scale" class="form-select">
+Model / Subtype
 
-<?php
+</label>
 
-$scales = ['HO', 'N', 'O', 'S'];
+<input
+type="text"
+name="prototype"
+maxlength="50"
+class="form-control"
+value="<?php echo htmlspecialchars($prototype); ?>">
 
-foreach ($scales as $scale) {
+</div>
 
-    $selected =
-        ($equipment['scale'] === $scale)
-        ? 'selected'
-        : '';
+</div>
 
-    echo "<option value=\"$scale\" $selected>$scale</option>";
-}
+</div>
 
-?>
+</div>
+
+<!-- ====================================================== -->
+<!-- PHYSICAL CHARACTERISTICS -->
+<!-- ====================================================== -->
+
+<div class="card section-card">
+
+<div class="card-header bg-dark text-white">
+
+Physical Characteristics
+
+</div>
+
+<div class="card-body">
+
+<div class="row">
+
+<div class="col-md-3 mb-3">
+
+<label class="form-label">
+
+Manufacturer
+
+</label>
+
+<select
+name="manufacturer"
+class="form-select">
+
+<option value="">
+
+Select Manufacturer
+
+</option>
+
+<?php foreach ($manufacturers as $mfg): ?>
+
+<option
+value="<?php echo $mfg; ?>"
+<?php if ($manufacturer === $mfg) echo 'selected'; ?>>
+
+<?php echo $mfg; ?>
+
+</option>
+
+<?php endforeach; ?>
 
 </select>
 
 </div>
 
-<div class="mb-3">
 
-<label>Load Status</label>
 
-<select name="load_status" class="form-select">
+<div class="col-md-2 mb-3">
 
-<?php
+<label class="form-label">
 
-$statuses = ['Empty', 'Loaded'];
+Scale
 
-foreach ($statuses as $status) {
+</label>
 
-    $selected =
-        ($equipment['load_status'] === $status)
-        ? 'selected'
-        : '';
+<select
+name="scale"
+class="form-select">
 
-    echo "<option value=\"$status\" $selected>$status</option>";
-}
-
-?>
+<option value="HO" <?php if ($scale==='HO') echo 'selected'; ?>>HO</option>
+<option value="N" <?php if ($scale==='N') echo 'selected'; ?>>N</option>
+<option value="O" <?php if ($scale==='O') echo 'selected'; ?>>O</option>
+<option value="S" <?php if ($scale==='S') echo 'selected'; ?>>S</option>
+<option value="G" <?php if ($scale==='G') echo 'selected'; ?>>G</option>
+<option value="Z" <?php if ($scale==='Z') echo 'selected'; ?>>Z</option>
 
 </select>
 
 </div>
-<div class="mb-3">
 
-<label>Current Location</label>
+<div class="col-md-3 mb-3">
+
+<label class="form-label">
+
+Color
+
+</label>
+
+<input
+type="text"
+name="color"
+class="form-control"
+value="<?php echo htmlspecialchars($color); ?>">
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<!-- ====================================================== -->
+<!-- OPERATIONS -->
+<!-- ====================================================== -->
+
+<div class="card section-card">
+
+<div class="card-header bg-dark text-white">
+
+Operations
+
+</div>
+
+<div class="card-body">
+
+<div class="row">
+
+<div class="col-md-2 mb-3">
+
+<label class="form-label">
+
+Load Status
+
+</label>
+
+<select
+name="load_status"
+class="form-select">
+
+<option value="Empty"
+<?php if ($load_status === 'Empty') echo 'selected'; ?>>
+
+Empty
+
+</option>
+
+<option value="Loaded"
+<?php if ($load_status === 'Loaded') echo 'selected'; ?>>
+
+Loaded
+
+</option>
+
+</select>
+
+</div>
+
+<div class="col-md-4 mb-3">
+
+<label class="form-label">
+
+Current Location
+
+</label>
 
 <select
 name="current_industry_id"
 class="form-select">
 
 <option value="">
-Select Location
+
+Select Industry
+
 </option>
 
 <?php foreach ($industries as $industry): ?>
 
 <option
 value="<?php echo $industry['id']; ?>"
-<?php echo ($equipment['current_industry_id'] == $industry['id']) ? 'selected' : ''; ?>>
+<?php if ($current_industry_id == $industry['id']) echo 'selected'; ?>>
 
 <?php echo htmlspecialchars($industry['industry_name']); ?>
 
@@ -376,48 +961,275 @@ value="<?php echo $industry['id']; ?>"
 
 </div>
 
-<div class="mb-3">
+<div class="col-md-3 mb-3">
 
-<label>Current Track</label>
+<label class="form-label">
+
+Track / Spot
+
+</label>
 
 <input
 type="text"
 name="current_track"
+maxlength="50"
 class="form-control"
-placeholder="Track, spot, yard, lead, etc."
-value="<?php echo htmlspecialchars($equipment['current_track']); ?>">
+value="<?php echo htmlspecialchars($current_track); ?>">
 
 </div>
 
-<div class="mb-3">
+<div class="col-md-3 mb-3">
 
-<label>Notes</label>
+<label class="form-label">
+
+Service
+
+</label>
+
+<input
+type="text"
+name="service"
+maxlength="50"
+class="form-control"
+value="<?php echo htmlspecialchars($service); ?>">
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<!-- ====================================================== -->
+<!-- NOTES -->
+<!-- ====================================================== -->
+
+<div class="card section-card">
+
+<div class="card-header bg-dark text-white">
+
+Notes
+
+</div>
+
+<div class="card-body">
 
 <textarea
 name="notes"
-class="form-control"
-rows="4"><?php echo htmlspecialchars($equipment['notes']); ?></textarea>
+rows="5"
+class="form-control"><?php echo htmlspecialchars($notes); ?></textarea>
 
 </div>
 
+</div>
+
+<!-- ====================================================== -->
+<!-- BOTTOM BUTTONS -->
+<!-- ====================================================== -->
+
+<div class="bottom-buttons">
+
 <button
 type="submit"
-class="btn btn-success">
+class="btn btn-success btn-lg">
 
 Save Changes
 
 </button>
 
 <a
-href="view.php?id=<?php echo $equipment['id']; ?>"
-class="btn btn-secondary">
+href="view.php?id=<?php echo $id; ?>"
+class="btn btn-secondary btn-lg">
 
 Cancel
 
 </a>
+
+</div>
 
 </form>
 
 </div>
 
 <?php include '../includes/footer.php'; ?>
+
+<script>
+
+const freightTypes = [
+'Boxcar',
+'Covered Hopper',
+'Open Hopper',
+'Tank Car',
+'Flatcar',
+'Centerbeam Flatcar',
+'Bulkhead Flatcar',
+'Well Car',
+'Gondola',
+'Autorack',
+'Coil Car',
+'Refrigerator Car',
+'Mechanical Refrigerator Car',
+'Stock Car',
+'Spine Car',
+'Other'
+];
+
+const locomotiveTypes = [
+'Diesel',
+'Steam',
+'Electric',
+'Gas Turbine',
+'Slug',
+'Other'
+];
+
+const passengerTypes = [
+'Coach',
+'Combine',
+'Baggage',
+'RPO',
+'Diner',
+'Sleeper',
+'Observation',
+'Business Car',
+'Dome Car',
+'Other'
+];
+
+const cabooseTypes = [
+'Cupola',
+'Bay Window',
+'Transfer Caboose',
+'Wide Vision',
+'Other'
+];
+
+const mowTypes = [
+'Crane',
+'Ballast Hopper',
+'Snow Plow',
+'Jordan Spreader',
+'Tool Car',
+'Water Car',
+'Rail Train Car',
+'Other'
+];
+
+const classField =
+document.getElementById(
+'equipment_class'
+);
+
+const typeField =
+document.getElementById(
+'equipment_type'
+);
+
+const customDiv =
+document.getElementById(
+'custom_type_div'
+);
+
+const currentType =
+"<?php echo addslashes($equipment_type); ?>";
+
+function populateTypes() {
+
+typeField.innerHTML =
+'<option value="">Select Type</option>';
+
+let list = [];
+
+switch (classField.value) {
+
+case 'Freight Car':
+
+list = freightTypes;
+
+break;
+
+case 'Locomotive':
+
+list = locomotiveTypes;
+
+break;
+
+case 'Passenger Car':
+
+list = passengerTypes;
+
+break;
+
+case 'Caboose':
+
+list = cabooseTypes;
+
+break;
+
+case 'MOW':
+
+list = mowTypes;
+
+break;
+
+}
+
+list.forEach(function(item){
+
+let option =
+document.createElement(
+'option'
+);
+
+option.value = item;
+
+option.text = item;
+
+if (item === currentType) {
+
+option.selected = true;
+
+}
+
+typeField.add(option);
+
+});
+
+showCustom();
+
+}
+
+function showCustom() {
+
+if (typeField.value === 'Other') {
+
+customDiv.style.display = '';
+
+}
+
+else {
+
+customDiv.style.display = 'none';
+
+}
+
+}
+
+classField.addEventListener(
+'change',
+populateTypes
+);
+
+typeField.addEventListener(
+'change',
+showCustom
+);
+
+populateTypes();
+
+</script>
+
+</body>
+
+</html>

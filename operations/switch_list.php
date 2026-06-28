@@ -5,40 +5,37 @@ session_start();
 require_once '../config/database.php';
 
 if (!isset($_SESSION['user_id'])) {
-
     header('Location: ../login.php');
-
     exit;
-
 }
 
 if (!isset($_GET['job_id'])) {
-
     die('Job ID missing.');
-
 }
 
 $jobId = (int)$_GET['job_id'];
 
+/*
+|--------------------------------------------------------------------------
+| Railroad
+|--------------------------------------------------------------------------
+*/
+
 $stmt = $pdo->prepare("
     SELECT id
     FROM railroads
-    WHERE user_id = :user_id
+    WHERE user_id = ?
     LIMIT 1
 ");
 
 $stmt->execute([
-
-    'user_id' => $_SESSION['user_id']
-
+    $_SESSION['user_id']
 ]);
 
 $railroad = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$railroad) {
-
     die('Railroad not found.');
-
 }
 
 /*
@@ -61,29 +58,24 @@ $stmt = $pdo->prepare("
 
     WHERE
 
-        j.id = :id
+        j.id = ?
 
         AND
 
-        j.railroad_id = :railroad_id
+        j.railroad_id = ?
 
     LIMIT 1
 ");
 
 $stmt->execute([
-
-    'id' => $jobId,
-
-    'railroad_id' => $railroad['id']
-
+    $jobId,
+    $railroad['id']
 ]);
 
 $job = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$job) {
-
     die('Job not found.');
-
 }
 
 /*
@@ -104,7 +96,7 @@ $stmt = $pdo->prepare("
 
     WHERE
 
-        jl.job_id = :job_id
+        jl.job_id = ?
 
     ORDER BY
 
@@ -112,9 +104,7 @@ $stmt = $pdo->prepare("
 ");
 
 $stmt->execute([
-
-    'job_id' => $jobId
-
+    $jobId
 ]);
 
 $locomotives = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -137,7 +127,7 @@ $stmt = $pdo->prepare("
 
     WHERE
 
-        ji.job_id = :job_id
+        ji.job_id = ?
 
     ORDER BY
 
@@ -145,126 +135,69 @@ $stmt = $pdo->prepare("
 ");
 
 $stmt->execute([
-
-    'job_id' => $jobId
-
+    $jobId
 ]);
 
 $industries = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-$industryIds = [];
-
-foreach ($industries as $industry) {
-
-    $industryIds[] = $industry['id'];
-
-}
-
 /*
 |--------------------------------------------------------------------------
-| Cars With Active Waybills
+| Cars From job_cars
 |--------------------------------------------------------------------------
 */
 
-$cars = [];
+$stmt = $pdo->prepare("
 
-if (!empty($industryIds)) {
+    SELECT
 
-    $placeholders = implode(
+        jc.*,
 
-        ',',
+        e.reporting_marks,
+        e.road_number,
+        e.current_track,
 
-        array_fill(
+        w.commodity,
+        w.status AS waybill_status,
+        w.current_cycle,
+        w.cycle_count,
 
-            0,
+        origin.industry_name AS origin_name,
+        destination.industry_name AS destination_name,
 
-            count($industryIds),
+        currentloc.industry_name AS current_location
 
-            '?'
+    FROM job_cars jc
 
-        )
+    JOIN equipment e
+        ON jc.equipment_id = e.id
 
-    );
+    JOIN waybills w
+        ON jc.waybill_id = w.id
 
-    $stmt = $pdo->prepare("
+    LEFT JOIN industries origin
+        ON jc.from_industry_id = origin.id
 
-        SELECT
+    LEFT JOIN industries destination
+        ON jc.to_industry_id = destination.id
 
-            e.*,
+    LEFT JOIN industries currentloc
+        ON e.current_industry_id = currentloc.id
 
-            e.current_track,
+    WHERE
 
-            e.current_waybill_id,
+        jc.job_id = ?
 
-            w.id AS waybill_id,
+    ORDER BY
 
-            w.commodity,
+        jc.sequence_num
 
-            w.status AS waybill_status,
+");
 
-            w.current_cycle,
+$stmt->execute([
+    $jobId
+]);
 
-            w.cycle_count,
-
-            origin.industry_name AS origin_name,
-
-            destination.industry_name AS destination_name,
-
-            currentloc.industry_name AS current_location
-
-        FROM waybills w
-
-        JOIN equipment e
-            ON w.equipment_id = e.id
-
-        LEFT JOIN industries origin
-            ON w.origin_industry_id = origin.id
-
-        LEFT JOIN industries destination
-            ON w.destination_industry_id = destination.id
-
-        LEFT JOIN industries currentloc
-            ON e.current_industry_id = currentloc.id
-
-        WHERE
-
-            w.active = 1
-
-            AND (
-
-                w.origin_industry_id IN ($placeholders)
-
-                OR
-
-                w.destination_industry_id IN ($placeholders)
-
-            )
-
-        ORDER BY
-
-            currentloc.industry_name,
-
-            e.current_track,
-
-            e.reporting_marks,
-
-            e.road_number
-
-    ");
-
-    $params = array_merge(
-
-        $industryIds,
-
-        $industryIds
-
-    );
-
-    $stmt->execute($params);
-
-    $cars = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-}
+$cars = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 /*
 |--------------------------------------------------------------------------
@@ -276,21 +209,9 @@ $pickups = array_filter(
 
     $cars,
 
-    function ($car) use ($industryIds) {
+    function ($car) {
 
-        return
-
-            !empty($car['current_industry_id'])
-
-            &&
-
-            in_array(
-
-                $car['current_industry_id'],
-
-                $industryIds
-
-            );
+        return $car['move_type'] === 'pickup';
 
     }
 
@@ -306,16 +227,13 @@ $setouts = array_filter(
 
     $cars,
 
-    function ($car) use ($industryIds) {
+    function ($car) {
 
-        return
-
-            !empty($car['destination_name']);
+        return $car['move_type'] === 'setout';
 
     }
 
 );
-
 ?>
 
 <?php include '../includes/header.php'; ?>
@@ -329,6 +247,7 @@ $setouts = array_filter(
 <?php include '../includes/navbar.php'; ?>
 
 <div class="container mt-4">
+
 <div class="d-flex justify-content-between align-items-center mb-4">
 
 <h1>
@@ -456,6 +375,7 @@ No industries assigned.
 </div>
 
 </div>
+
 <!-- PICK UP -->
 
 <div class="card mb-4">
@@ -474,7 +394,7 @@ $pickupGroups = [];
 
 foreach ($pickups as $car) {
 
-    $location = $car['current_location'] ?: 'Unknown';
+    $location = $car['origin_name'] ?: 'Unknown';
 
     $pickupGroups[$location][] = $car;
 
@@ -507,13 +427,9 @@ No pickups.
 <tr>
 
 <th>Car</th>
-
 <th>Track</th>
-
 <th>Destination</th>
-
 <th>Commodity</th>
-
 <th>Cycle</th>
 
 </tr>
@@ -554,72 +470,29 @@ echo htmlspecialchars(
 
 <td>
 
-<?php
-
-echo htmlspecialchars(
-
-    $car['current_track']
-    ?: '-'
-
-);
-
-?>
+<?php echo htmlspecialchars($car['current_track'] ?: '-'); ?>
 
 </td>
 
 <td>
 
-<?php
-
-echo htmlspecialchars(
-
-    $car['destination_name']
-    ?: '-'
-
-);
-
-?>
+<?php echo htmlspecialchars($car['destination_name'] ?: '-'); ?>
 
 </td>
 
 <td>
 
-<?php
-
-echo htmlspecialchars(
-
-    $car['commodity']
-    ?: ''
-
-);
-
-?>
+<?php echo htmlspecialchars($car['commodity'] ?: ''); ?>
 
 </td>
 
 <td>
 
-<?php
-
-echo htmlspecialchars(
-
-    $car['current_cycle']
-
-)
-
-?>
+<?php echo htmlspecialchars($car['current_cycle']); ?>
 
 /
 
-<?php
-
-echo htmlspecialchars(
-
-    $car['cycle_count']
-
-)
-
-?>
+<?php echo htmlspecialchars($car['cycle_count']); ?>
 
 </td>
 
@@ -638,6 +511,7 @@ echo htmlspecialchars(
 </div>
 
 </div>
+
 <!-- SET OUT -->
 
 <div class="card mb-4">
@@ -689,13 +563,9 @@ No set outs.
 <tr>
 
 <th>Car</th>
-
 <th>Origin</th>
-
 <th>Commodity</th>
-
 <th>Status</th>
-
 <th>Cycle</th>
 
 </tr>
@@ -736,72 +606,29 @@ echo htmlspecialchars(
 
 <td>
 
-<?php
-
-echo htmlspecialchars(
-
-    $car['current_location']
-    ?: 'Unknown'
-
-);
-
-?>
+<?php echo htmlspecialchars($car['origin_name'] ?: 'Unknown'); ?>
 
 </td>
 
 <td>
 
-<?php
-
-echo htmlspecialchars(
-
-    $car['commodity']
-    ?: ''
-
-);
-
-?>
+<?php echo htmlspecialchars($car['commodity'] ?: ''); ?>
 
 </td>
 
 <td>
 
-<?php
-
-echo htmlspecialchars(
-
-    $car['waybill_status']
-    ?: ''
-
-);
-
-?>
+<?php echo htmlspecialchars($car['waybill_status'] ?: ''); ?>
 
 </td>
 
 <td>
 
-<?php
-
-echo htmlspecialchars(
-
-    $car['current_cycle']
-
-);
-
-?>
+<?php echo htmlspecialchars($car['current_cycle']); ?>
 
 /
 
-<?php
-
-echo htmlspecialchars(
-
-    $car['cycle_count']
-
-);
-
-?>
+<?php echo htmlspecialchars($car['cycle_count']); ?>
 
 </td>
 

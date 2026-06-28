@@ -1,0 +1,9 @@
+/* TTDS Release 003 - Empty State */
+.tt-empty{
+ text-align:center;
+ padding:4rem 2rem;
+ border:2px dashed var(--tt-border);
+ border-radius:14px;
+ background:var(--tt-surface-alt);
+}
+.tt-empty h2{margin-bottom:.5rem;}

@@ -1,0 +1,12 @@
+/* TTDS Typography */
+body{
+font-family:var(--tt-font);
+font-size:var(--tt-font-size);
+line-height:var(--tt-line-height);
+background:var(--tt-bg);
+color:var(--tt-text);
+}
+h1,h2,h3,h4,h5,h6{margin:0 0 .75rem;font-weight:700;}
+p{margin:0 0 1rem;}
+a{color:var(--tt-engine-red);text-decoration:none;}
+a:hover{text-decoration:underline;}

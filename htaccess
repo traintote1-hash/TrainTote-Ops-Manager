@@ -1,0 +1,151 @@
+# ============================================================
+# TrainTote Ops - Root .htaccess
+# ============================================================
+
+# --------------------------------------------------------------
+# 1. BLOCK DIRECT ACCESS TO SENSITIVE DIRECTORIES
+#    Users should never be able to browse or directly open
+#    files in these folders.
+# --------------------------------------------------------------
+
+# Block config/ entirely - database credentials live here
+RedirectMatch 403 ^/config/
+
+# Block includes/ - these are server-side partials, not pages
+RedirectMatch 403 ^/includes/
+
+# Block database/ - schema/backup files should not be public
+RedirectMatch 403 ^/database/
+
+# Block docs/ - internal documentation
+RedirectMatch 403 ^/docs/
+
+# Block templates/ - internal templates
+RedirectMatch 403 ^/templates/
+
+# Block .vscode/ - editor settings
+RedirectMatch 403 ^/.vscode/
+
+# Block the output/ folder you used for testing
+RedirectMatch 403 ^/output/
+
+# --------------------------------------------------------------
+# 2. BLOCK DIRECT ACCESS TO SENSITIVE FILE TYPES
+# --------------------------------------------------------------
+
+<FilesMatch "\.(sql|log|md|json|env|bak|sh|py|rb|git|htpasswd|DS_Store)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# --------------------------------------------------------------
+# 3. BLOCK DIRECTORY BROWSING
+#    Prevents Apache from showing a file listing if there's
+#    no index file in a folder.
+# --------------------------------------------------------------
+
+Options -Indexes
+
+# --------------------------------------------------------------
+# 4. UPLOADS FOLDER - PHP EXECUTION LOCKDOWN
+#    Users can upload photos. Make absolutely sure no uploaded
+#    file can be executed as PHP even if someone uploads a
+#    .php file disguised as an image.
+# --------------------------------------------------------------
+
+<IfModule mod_php.c>
+    <FilesMatch "\.php$">
+        php_flag engine off
+    </FilesMatch>
+</IfModule>
+
+# Also block .php files in uploads via mod_rewrite
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Block PHP execution in uploads/ and uploads/temp/
+    RewriteCond %{REQUEST_URI} ^/uploads/
+    RewriteRule \.php$ - [F,L]
+
+    # Block PHP execution in assets/ (CSS/JS only needed)
+    RewriteCond %{REQUEST_URI} ^/assets/
+    RewriteRule \.php$ - [F,L]
+</IfModule>
+
+# --------------------------------------------------------------
+# 5. FORCE HTTPS
+#    If your host has an SSL certificate (which it should),
+#    always redirect plain HTTP to HTTPS.
+#    REMOVE these lines if you are still on plain HTTP locally.
+# --------------------------------------------------------------
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{HTTPS} off
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+</IfModule>
+
+# --------------------------------------------------------------
+# 6. PREVENT CLICKJACKING
+#    Stops your pages from being embedded in iframes on
+#    other sites (a common phishing trick).
+# --------------------------------------------------------------
+
+<IfModule mod_headers.c>
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# --------------------------------------------------------------
+# 7. HIDE SERVER SIGNATURE
+#    Don't advertise what version of Apache/PHP you're running.
+# --------------------------------------------------------------
+
+ServerSignature Off
+
+# --------------------------------------------------------------
+# 8. BLOCK COMMON ATTACK PATTERNS IN QUERY STRINGS
+#    Catches basic SQL injection and path traversal attempts
+#    at the web server level, before PHP even sees them.
+# --------------------------------------------------------------
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Block null bytes
+    RewriteCond %{QUERY_STRING} (\%00|%00) [NC]
+    RewriteRule .* - [F,L]
+
+    # Block basic path traversal
+    RewriteCond %{QUERY_STRING} (\.\./|\.\.%2F) [NC]
+    RewriteRule .* - [F,L]
+
+    # Block common SQL injection keywords in query strings
+    RewriteCond %{QUERY_STRING} (union.*select|select.*from|drop.*table|insert.*into) [NC]
+    RewriteRule .* - [F,L]
+</IfModule>
+
+# --------------------------------------------------------------
+# 9. SESSION COOKIE SECURITY
+#    Tells PHP to mark session cookies as HttpOnly and Secure
+#    so JavaScript can't steal them and they only travel
+#    over HTTPS.
+#    (Only works if your host allows php_value in .htaccess)
+# --------------------------------------------------------------
+
+<IfModule mod_php.c>
+    php_value session.cookie_httponly 1
+    php_value session.cookie_secure   1
+    php_value session.cookie_samesite "Strict"
+    php_value session.use_strict_mode 1
+</IfModule>
+
+# --------------------------------------------------------------
+# 10. CUSTOM ERROR PAGES (optional - create these if you want)
+# --------------------------------------------------------------
+
+# ErrorDocument 403 /error/403.php
+# ErrorDocument 404 /error/404.php
+# ErrorDocument 500 /error/500.php

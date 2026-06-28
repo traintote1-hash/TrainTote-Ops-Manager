@@ -1,0 +1,47 @@
+/*=====================================================================
+ TrainTote Design System (TTDS)
+ File: tt-variables.css
+ Version: 2026.1.0
+=====================================================================*/
+:root{
+/* Brand */
+--tt-engine-red:#8B1E24;
+--tt-engine-red-hover:#73181D;
+--tt-signal-green:#2E8B57;
+--tt-signal-yellow:#D97706;
+--tt-danger:#C53030;
+
+/* Neutrals */
+--tt-bg:#F5F7FA;
+--tt-surface:#FFFFFF;
+--tt-surface-alt:#F8FAFC;
+--tt-border:#D8DEE6;
+--tt-text:#1F2937;
+--tt-text-muted:#6B7280;
+
+/* Typography */
+--tt-font:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+--tt-font-size:16px;
+--tt-line-height:1.5;
+
+/* Radius */
+--tt-radius-sm:6px;
+--tt-radius:12px;
+--tt-radius-lg:18px;
+
+/* Shadows */
+--tt-shadow-sm:0 1px 3px rgba(0,0,0,.08);
+--tt-shadow:0 6px 18px rgba(0,0,0,.08);
+
+/* Spacing */
+--tt-space-1:.25rem;
+--tt-space-2:.5rem;
+--tt-space-3:1rem;
+--tt-space-4:1.5rem;
+--tt-space-5:2rem;
+
+/* Layout */
+--tt-max-width:1600px;
+--tt-header-height:64px;
+--tt-sidebar-width:280px;
+}

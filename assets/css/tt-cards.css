@@ -1,0 +1,26 @@
+/*=====================================================================
+ TTDS Cards
+=====================================================================*/
+.tt-card{
+background:var(--tt-surface);
+border:1px solid var(--tt-border);
+border-radius:12px;
+box-shadow:var(--tt-shadow-sm);
+overflow:hidden;
+transition:all .18s ease;
+}
+.tt-card:hover{
+transform:translateY(-2px);
+box-shadow:var(--tt-shadow);
+}
+.tt-card-header{
+padding:1rem 1.25rem;
+border-bottom:1px solid var(--tt-border);
+font-weight:700;
+}
+.tt-card-body{padding:1.25rem;}
+.tt-card-footer{
+padding:1rem 1.25rem;
+border-top:1px solid var(--tt-border);
+background:var(--tt-surface-alt);
+}

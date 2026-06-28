@@ -299,7 +299,7 @@ echo nl2br(
 <div class="d-flex flex-wrap gap-2">
 
 <a
-href="../operations/switch_list.php?job_id=<?php echo $job['id']; ?>"
+href="../operations/generate_switch_list.php?job_id=<?php echo $job['id']; ?>"
 class="btn btn-dark">
 
 Generate Switch List

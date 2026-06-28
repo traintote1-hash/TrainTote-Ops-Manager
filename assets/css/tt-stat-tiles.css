@@ -1,0 +1,21 @@
+/* TTDS Release 003 - Stat Tiles */
+.tt-stat-grid{
+ display:grid;
+ grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+ gap:1rem;
+ margin:1.5rem 0;
+}
+.tt-stat-tile{
+ background:var(--tt-surface);
+ border:1px solid var(--tt-border);
+ border-radius:14px;
+ padding:1.5rem;
+}
+.tt-stat-number{
+ font-size:2.2rem;
+ font-weight:700;
+}
+.tt-stat-label{
+ color:var(--tt-text-muted);
+ margin-top:.25rem;
+}

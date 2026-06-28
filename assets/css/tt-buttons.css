@@ -1,0 +1,32 @@
+/*=====================================================================
+ TrainTote Design System (TTDS)
+ File: tt-buttons.css
+ Version: 2026.1.0
+=====================================================================*/
+.tt-btn{
+display:inline-flex;
+align-items:center;
+justify-content:center;
+gap:.5rem;
+padding:.75rem 1.25rem;
+border:1px solid transparent;
+border-radius:12px;
+font-weight:600;
+cursor:pointer;
+text-decoration:none;
+transition:all .18s ease;
+}
+.tt-btn:hover{transform:translateY(-1px);}
+.tt-btn-primary{background:var(--tt-engine-red);color:#fff;}
+.tt-btn-primary:hover{background:var(--tt-engine-red-hover);}
+.tt-btn-secondary{background:#475569;color:#fff;}
+.tt-btn-success{background:var(--tt-signal-green);color:#fff;}
+.tt-btn-warning{background:var(--tt-signal-yellow);color:#fff;}
+.tt-btn-danger{background:var(--tt-danger);color:#fff;}
+.tt-btn-outline{
+background:#fff;
+border-color:var(--tt-border);
+color:var(--tt-text);
+}
+.tt-btn-sm{padding:.45rem .8rem;font-size:.875rem;}
+.tt-btn-lg{padding:1rem 1.75rem;font-size:1.05rem;}
