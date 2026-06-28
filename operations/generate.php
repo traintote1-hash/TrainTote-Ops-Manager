@@ -346,12 +346,20 @@ include '../assets/components/sidebar.php';
                         <dd><?php echo htmlspecialchars($waybill['destination_name']); ?></dd>
                     </div>
                     <div>
-                        <dt>Commodity</dt>
-                        <dd><?php echo htmlspecialchars($waybill['commodity']); ?></dd>
+                        <dt>Car Type</dt>
+                        <dd><?php echo htmlspecialchars($waybill['equipment_type'] ?: '-'); ?></dd>
                     </div>
                     <div>
-                        <dt>Status</dt>
-                        <dd><?php echo htmlspecialchars($waybill['status']); ?></dd>
+                        <dt>Load Status</dt>
+                        <dd><?php echo htmlspecialchars($waybill['load_status'] ?: '-'); ?></dd>
+                    </div>
+                    <div>
+                        <dt>Current Track</dt>
+                        <dd><?php echo htmlspecialchars($waybill['current_track'] ?: '-'); ?></dd>
+                    </div>
+                    <div>
+                        <dt>Destination Track</dt>
+                        <dd><?php echo htmlspecialchars($waybill['destination_track'] ?: '-'); ?></dd>
                     </div>
                 </dl>
             </article>
