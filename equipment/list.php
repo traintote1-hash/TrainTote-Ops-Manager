@@ -75,6 +75,7 @@ $allowedSorts = [
     'equipment_class',
     'equipment_type',
     'manufacturer',
+    'operations_service',
     'load_status',
     'current_location',
     'current_track',
@@ -123,6 +124,7 @@ $orderBy = match ($sort) {
     'equipment_class'  => 'e.equipment_class',
     'equipment_type'   => 'e.equipment_type',
     'manufacturer'     => 'e.manufacturer',
+    'operations_service' => 'e.operations_service',
     'load_status'      => 'e.load_status',
     'current_location' => 'i.industry_name',
     'current_track'    => 'e.current_track',
@@ -195,6 +197,7 @@ if ($search !== '') {
         OR e.road_number   LIKE :search
         OR e.road_name     LIKE :search
         OR e.equipment_type LIKE :search
+        OR e.operations_service LIKE :search
         OR e.prototype     LIKE :search
         OR i.industry_name LIKE :search
     )";
@@ -610,8 +613,8 @@ MAIN CONTENT
 </th>
 
 <th>
-<a class="sort-link" href="?<?= http_build_query(array_merge($_GET, ['sort' => 'manufacturer', 'dir' => ($sort === 'manufacturer' && $dir === 'asc') ? 'desc' : 'asc'])) ?>">
-    Manufacturer ▲▼
+<a class="sort-link" href="?<?= http_build_query(array_merge($_GET, ['sort' => 'operations_service', 'dir' => ($sort === 'operations_service' && $dir === 'asc') ? 'desc' : 'asc'])) ?>">
+    Operations Service ▲▼
 </a>
 </th>
 
@@ -669,7 +672,7 @@ MAIN CONTENT
 
 <td><?= htmlspecialchars($item['equipment_class']) ?></td>
 <td><?= htmlspecialchars($item['equipment_type']) ?></td>
-<td><?= htmlspecialchars($item['manufacturer']) ?></td>
+<td><?= htmlspecialchars($item['operations_service'] ?: '-') ?></td>
 <td><?= htmlspecialchars($item['load_status']) ?></td>
 <td><?= htmlspecialchars($item['current_location'] ?: 'Not Assigned') ?></td>
 <td><?= htmlspecialchars($item['current_track']) ?></td>
