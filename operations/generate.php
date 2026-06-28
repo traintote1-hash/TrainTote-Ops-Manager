@@ -42,41 +42,95 @@ if (
 
     $stmt = $pdo->prepare("
         SELECT
-            w.*,
-
+            e.id AS equipment_id,
             e.reporting_marks,
             e.road_number,
-
-            oi.industry_name AS origin_name,
-            di.industry_name AS destination_name
-
-        FROM waybills w
-
-        JOIN equipment e
-            ON w.equipment_id = e.id
-
-        JOIN industries oi
-            ON w.origin_industry_id = oi.id
-
-        JOIN industries di
-            ON w.destination_industry_id = di.id
-
-        WHERE w.railroad_id = :railroad_id
+            e.equipment_class,
+            e.equipment_type,
+            e.load_status,
+            e.current_industry_id,
+            e.current_track,
+            i.industry_name AS origin_name
+        FROM equipment e
+        JOIN industries i
+            ON e.current_industry_id = i.id
+        WHERE e.railroad_id = :railroad_id
+            AND e.current_industry_id IS NOT NULL
+            AND e.current_industry_id <> 0
+            AND (
+                e.equipment_class IS NULL
+                OR e.equipment_class = ''
+                OR e.equipment_class <> 'Locomotive'
+            )
+        ORDER BY
+            CASE
+                WHEN e.equipment_class = 'Freight Car' THEN 0
+                WHEN e.equipment_class IN ('Passenger Car', 'Caboose', 'MOW', 'Other') THEN 1
+                ELSE 2
+            END,
+            e.reporting_marks,
+            e.road_number
     ");
 
     $stmt->execute([
         'railroad_id' => $railroad['id']
     ]);
 
-    $allWaybills = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $eligibleCars = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    shuffle($allWaybills);
+    $stmt = $pdo->prepare("
+        SELECT
+            id,
+            industry_name
+        FROM industries
+        WHERE railroad_id = :railroad_id
+        ORDER BY industry_name
+    ");
 
-    $sessionWaybills = array_slice(
-        $allWaybills,
-        0,
-        min($carCount, count($allWaybills))
-    );
+    $stmt->execute([
+        'railroad_id' => $railroad['id']
+    ]);
+
+    $industries = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    shuffle($eligibleCars);
+
+    foreach ($eligibleCars as $car) {
+
+        if (count($sessionWaybills) >= $carCount) {
+            break;
+        }
+
+        $destinationOptions = array_values(array_filter(
+            $industries,
+            fn($industry) => (int)$industry['id'] !== (int)$car['current_industry_id']
+        ));
+
+        if (count($destinationOptions) === 0) {
+            continue;
+        }
+
+        $destination = $destinationOptions[array_rand($destinationOptions)];
+
+        $sessionWaybills[] = [
+            'equipment_id' => $car['equipment_id'],
+            'waybill_id' => null,
+            'reporting_marks' => $car['reporting_marks'],
+            'road_number' => $car['road_number'],
+            'equipment_class' => $car['equipment_class'],
+            'equipment_type' => $car['equipment_type'],
+            'load_status' => $car['load_status'],
+            'origin_industry_id' => $car['current_industry_id'],
+            'destination_industry_id' => $destination['id'],
+            'origin_name' => $car['origin_name'],
+            'destination_name' => $destination['industry_name'],
+            'origin_track' => $car['current_track'],
+            'current_track' => $car['current_track'],
+            'destination_track' => '',
+            'commodity' => $car['load_status'] ?: ($car['equipment_type'] ?: ''),
+            'status' => $car['load_status'] ?: 'Ready'
+        ];
+    }
 
     $_SESSION['generated_session'] = $sessionWaybills;
     $_SESSION['generated_difficulty'] = $difficulty;
@@ -85,266 +139,263 @@ if (
 
 ?>
 
-<?php include '../includes/header.php'; ?>
-
-<title>Generate Session</title>
-
-</head>
-
-<body>
-
-<?php include '../includes/navbar.php'; ?>
-
-<div class="container mt-5">
-
-<h1>Generate Operating Session</h1>
-
-<p class="text-muted">
-
-Create a random switch list from existing waybills.
-
-</p>
-
-<div class="card mb-4">
-
-<div class="card-body">
-
-<form method="post">
-
-<div class="mb-3">
-
-<label class="form-label">
-
-Difficulty
-
-</label>
-
-<div>
-
-<div class="form-check">
-
-<input
-class="form-check-input"
-type="radio"
-name="difficulty"
-value="easy"
-<?php if ($difficulty === 'easy') echo 'checked'; ?>>
-
-<label class="form-check-label">
-
-Easy
-
-</label>
-
-</div>
-
-<div class="form-check">
-
-<input
-class="form-check-input"
-type="radio"
-name="difficulty"
-value="medium"
-<?php if ($difficulty === 'medium') echo 'checked'; ?>>
-
-<label class="form-check-label">
-
-Medium
-
-</label>
-
-</div>
-
-<div class="form-check">
-
-<input
-class="form-check-input"
-type="radio"
-name="difficulty"
-value="hard"
-<?php if ($difficulty === 'hard') echo 'checked'; ?>>
-
-<label class="form-check-label">
-
-Hard
-
-</label>
-
-</div>
-
-</div>
-
-</div>
-
-<div class="mb-3">
-
-<label class="form-label">
-
-Cars To Switch
-
-</label>
-
-<input
-type="number"
-name="car_count"
-class="form-control"
-value="<?php echo $carCount; ?>"
-min="1"
-max="50">
-
-</div>
-
-<button
-type="submit"
-class="btn btn-primary">
-
-Generate Session
-
-</button>
-
-</form>
-
-</div>
-
-</div>
-
-<?php if ($_SERVER['REQUEST_METHOD'] === 'POST'): ?>
-
-<?php if (count($sessionWaybills) == 0): ?>
-
-<div class="alert alert-warning">
-
-No waybills available.
-
-Create some waybills first.
-
-</div>
-
-<?php else: ?>
-
-<div class="card">
-
-<div class="card-header">
-
-Generated Session
-
-</div>
-
-<div class="card-body">
-
-<p>
-
-<strong>Difficulty:</strong>
-
-<?php echo ucfirst($difficulty); ?>
-
-<br>
-
-<strong>Cars Requested:</strong>
-
-<?php echo $carCount; ?>
-
-</p>
-
-<hr>
-
-<?php foreach ($sessionWaybills as $index => $waybill): ?>
-
-<div class="mb-4">
-
-<h5>
-
-Move <?php echo $index + 1; ?>
-
-</h5>
-
-<p>
-
-<strong>Car:</strong>
-
 <?php
-echo htmlspecialchars(
-    $waybill['reporting_marks']
-    . ' '
-    . $waybill['road_number']
-);
+$pageTitle='Start Session';
+include '../assets/components/header.php';
+include '../assets/components/sidebar.php';
 ?>
+<link rel="stylesheet" href="../assets/css/dashboard.css">
 
-<br>
+<div class="tt-session-start-page">
+    <div class="tt-session-hero">
+        <div>
+            <span class="tt-session-kicker">Operations Mission Control</span>
+            <h1>Start Operating Session</h1>
+            <p>Choose how much work to build, review the session workflow, and generate switch lists from cars currently placed on your railroad.</p>
+        </div>
 
-<strong>Origin:</strong>
+        <div class="tt-session-hero-actions">
+            <a class="tt-session-link" href="/operations/select_job.php">Available Jobs</a>
+            <a class="tt-session-link" href="/operations/switch_list.php">Switch Lists</a>
+        </div>
+    </div>
 
-<?php echo htmlspecialchars($waybill['origin_name']); ?>
+    <div class="tt-session-workflow" aria-label="Start session workflow">
+        <div class="tt-session-step is-current">
+            <span>1</span>
+            <strong>Session Options</strong>
+        </div>
+        <div class="tt-session-step">
+            <span>2</span>
+            <strong>Available Jobs</strong>
+        </div>
+        <div class="tt-session-step">
+            <span>3</span>
+            <strong>Crew Assignment</strong>
+        </div>
+        <div class="tt-session-step">
+            <span>4</span>
+            <strong>Generate Switch Lists</strong>
+        </div>
+    </div>
 
-<br>
+    <div class="tt-session-grid">
+        <section class="tt-panel tt-session-primary-panel">
+            <div class="tt-panel-heading">
+                <div>
+                    <span class="tt-panel-kicker">Session Options</span>
+                    <h2>Build Operating Work</h2>
+                </div>
+                <span class="tt-status-pill tt-status-ready">Ready</span>
+            </div>
 
-<strong>Destination:</strong>
+            <p class="tt-session-panel-copy">Create an operating session from cars currently placed on your railroad.</p>
 
-<?php echo htmlspecialchars($waybill['destination_name']); ?>
+            <form method="post" class="tt-session-options-form">
+                <div class="tt-session-fieldset">
+                    <label class="form-label">Difficulty</label>
 
-<br>
+                    <div class="tt-session-radio-grid">
+                        <label class="tt-session-radio-card">
+                            <input
+                            class="form-check-input"
+                            type="radio"
+                            name="difficulty"
+                            value="easy"
+                            <?php if ($difficulty === 'easy') echo 'checked'; ?>>
+                            <span>
+                                <strong>Easy</strong>
+                                <small>Shorter, simpler work</small>
+                            </span>
+                        </label>
 
-<strong>Commodity:</strong>
+                        <label class="tt-session-radio-card">
+                            <input
+                            class="form-check-input"
+                            type="radio"
+                            name="difficulty"
+                            value="medium"
+                            <?php if ($difficulty === 'medium') echo 'checked'; ?>>
+                            <span>
+                                <strong>Medium</strong>
+                                <small>Balanced session plan</small>
+                            </span>
+                        </label>
 
-<?php echo htmlspecialchars($waybill['commodity']); ?>
+                        <label class="tt-session-radio-card">
+                            <input
+                            class="form-check-input"
+                            type="radio"
+                            name="difficulty"
+                            value="hard"
+                            <?php if ($difficulty === 'hard') echo 'checked'; ?>>
+                            <span>
+                                <strong>Hard</strong>
+                                <small>More demanding work</small>
+                            </span>
+                        </label>
+                    </div>
+                </div>
 
-<br>
+                <div class="tt-session-fieldset">
+                    <label class="form-label" for="tt-session-car-count">Cars To Switch</label>
+                    <input
+                    id="tt-session-car-count"
+                    type="number"
+                    name="car_count"
+                    class="form-control tt-session-number-input"
+                    value="<?php echo $carCount; ?>"
+                    min="1"
+                    max="50">
+                </div>
 
-<strong>Status:</strong>
+                <button
+                type="submit"
+                class="btn btn-success tt-session-start-button">
+                    Generate Session
+                </button>
+            </form>
+        </section>
 
-<?php echo htmlspecialchars($waybill['status']); ?>
+        <aside class="tt-session-side-stack" aria-label="Session planning areas">
+            <section class="tt-panel tt-session-side-panel">
+                <div class="tt-panel-heading">
+                    <div>
+                        <span class="tt-panel-kicker">Available Jobs</span>
+                        <h3>Job-Based Work</h3>
+                    </div>
+                </div>
+                <p class="tt-muted-text">Use saved jobs when you want a specific operating assignment instead of a random session.</p>
+                <a class="tt-session-secondary-action" href="/operations/select_job.php">Select Job</a>
+            </section>
 
-</p>
+            <section class="tt-panel tt-session-side-panel">
+                <div class="tt-panel-heading">
+                    <div>
+                        <span class="tt-panel-kicker">Crew Assignment</span>
+                        <h3>Assign Crew</h3>
+                    </div>
+                </div>
+                <p class="tt-muted-text">Crew assignment controls will live here when that workflow is ready.</p>
+                <div class="tt-session-placeholder-row">
+                    <span>Engineer</span>
+                    <strong>Not assigned</strong>
+                </div>
+                <div class="tt-session-placeholder-row">
+                    <span>Conductor</span>
+                    <strong>Not assigned</strong>
+                </div>
+            </section>
+        </aside>
+    </div>
 
-<hr>
+    <?php if ($_SERVER['REQUEST_METHOD'] === 'POST'): ?>
 
+    <?php if (count($sessionWaybills) == 0): ?>
+
+    <div class="alert alert-warning tt-session-alert">
+        <strong>No cars with current locations available.</strong>
+        <span>Place cars at industries before generating an operating session.</span>
+    </div>
+
+    <?php else: ?>
+
+    <section class="tt-panel tt-generated-session-panel">
+        <div class="tt-panel-heading">
+            <div>
+                <span class="tt-panel-kicker">Generated Switch List</span>
+                <h2>Generated Session</h2>
+            </div>
+        </div>
+
+        <div class="tt-generated-summary">
+            <div>
+                <span>Difficulty</span>
+                <strong><?php echo ucfirst($difficulty); ?></strong>
+            </div>
+            <div>
+                <span>Cars Requested</span>
+                <strong><?php echo $carCount; ?></strong>
+            </div>
+        </div>
+
+        <div class="tt-generated-moves">
+            <?php foreach ($sessionWaybills as $index => $waybill): ?>
+
+            <article class="tt-generated-move">
+                <div class="tt-generated-move-header">
+                    <span>Move <?php echo $index + 1; ?></span>
+                    <strong>
+                        <?php
+                        echo htmlspecialchars(
+                            $waybill['reporting_marks']
+                            . ' '
+                            . $waybill['road_number']
+                        );
+                        ?>
+                    </strong>
+                </div>
+
+                <dl>
+                    <div>
+                        <dt>Origin</dt>
+                        <dd><?php echo htmlspecialchars($waybill['origin_name']); ?></dd>
+                    </div>
+                    <div>
+                        <dt>Destination</dt>
+                        <dd><?php echo htmlspecialchars($waybill['destination_name']); ?></dd>
+                    </div>
+                    <div>
+                        <dt>Car Type</dt>
+                        <dd><?php echo htmlspecialchars($waybill['equipment_type'] ?: '-'); ?></dd>
+                    </div>
+                    <div>
+                        <dt>Load Status</dt>
+                        <dd><?php echo htmlspecialchars($waybill['load_status'] ?: '-'); ?></dd>
+                    </div>
+                    <div>
+                        <dt>Current Track</dt>
+                        <dd><?php echo htmlspecialchars($waybill['current_track'] ?: '-'); ?></dd>
+                    </div>
+                    <div>
+                        <dt>Destination Track</dt>
+                        <dd><?php echo htmlspecialchars($waybill['destination_track'] ?: '-'); ?></dd>
+                    </div>
+                </dl>
+            </article>
+
+            <?php endforeach; ?>
+        </div>
+
+        <form method="post" class="tt-generated-actions">
+            <input
+            type="hidden"
+            name="difficulty"
+            value="<?php echo htmlspecialchars($difficulty); ?>">
+
+            <input
+            type="hidden"
+            name="car_count"
+            value="<?php echo $carCount; ?>">
+
+            <button
+            type="submit"
+            class="btn btn-success">
+                Generate Again
+            </button>
+
+            <a
+            href="print.php"
+            target="_blank"
+            class="btn btn-primary">
+                Print Switch List
+            </a>
+        </form>
+    </section>
+
+    <?php endif; ?>
+
+    <?php endif; ?>
 </div>
 
-<?php endforeach; ?>
-
-<form method="post">
-
-<input
-type="hidden"
-name="difficulty"
-value="<?php echo htmlspecialchars($difficulty); ?>">
-
-<input
-type="hidden"
-name="car_count"
-value="<?php echo $carCount; ?>">
-
-<div class="mt-3">
-
-<button
-type="submit"
-class="btn btn-success me-2">
-
-Generate Again
-
-</button>
-
-<a
-href="print.php"
-target="_blank"
-class="btn btn-primary">
-
-Print Switch List
-
-</a>
-
-</div>
-
-</form>
-
-</div>
-
-</div>
-
-<?php endif; ?>
-
-<?php endif; ?>
-
-</div>
-
-<?php include '../includes/footer.php'; ?>
+<?php include '../assets/components/footer.php'; ?>
