@@ -42,41 +42,95 @@ if (
 
     $stmt = $pdo->prepare("
         SELECT
-            w.*,
-
+            e.id AS equipment_id,
             e.reporting_marks,
             e.road_number,
-
-            oi.industry_name AS origin_name,
-            di.industry_name AS destination_name
-
-        FROM waybills w
-
-        JOIN equipment e
-            ON w.equipment_id = e.id
-
-        JOIN industries oi
-            ON w.origin_industry_id = oi.id
-
-        JOIN industries di
-            ON w.destination_industry_id = di.id
-
-        WHERE w.railroad_id = :railroad_id
+            e.equipment_class,
+            e.equipment_type,
+            e.load_status,
+            e.current_industry_id,
+            e.current_track,
+            i.industry_name AS origin_name
+        FROM equipment e
+        JOIN industries i
+            ON e.current_industry_id = i.id
+        WHERE e.railroad_id = :railroad_id
+            AND e.current_industry_id IS NOT NULL
+            AND e.current_industry_id <> 0
+            AND (
+                e.equipment_class IS NULL
+                OR e.equipment_class = ''
+                OR e.equipment_class <> 'Locomotive'
+            )
+        ORDER BY
+            CASE
+                WHEN e.equipment_class = 'Freight Car' THEN 0
+                WHEN e.equipment_class IN ('Passenger Car', 'Caboose', 'MOW', 'Other') THEN 1
+                ELSE 2
+            END,
+            e.reporting_marks,
+            e.road_number
     ");
 
     $stmt->execute([
         'railroad_id' => $railroad['id']
     ]);
 
-    $allWaybills = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $eligibleCars = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    shuffle($allWaybills);
+    $stmt = $pdo->prepare("
+        SELECT
+            id,
+            industry_name
+        FROM industries
+        WHERE railroad_id = :railroad_id
+        ORDER BY industry_name
+    ");
 
-    $sessionWaybills = array_slice(
-        $allWaybills,
-        0,
-        min($carCount, count($allWaybills))
-    );
+    $stmt->execute([
+        'railroad_id' => $railroad['id']
+    ]);
+
+    $industries = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    shuffle($eligibleCars);
+
+    foreach ($eligibleCars as $car) {
+
+        if (count($sessionWaybills) >= $carCount) {
+            break;
+        }
+
+        $destinationOptions = array_values(array_filter(
+            $industries,
+            fn($industry) => (int)$industry['id'] !== (int)$car['current_industry_id']
+        ));
+
+        if (count($destinationOptions) === 0) {
+            continue;
+        }
+
+        $destination = $destinationOptions[array_rand($destinationOptions)];
+
+        $sessionWaybills[] = [
+            'equipment_id' => $car['equipment_id'],
+            'waybill_id' => null,
+            'reporting_marks' => $car['reporting_marks'],
+            'road_number' => $car['road_number'],
+            'equipment_class' => $car['equipment_class'],
+            'equipment_type' => $car['equipment_type'],
+            'load_status' => $car['load_status'],
+            'origin_industry_id' => $car['current_industry_id'],
+            'destination_industry_id' => $destination['id'],
+            'origin_name' => $car['origin_name'],
+            'destination_name' => $destination['industry_name'],
+            'origin_track' => $car['current_track'],
+            'current_track' => $car['current_track'],
+            'destination_track' => '',
+            'commodity' => $car['load_status'] ?: ($car['equipment_type'] ?: ''),
+            'status' => $car['load_status'] ?: 'Ready'
+        ];
+    }
 
     $_SESSION['generated_session'] = $sessionWaybills;
     $_SESSION['generated_difficulty'] = $difficulty;
@@ -97,7 +151,7 @@ include '../assets/components/sidebar.php';
         <div>
             <span class="tt-session-kicker">Operations Mission Control</span>
             <h1>Start Operating Session</h1>
-            <p>Choose how much work to build, review the session workflow, and generate switch lists from existing waybills.</p>
+            <p>Choose how much work to build, review the session workflow, and generate switch lists from cars currently placed on your railroad.</p>
         </div>
 
         <div class="tt-session-hero-actions">
@@ -135,7 +189,7 @@ include '../assets/components/sidebar.php';
                 <span class="tt-status-pill tt-status-ready">Ready</span>
             </div>
 
-            <p class="tt-session-panel-copy">Create a random switch list from existing waybills.</p>
+            <p class="tt-session-panel-copy">Create an operating session from cars currently placed on your railroad.</p>
 
             <form method="post" class="tt-session-options-form">
                 <div class="tt-session-fieldset">
@@ -240,8 +294,8 @@ include '../assets/components/sidebar.php';
     <?php if (count($sessionWaybills) == 0): ?>
 
     <div class="alert alert-warning tt-session-alert">
-        <strong>No waybills available.</strong>
-        <span>Create some waybills first.</span>
+        <strong>No cars with current locations available.</strong>
+        <span>Place cars at industries before generating an operating session.</span>
     </div>
 
     <?php else: ?>
@@ -292,12 +346,20 @@ include '../assets/components/sidebar.php';
                         <dd><?php echo htmlspecialchars($waybill['destination_name']); ?></dd>
                     </div>
                     <div>
-                        <dt>Commodity</dt>
-                        <dd><?php echo htmlspecialchars($waybill['commodity']); ?></dd>
+                        <dt>Car Type</dt>
+                        <dd><?php echo htmlspecialchars($waybill['equipment_type'] ?: '-'); ?></dd>
                     </div>
                     <div>
-                        <dt>Status</dt>
-                        <dd><?php echo htmlspecialchars($waybill['status']); ?></dd>
+                        <dt>Load Status</dt>
+                        <dd><?php echo htmlspecialchars($waybill['load_status'] ?: '-'); ?></dd>
+                    </div>
+                    <div>
+                        <dt>Current Track</dt>
+                        <dd><?php echo htmlspecialchars($waybill['current_track'] ?: '-'); ?></dd>
+                    </div>
+                    <div>
+                        <dt>Destination Track</dt>
+                        <dd><?php echo htmlspecialchars($waybill['destination_track'] ?: '-'); ?></dd>
                     </div>
                 </dl>
             </article>
