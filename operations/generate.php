@@ -409,8 +409,8 @@ if (
                         ? 'receives'
                         : 'ships';
                     $setoutReason = $setoutServiceField === 'receives'
-                        ? 'At operating base, loaded car needs an industry that receives this service'
-                        : 'At operating base, empty car needs an industry that ships this service';
+                        ? 'No compatible destination found: At operating base, loaded car needs an industry that receives this service'
+                        : 'No compatible destination found: At operating base, empty car needs an industry that ships this service';
 
                     $skippedCarDiagnostics[] = buildSkippedCarDiagnostic(
                         $car,
