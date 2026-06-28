@@ -32,22 +32,156 @@ if (!$railroad) {
 
 /*
 |--------------------------------------------------------------------------
-| Update Car Operating Status
+| Operations Service Options
+|--------------------------------------------------------------------------
+*/
+
+$operationsServiceOptions = [
+    'Covered Hopper' => [
+        'Grain',
+        'Cement',
+        'Sand / Gravel',
+        'Plastic Pellets',
+        'Feed',
+        'Flour',
+        'Fertilizer'
+    ],
+    'Open Hopper' => [
+        'Coal',
+        'Gravel',
+        'Sand',
+        'Aggregate',
+        'Ore',
+        'Ballast'
+    ],
+    'Gondola' => [
+        'Scrap Metal',
+        'Steel / Pipe',
+        'Rail',
+        'Aggregate',
+        'MOW / Riprap'
+    ],
+    'Tank Car' => [
+        'Vegetable Oil',
+        'Food Grade Liquid',
+        'Fuel',
+        'Propane',
+        'Chemicals',
+        'Asphalt',
+        'Corn Syrup'
+    ],
+    'Boxcar' => [
+        'General Freight',
+        'Paper',
+        'Food Products',
+        'Beer',
+        'Auto Parts',
+        'Furniture',
+        'Appliances'
+    ],
+    'Refrigerator Car' => [
+        'General Freight',
+        'Food Products'
+    ],
+    'Mechanical Refrigerator Car' => [
+        'General Freight',
+        'Food Products'
+    ],
+    'Flatcar' => [
+        'Lumber',
+        'Building Materials',
+        'Pipe',
+        'Machinery',
+        'Steel'
+    ],
+    'Bulkhead Flatcar' => [
+        'Lumber',
+        'Building Materials',
+        'Pipe',
+        'Machinery',
+        'Steel'
+    ],
+    'Centerbeam Flatcar' => [
+        'Lumber',
+        'Building Materials',
+        'Pipe',
+        'Machinery',
+        'Steel'
+    ]
+];
+
+function ttAddOperationsServiceOption(array &$options, string $equipmentType, string $serviceName): void
+{
+    $equipmentType = trim($equipmentType);
+    $serviceName = trim($serviceName);
+
+    if ($equipmentType === '' || $serviceName === '') {
+        return;
+    }
+
+    if (!isset($options[$equipmentType])) {
+        $options[$equipmentType] = [];
+    }
+
+    foreach ($options[$equipmentType] as $existingServiceName) {
+        if (strcasecmp($existingServiceName, $serviceName) === 0) {
+            return;
+        }
+    }
+
+    $options[$equipmentType][] = $serviceName;
+}
+
+function ttServiceOptionExists(array $options, string $equipmentType, string $serviceName): bool
+{
+    foreach ($options[$equipmentType] ?? [] as $existingServiceName) {
+        if (strcasecmp($existingServiceName, $serviceName) === 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function ttIsLocomotive(array $car): bool
+{
+    return strcasecmp($car['equipment_class'] ?? '', 'Locomotive') === 0;
+}
+
+$stmt = $pdo->prepare("
+    SELECT
+        equipment_type,
+        service_name
+    FROM operations_service_options
+    WHERE railroad_id = ?
+    OR is_default = 1
+    ORDER BY equipment_type, service_name
+");
+
+$stmt->execute([
+    $railroad['id']
+]);
+
+foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $serviceOption) {
+    ttAddOperationsServiceOption(
+        $operationsServiceOptions,
+        $serviceOption['equipment_type'] ?? '',
+        $serviceOption['service_name'] ?? ''
+    );
+}
+
+/*
+|--------------------------------------------------------------------------
+| Update Visible Car Operating Statuses
 |--------------------------------------------------------------------------
 */
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $equipmentId = (int)($_POST['equipment_id'] ?? 0);
-    $active = ($_POST['active'] ?? '0') === '1' ? 1 : 0;
-    $currentIndustryId = !empty($_POST['current_industry_id'])
-        ? (int)$_POST['current_industry_id']
-        : null;
-    $currentTrack = substr(trim($_POST['current_track'] ?? ''), 0, 50);
-    $loadStatus = substr(trim($_POST['load_status'] ?? ''), 0, 20);
-    $operationsService = substr(trim($_POST['operations_service'] ?? ''), 0, 100);
+    $carRows = $_POST['cars'] ?? [];
+    $updatedCount = 0;
 
-    if ($equipmentId > 0) {
-        $stmt = $pdo->prepare("
+    if (is_array($carRows) && !empty($carRows)) {
+        $updateStmt = $pdo->prepare("
             UPDATE equipment
             SET
                 active = :active,
@@ -59,21 +193,95 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             AND railroad_id = :railroad_id
         ");
 
-        $stmt->execute([
-            ':active' => $active,
-            ':current_industry_id' => $currentIndustryId,
-            ':current_track' => $currentTrack,
-            ':load_status' => $loadStatus,
-            ':operations_service' => $operationsService,
-            ':equipment_id' => $equipmentId,
-            ':railroad_id' => $railroad['id']
-        ]);
+        $existingServiceStmt = $pdo->prepare("
+            SELECT id
+            FROM operations_service_options
+            WHERE railroad_id = ?
+            AND LOWER(equipment_type) = LOWER(?)
+            AND LOWER(service_name) = LOWER(?)
+            LIMIT 1
+        ");
 
-        $_SESSION['status_message'] = 'Car status updated.';
+        $insertServiceStmt = $pdo->prepare("
+            INSERT INTO operations_service_options (
+                railroad_id,
+                equipment_type,
+                service_name,
+                is_default
+            )
+            VALUES (?, ?, ?, 0)
+        ");
+
+        foreach ($carRows as $equipmentId => $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+
+            $equipmentId = (int)$equipmentId;
+            $active = ($row['active'] ?? '0') === '1' ? 1 : 0;
+            $currentIndustryId = !empty($row['current_industry_id'])
+                ? (int)$row['current_industry_id']
+                : null;
+            $currentTrack = substr(trim($row['current_track'] ?? ''), 0, 50);
+            $loadStatus = substr(trim($row['load_status'] ?? ''), 0, 20);
+            $equipmentType = substr(trim($row['equipment_type'] ?? ''), 0, 100);
+            $operationsService = trim($row['operations_service'] ?? '');
+            $operationsServiceCustom = substr(trim($row['operations_service_custom'] ?? ''), 0, 100);
+            $customOperationsServiceEntered = $operationsService === 'Other'
+                && $operationsServiceCustom !== '';
+
+            if ($operationsService === 'Other') {
+                $operationsService = $operationsServiceCustom;
+            }
+
+            $operationsService = substr(trim($operationsService), 0, 100);
+
+            if ($equipmentId <= 0) {
+                continue;
+            }
+
+            $updateStmt->execute([
+                ':active' => $active,
+                ':current_industry_id' => $currentIndustryId,
+                ':current_track' => $currentTrack,
+                ':load_status' => $loadStatus,
+                ':operations_service' => $operationsService,
+                ':equipment_id' => $equipmentId,
+                ':railroad_id' => $railroad['id']
+            ]);
+
+            if ($updateStmt->rowCount() > 0) {
+                $updatedCount++;
+            }
+
+            if (
+                $customOperationsServiceEntered
+                && $operationsService !== ''
+                && $equipmentType !== ''
+            ) {
+                $existingServiceStmt->execute([
+                    $railroad['id'],
+                    $equipmentType,
+                    $operationsService
+                ]);
+
+                if (!$existingServiceStmt->fetchColumn()) {
+                    $insertServiceStmt->execute([
+                        $railroad['id'],
+                        $equipmentType,
+                        $operationsService
+                    ]);
+                }
+            }
+        }
     }
 
+    $_SESSION['status_message'] = $updatedCount === 1
+        ? '1 car status updated.'
+        : $updatedCount . ' car statuses updated.';
+
     $returnQuery = str_replace(["\r", "\n"], '', $_POST['return_query'] ?? '');
-    header('Location: status.php' . ($returnQuery !== '' ? '?' . $returnQuery : ''));
+    header('Location: status.php' . ($returnQuery !== '' ? '?' . $returnQuery : '') . '#status-board');
     exit;
 }
 
@@ -203,17 +411,6 @@ $loadOptions = array_values(array_unique(array_merge(
     $loadStmt->fetchAll(PDO::FETCH_COLUMN)
 )));
 
-$serviceStmt = $pdo->prepare("
-    SELECT DISTINCT operations_service
-    FROM equipment
-    WHERE railroad_id = :railroad_id
-    AND operations_service <> ''
-    ORDER BY operations_service
-");
-
-$serviceStmt->execute([':railroad_id' => $railroad['id']]);
-$operationsServiceOptions = $serviceStmt->fetchAll(PDO::FETCH_COLUMN);
-
 /*
 |--------------------------------------------------------------------------
 | Helpers
@@ -289,6 +486,7 @@ elseif ($inactiveSelected && !$activeSelected) {
 }
 
 if (in_array('missing_service', $statusFilters, true)) {
+    $where[] = "e.equipment_class = 'Freight Car'";
     $where[] = "TRIM(COALESCE(e.operations_service, '')) = ''";
 }
 
@@ -389,7 +587,9 @@ $summaryStmt = $pdo->prepare("
             AND current_industry_id <> 0
             AND TRIM(COALESCE(operations_service, '')) <> ''
             THEN 1 ELSE 0 END) AS ready_cars,
-        SUM(CASE WHEN TRIM(COALESCE(operations_service, '')) = '' THEN 1 ELSE 0 END) AS missing_service,
+        SUM(CASE WHEN equipment_class = 'Freight Car'
+            AND TRIM(COALESCE(operations_service, '')) = ''
+            THEN 1 ELSE 0 END) AS missing_service,
         SUM(CASE WHEN current_industry_id IS NULL OR current_industry_id = 0 THEN 1 ELSE 0 END) AS missing_location
     FROM equipment
     WHERE railroad_id = :railroad_id
@@ -466,7 +666,7 @@ $returnQuery = $_SERVER['QUERY_STRING'] ?? '';
 <div class="card text-center h-100">
 <div class="card-body">
 <h2 class="mb-0"><?= (int)$summary['missing_service'] ?></h2>
-<div class="text-muted small">Missing Service</div>
+<div class="text-muted small">Freight Missing Service</div>
 </div>
 </div>
 </div>
@@ -599,7 +799,7 @@ MAIN CONTENT
 
 <main class="main-content">
 
-<div class="content-card">
+<div class="content-card" id="status-board">
 
 <div class="mb-4">
     <h1 class="mb-1">Car Status</h1>
@@ -611,9 +811,15 @@ MAIN CONTENT
     </div>
 </div>
 
+<form method="post" id="statusBulkForm">
+<input type="hidden" name="return_query" value="<?= htmlspecialchars($returnQuery) ?>">
+
 <!-- TOP TOOLBAR -->
 
 <div class="top-toolbar">
+<div class="toolbar-left">
+    <button type="submit" class="btn btn-success">Save All Changes</button>
+</div>
 <div class="toolbar-right ms-auto"></div>
 <div class="toolbar-right">
     <label class="small me-2">Show</label>
@@ -626,12 +832,6 @@ MAIN CONTENT
     </select>
 </div>
 </div>
-
-<datalist id="operationsServiceOptions">
-<?php foreach ($operationsServiceOptions as $option): ?>
-    <option value="<?= htmlspecialchars($option) ?>">
-<?php endforeach; ?>
-</datalist>
 
 <div class="table-responsive">
 
@@ -687,10 +887,16 @@ MAIN CONTENT
 
 <?php foreach ($cars as $car): ?>
 <?php
-$formId = 'car-status-form-' . (int)$car['id'];
+$equipmentId = (int)$car['id'];
+$isLocomotive = ttIsLocomotive($car);
 $isReady = (int)$car['active'] === 1
     && !empty($car['current_industry_id'])
     && trim($car['operations_service'] ?? '') !== '';
+$serviceOptions = $operationsServiceOptions[$car['equipment_type']] ?? [];
+$currentService = trim($car['operations_service'] ?? '');
+$matchedService = $currentService === ''
+    || ttServiceOptionExists($operationsServiceOptions, $car['equipment_type'] ?? '', $currentService);
+$customServiceVisible = $currentService !== '' && !$matchedService;
 ?>
 <tr class="<?= (int)$car['active'] === 1 ? '' : 'table-light' ?>">
 
@@ -705,7 +911,8 @@ $isReady = (int)$car['active'] === 1
 </td>
 
 <td style="min-width: 150px;">
-    <select name="active" class="form-select form-select-sm" form="<?= $formId ?>">
+    <input type="hidden" name="cars[<?= $equipmentId ?>][equipment_type]" value="<?= htmlspecialchars($car['equipment_type'] ?? '') ?>">
+    <select name="cars[<?= $equipmentId ?>][active]" class="form-select form-select-sm">
         <option value="1" <?= (int)$car['active'] === 1 ? 'selected' : '' ?>>Active - On Layout</option>
         <option value="0" <?= (int)$car['active'] === 0 ? 'selected' : '' ?>>Inactive - Off Layout</option>
     </select>
@@ -718,15 +925,17 @@ $isReady = (int)$car['active'] === 1
         <span class="badge bg-secondary">Inactive</span>
     <?php elseif (empty($car['current_industry_id'])): ?>
         <span class="badge bg-warning text-dark">Needs Location</span>
-    <?php elseif (trim($car['operations_service'] ?? '') === ''): ?>
+    <?php elseif (!$isLocomotive && trim($car['operations_service'] ?? '') === ''): ?>
         <span class="badge bg-warning text-dark">Needs Service</span>
+    <?php elseif ($isLocomotive): ?>
+        <span class="badge bg-secondary">On Layout</span>
     <?php else: ?>
         <span class="badge bg-secondary">Review</span>
     <?php endif; ?>
 </td>
 
 <td style="min-width: 190px;">
-    <select name="current_industry_id" class="form-select form-select-sm" form="<?= $formId ?>">
+    <select name="cars[<?= $equipmentId ?>][current_industry_id]" class="form-select form-select-sm">
         <option value="">No location</option>
         <?php foreach ($industryOptions as $industry): ?>
         <option value="<?= (int)$industry['id'] ?>" <?= (string)$car['current_industry_id'] === (string)$industry['id'] ? 'selected' : '' ?>>
@@ -739,16 +948,15 @@ $isReady = (int)$car['active'] === 1
 <td style="min-width: 130px;">
     <input
     type="text"
-    name="current_track"
+    name="cars[<?= $equipmentId ?>][current_track]"
     maxlength="50"
     class="form-control form-control-sm"
     value="<?= htmlspecialchars($car['current_track'] ?? '') ?>"
-    placeholder="Track / spot"
-    form="<?= $formId ?>">
+    placeholder="Track / spot">
 </td>
 
 <td style="min-width: 120px;">
-    <select name="load_status" class="form-select form-select-sm" form="<?= $formId ?>">
+    <select name="cars[<?= $equipmentId ?>][load_status]" class="form-select form-select-sm">
         <?php foreach ($loadOptions as $option): ?>
         <option value="<?= htmlspecialchars($option) ?>" <?= $car['load_status'] === $option ? 'selected' : '' ?>>
             <?= htmlspecialchars($option) ?>
@@ -757,16 +965,28 @@ $isReady = (int)$car['active'] === 1
     </select>
 </td>
 
-<td style="min-width: 190px;">
+<td style="min-width: 220px;">
+    <select
+    name="cars[<?= $equipmentId ?>][operations_service]"
+    class="form-select form-select-sm status-service-select"
+    data-custom-target="status-service-custom-<?= $equipmentId ?>">
+        <option value="">Select Service</option>
+        <?php foreach ($serviceOptions as $option): ?>
+        <option value="<?= htmlspecialchars($option) ?>" <?= strcasecmp($currentService, $option) === 0 ? 'selected' : '' ?>>
+            <?= htmlspecialchars($option) ?>
+        </option>
+        <?php endforeach; ?>
+        <option value="Other" <?= $customServiceVisible ? 'selected' : '' ?>>Other</option>
+    </select>
     <input
     type="text"
-    name="operations_service"
+    name="cars[<?= $equipmentId ?>][operations_service_custom]"
+    id="status-service-custom-<?= $equipmentId ?>"
     maxlength="100"
-    class="form-control form-control-sm"
-    list="operationsServiceOptions"
-    value="<?= htmlspecialchars($car['operations_service'] ?? '') ?>"
-    placeholder="Operations Service"
-    form="<?= $formId ?>">
+    class="form-control form-control-sm mt-2 status-service-custom"
+    value="<?= htmlspecialchars($customServiceVisible ? $currentService : '') ?>"
+    placeholder="Custom operations service"
+    style="<?= $customServiceVisible ? '' : 'display:none;' ?>">
 </td>
 
 <td>
@@ -777,12 +997,7 @@ $isReady = (int)$car['active'] === 1
 </td>
 
 <td>
-    <form id="<?= $formId ?>" method="post" class="d-flex gap-2 align-items-center">
-        <input type="hidden" name="equipment_id" value="<?= (int)$car['id'] ?>">
-        <input type="hidden" name="return_query" value="<?= htmlspecialchars($returnQuery) ?>">
-        <button type="submit" class="btn btn-sm btn-primary">Save</button>
-        <a href="view.php?id=<?= (int)$car['id'] ?>" class="btn btn-sm btn-outline-secondary">View</a>
-    </form>
+    <a href="view.php?id=<?= $equipmentId ?>" class="btn btn-sm btn-outline-secondary">View</a>
 </td>
 
 </tr>
@@ -800,6 +1015,12 @@ $isReady = (int)$car['active'] === 1
 </table>
 
 </div>
+
+<div class="d-flex justify-content-end mt-3">
+    <button type="submit" class="btn btn-success">Save All Changes</button>
+</div>
+
+</form>
 
 <hr>
 
@@ -841,5 +1062,24 @@ $isReady = (int)$car['active'] === 1
 </div>
 
 <script src="../assets/js/list_v2.js"></script>
+<script>
+document.querySelectorAll('.status-service-select').forEach(function(select){
+    function toggleCustomService(){
+        var target = document.getElementById(select.dataset.customTarget);
+        if (!target) {
+            return;
+        }
+
+        target.style.display = select.value === 'Other' ? '' : 'none';
+
+        if (select.value !== 'Other') {
+            target.value = '';
+        }
+    }
+
+    select.addEventListener('change', toggleCustomService);
+    toggleCustomService();
+});
+</script>
 
 <?php include '../includes/footer.php'; ?>
