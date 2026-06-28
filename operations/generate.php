@@ -127,7 +127,7 @@ if (
             'origin_track' => $car['current_track'],
             'current_track' => $car['current_track'],
             'destination_track' => '',
-            'commodity' => 'No Waybill',
+            'commodity' => $car['load_status'] ?: ($car['equipment_type'] ?: ''),
             'status' => $car['load_status'] ?: 'Ready'
         ];
     }
