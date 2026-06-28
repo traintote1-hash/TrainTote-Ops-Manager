@@ -1,3 +1,53 @@
-.tt-stat-tile{border:1px solid #ddd;border-radius:8px;padding:1rem;text-align:center}
-.tt-stat-value{font-size:2rem;font-weight:bold}
-.tt-stat-label{font-size:.9rem;color:#666}
+/* TTDS Release 003 - Stat Tiles */
+.tt-stat-grid{
+ display:grid;
+ grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+ gap:1rem;
+ margin:1.5rem 0;
+}
+.tt-stat-tile{
+ background:var(--tt-surface);
+ border:1px solid var(--tt-border);
+ border-radius:14px;
+ padding:1.5rem;
+}
+.tt-stat-number{
+ font-size:2.2rem;
+ font-weight:700;
+}
+.tt-stat-label{
+ color:var(--tt-text-muted);
+ margin-top:.25rem;
+}
+/*=====================================================================
+ Sprint 001C - Safe Stat Tile Revisions
+ Purpose: Support shared stat_tile.php helper aliases.
+=====================================================================*/
+.tt-stat-value,
+.tt-stat-number {
+    font-size: 2.2rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.tt-stat-note {
+    margin-top: .5rem;
+    color: var(--tt-text-muted, #64748b);
+    font-size: .875rem;
+}
+
+.tt-stat-icon {
+    margin-bottom: .75rem;
+    font-size: 1.25rem;
+}
+
+.tt-stat-tile[href] {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+}
+
+.tt-stat-tile[href]:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--tt-shadow-sm, 0 1px 2px rgba(0,0,0,.08));
+}

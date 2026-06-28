@@ -1,3 +1,65 @@
-.tt-card{background:#fff;border:1px solid #ddd;border-radius:8px;margin-bottom:1rem}
-.tt-card-header{padding:.75rem 1rem;border-bottom:1px solid #eee;font-weight:bold}
-.tt-card-body{padding:1rem}
+/*=====================================================================
+ TTDS Cards
+=====================================================================*/
+.tt-card{
+background:var(--tt-surface);
+border:1px solid var(--tt-border);
+border-radius:12px;
+box-shadow:var(--tt-shadow-sm);
+overflow:hidden;
+transition:all .18s ease;
+}
+.tt-card:hover{
+transform:translateY(-2px);
+box-shadow:var(--tt-shadow);
+}
+.tt-card-header{
+padding:1rem 1.25rem;
+border-bottom:1px solid var(--tt-border);
+font-weight:700;
+}
+.tt-card-body{padding:1.25rem;}
+.tt-card-footer{
+padding:1rem 1.25rem;
+border-top:1px solid var(--tt-border);
+background:var(--tt-surface-alt);
+}
+/*=====================================================================
+ Sprint 001C - Safe Card Revisions
+ Purpose: Support shared card/panel helpers without changing page logic.
+=====================================================================*/
+.tt-card-title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.tt-card-subtitle {
+    margin: .25rem 0 0;
+    color: var(--tt-text-muted, #64748b);
+    font-size: .925rem;
+}
+
+.tt-card-actions {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    flex-wrap: wrap;
+}
+
+.tt-panel {
+    background: var(--tt-surface, #fff);
+    border: 1px solid var(--tt-border, #e5e7eb);
+    border-radius: 12px;
+    margin-bottom: 1rem;
+}
+
+.tt-panel-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--tt-border, #e5e7eb);
+    font-weight: 700;
+}
+
+.tt-panel-body {
+    padding: 1.25rem;
+}

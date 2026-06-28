@@ -18,3 +18,64 @@ body{margin:0;font:16px system-ui;background:var(--bg);color:var(--text)}
 .tt-sidebar{display:none}
 .tt-topnav{display:none}
 }
+
+/*=====================================================================
+ Sprint 001F - Use includes/navbar.php as Global Standard
+ Purpose:
+ - Operations shell pages now pull the same includes/navbar.php used by
+   the rest of TrainTote.
+ - These styles preserve the Operations left sidebar/content shell under
+   the standard navbar.
+=====================================================================*/
+
+.tt-shell {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
+    min-height: calc(100vh - 72px);
+    background: var(--bg, #f3f4f6);
+}
+
+.tt-sidebar {
+    background: #20242b;
+    color: #fff;
+    padding: 20px;
+}
+
+.tt-sidebar h3 {
+    color: #fff;
+    margin-top: 0;
+    margin-bottom: 1.25rem;
+}
+
+.tt-sidebar ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.tt-sidebar a {
+    display: block;
+    color: #fff;
+    text-decoration: none;
+    padding: 10px 0;
+}
+
+.tt-sidebar a:hover {
+    color: #fff;
+    text-decoration: underline;
+}
+
+.tt-content {
+    min-width: 0;
+    padding: 24px;
+}
+
+@media(max-width: 900px) {
+    .tt-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .tt-sidebar {
+        display: none;
+    }
+}

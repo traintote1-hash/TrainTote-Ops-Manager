@@ -7,3 +7,31 @@
  background:var(--tt-surface-alt);
 }
 .tt-empty h2{margin-bottom:.5rem;}
+/*=====================================================================
+ Sprint 001C - Safe Empty State Revisions
+ Purpose: Support both existing .tt-empty and new .tt-empty-state output.
+=====================================================================*/
+.tt-empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    border: 2px dashed var(--tt-border, #e5e7eb);
+    border-radius: 14px;
+    background: var(--tt-surface-alt, #f8fafc);
+}
+
+.tt-empty-state h3 {
+    margin: 0 0 .5rem;
+}
+
+.tt-empty-state p {
+    margin: 0;
+    color: var(--tt-text-muted, #64748b);
+}
+
+.tt-empty-state-actions {
+    display: flex;
+    justify-content: center;
+    gap: .75rem;
+    flex-wrap: wrap;
+    margin-top: 1.25rem;
+}

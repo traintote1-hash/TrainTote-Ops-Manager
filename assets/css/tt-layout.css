@@ -1,68 +1,50 @@
 /* TTDS Layout */
-.tt-container {
-    max-width: var(--tt-max-width);
-    margin: auto;
-    padding: var(--tt-space-4);
-}
-
-.tt-grid {
-    display: grid;
-    gap: var(--tt-space-4);
-}
-
-.tt-grid-2 {
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-}
-
-.tt-grid-3 {
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-}
-
-.tt-flex {
-    display: flex;
-    gap: var(--tt-space-3);
-    align-items: center;
-}
-
-.tt-page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: var(--tt-space-4);
-    margin-bottom: 2rem;
-}
-
-.tt-page-header h1 {
-    margin: 0;
-}
-
-.tt-page-header p {
-    margin: .35rem 0 0;
-    color: var(--tt-muted, #666);
-}
-
-.tt-page-header-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--tt-space-2, .5rem);
-    justify-content: flex-end;
-}
-
+.tt-container{max-width:var(--tt-max-width);margin:auto;padding:var(--tt-space-4);}
+.tt-grid{display:grid;gap:var(--tt-space-4);}
+.tt-grid-2{grid-template-columns:repeat(auto-fit,minmax(320px,1fr));}
+.tt-grid-3{grid-template-columns:repeat(auto-fit,minmax(240px,1fr));}
+.tt-flex{display:flex;gap:var(--tt-space-3);align-items:center;}
+.tt-page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem;}
+/*=====================================================================
+ Sprint 001C - Safe Layout Revisions
+ Purpose: Add shared layout helpers without changing existing selectors.
+=====================================================================*/
 .tt-content {
     min-width: 0;
     width: 100%;
 }
 
-.tt-footer {
-    border-top: 1px solid var(--tt-border, #ddd);
-    background: var(--tt-panel, #fff);
-    color: var(--tt-muted, #666);
+.tt-page-header {
+    gap: var(--tt-space-4, 1.25rem);
 }
 
-.tt-footer-inner {
-    max-width: var(--tt-max-width);
-    margin: 0 auto;
-    padding: var(--tt-space-3, 1rem) var(--tt-space-4, 1.25rem);
+.tt-page-header-main h1,
+.tt-page-header h1 {
+    margin: 0;
+}
+
+.tt-page-header-main p,
+.tt-page-header p {
+    margin: .35rem 0 0;
+    color: var(--tt-text-muted, #64748b);
+}
+
+.tt-page-header-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--tt-space-2, .5rem);
+    flex-wrap: wrap;
+}
+
+.tt-section {
+    margin-bottom: 1.5rem;
+}
+
+.tt-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--tt-space-3, 1rem);
 }
 
 @media (max-width: 760px) {

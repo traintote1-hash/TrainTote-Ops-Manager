@@ -4,3 +4,27 @@ display:flex;justify-content:space-between;align-items:center;
 margin-bottom:1.5rem;
 }
 .tt-page-title{font-size:2rem;font-weight:700;}
+
+/*=====================================================================
+ Sprint 001F - Navbar Standard
+ Purpose:
+ - Do not redefine the global navbar here.
+ - includes/navbar.php remains the standard source of truth.
+ - Keep this file for secondary/module navigation and toolbar helpers.
+=====================================================================*/
+
+.navbar {
+    margin-bottom: 0;
+}
+
+.tt-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.tt-page-title {
+    font-size: 2rem;
+    font-weight: 700;
+}

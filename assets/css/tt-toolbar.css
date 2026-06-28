@@ -1,2 +1,55 @@
-.tt-toolbar{display:flex;gap:.5rem;padding:.5rem 0;flex-wrap:wrap}
-.tt-toolbar .tt-btn{background:#8b1e1e;color:#fff;padding:.5rem .8rem;border-radius:6px;text-decoration:none}
+/* TTDS Release 003 - Toolbar */
+.tt-toolbar{
+ display:flex;
+ justify-content:space-between;
+ align-items:center;
+ gap:1rem;
+ margin-bottom:1.5rem;
+ flex-wrap:wrap;
+}
+.tt-toolbar-left,.tt-toolbar-right{
+ display:flex;
+ gap:.75rem;
+ align-items:center;
+}
+/*=====================================================================
+ Sprint 001C - Safe Toolbar Revisions
+ Purpose: Support shared toolbar helper output while preserving old classes.
+=====================================================================*/
+.tt-toolbar {
+    min-height: 2.5rem;
+}
+
+.tt-toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    flex-wrap: wrap;
+}
+
+.tt-toolbar-title {
+    font-weight: 700;
+    color: var(--tt-text, #111827);
+}
+
+.tt-toolbar-subtitle {
+    color: var(--tt-text-muted, #64748b);
+    font-size: .925rem;
+}
+
+.tt-toolbar form {
+    margin: 0;
+}
+
+@media (max-width: 760px) {
+    .tt-toolbar {
+        align-items: stretch;
+    }
+
+    .tt-toolbar-left,
+    .tt-toolbar-right,
+    .tt-toolbar-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+}
