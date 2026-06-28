@@ -656,6 +656,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $operations_service_custom
     );
 
+    $operations_service_custom =
+        substr(
+            $operations_service_custom,
+            0,
+            100
+        );
+
     $customOperationsServiceEntered =
         $operations_service === 'Other'
         && $operations_service_custom !== '';
@@ -819,7 +826,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         substr(
             $operations_service,
             0,
-            255
+            100
         );
 
     /*
@@ -1664,7 +1671,7 @@ style="display:none;">
 type="text"
 name="operations_service_custom"
 id="operations_service_custom"
-maxlength="255"
+maxlength="100"
 class="form-control"
 placeholder="Custom operations service"
 value="<?php echo htmlspecialchars($operations_service); ?>">
@@ -1957,13 +1964,16 @@ option
 
 }
 
-function populateOperationsServices() {
+function populateOperationsServices(preserveSelectedService = false) {
 
 operationsService.innerHTML =
 '<option value="">Select Service</option>';
 
 const typeServices =
 operationsServiceOptions[equipmentType.value] || [];
+
+const serviceToPreserve =
+preserveSelectedService ? selectedOperationsService : '';
 
 let matchedService = false;
 
@@ -1981,7 +1991,7 @@ option.text = serviceName;
 
 if (
 serviceName ===
-selectedOperationsService
+serviceToPreserve
 ) {
 
 option.selected = true;
@@ -2006,13 +2016,18 @@ otherOption.value = 'Other';
 otherOption.text = 'Other';
 
 if (
-selectedOperationsService !== ''
+serviceToPreserve !== ''
 && !matchedService
 ) {
 
 otherOption.selected = true;
 operationsServiceCustom.value =
-selectedOperationsService;
+serviceToPreserve;
+
+}
+else if (!preserveSelectedService) {
+
+operationsServiceCustom.value = '';
 
 }
 
@@ -2254,7 +2269,7 @@ setupCounter(
 
 '[name="operations_service_custom"]',
 
-255
+100
 
 );
 
@@ -2303,7 +2318,7 @@ this.value.replace(
 */
 
 populateTypes();
-populateOperationsServices();
+populateOperationsServices(true);
 
 if (
 
