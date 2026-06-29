@@ -338,7 +338,7 @@ if ($railroad) {
         <div class="tt-section-header">
             <div>
                 <span class="tt-panel-kicker">Operations Workflow</span>
-                <h2>Run Today’s Session</h2>
+                <h2>Run Today's Session</h2>
             </div>
         </div>
 
