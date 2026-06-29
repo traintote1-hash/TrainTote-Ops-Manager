@@ -227,6 +227,58 @@ function getPullLoadStatus(array $car): ?string
     return null;
 }
 
+function getGeneratedMoveActionLabel(array $move): string
+{
+    $moveType = strtoupper(trim((string)($move['move_type'] ?? '')));
+
+    if ($moveType === 'PULL') {
+        return 'PULL';
+    }
+
+    if ($moveType === 'SETOUT') {
+        return 'SPOT';
+    }
+
+    return $moveType ?: 'WORK';
+}
+
+function getGeneratedMoveWorkLocation(array $move): string
+{
+    $moveType = strtoupper(trim((string)($move['move_type'] ?? '')));
+
+    if ($moveType === 'PULL') {
+        $location = $move['origin_industry_name'] ?? ($move['origin_name'] ?? '');
+    }
+    else {
+        $location = $move['destination_industry_name'] ?? ($move['destination_name'] ?? '');
+    }
+
+    $location = trim((string)$location);
+
+    return $location !== '' ? $location : 'Unassigned Work Location';
+}
+
+function groupGeneratedMovesByLocation(array $moves): array
+{
+    $groups = [];
+
+    foreach ($moves as $move) {
+        $location = getGeneratedMoveWorkLocation($move);
+        $key = strtolower($location);
+
+        if (!isset($groups[$key])) {
+            $groups[$key] = [
+                'location' => $location,
+                'moves' => []
+            ];
+        }
+
+        $groups[$key]['moves'][] = $move;
+    }
+
+    return array_values($groups);
+}
+
 function chooseBalancedMoves(array $setoutMoves, array $pullMoves, int $carCount): array
 {
     shuffle($setoutMoves);
@@ -523,6 +575,8 @@ if (
     ];
     $_SESSION['generated_skip_diagnostics'] = $skippedCarDiagnostics;
 }
+
+$workLocationGroups = groupGeneratedMovesByLocation($sessionWaybills);
 
 ?>
 
@@ -863,63 +917,54 @@ include '../assets/components/sidebar.php';
         </div>
         <?php endif; ?>
 
-        <div class="tt-generated-moves">
-            <?php foreach ($sessionWaybills as $index => $waybill): ?>
-
-            <article class="tt-generated-move">
-                <div class="tt-generated-move-header">
-                    <span><?php echo htmlspecialchars($waybill['move_type'] ?? 'Move'); ?> <?php echo $index + 1; ?></span>
-                    <strong>
-                        <?php
-                        echo htmlspecialchars(
-                            $waybill['reporting_marks']
-                            . ' '
-                            . $waybill['road_number']
-                        );
-                        ?>
-                    </strong>
+        <div class="tt-generated-work-by-location">
+            <div class="tt-panel-heading">
+                <div>
+                    <span class="tt-panel-kicker">Work by Location</span>
+                    <h3>Local Switcher Work Order</h3>
                 </div>
+            </div>
 
-                <?php if (!empty($waybill['instruction'])): ?>
-                <p class="tt-muted-text"><?php echo htmlspecialchars($waybill['instruction']); ?></p>
-                <?php endif; ?>
+            <?php foreach ($workLocationGroups as $group): ?>
+            <section class="tt-generated-location-work">
+                <h4><?php echo htmlspecialchars($group['location']); ?></h4>
 
-                <dl>
-                    <div>
-                        <dt>Move Type</dt>
-                        <dd><?php echo htmlspecialchars($waybill['move_type'] ?? '-'); ?></dd>
-                    </div>
-                    <div>
-                        <dt>Origin</dt>
-                        <dd><?php echo htmlspecialchars($waybill['origin_name']); ?></dd>
-                    </div>
-                    <div>
-                        <dt>Destination</dt>
-                        <dd><?php echo htmlspecialchars($waybill['destination_name']); ?></dd>
-                    </div>
-                    <div>
-                        <dt>Car Type</dt>
-                        <dd><?php echo htmlspecialchars($waybill['equipment_type'] ?: '-'); ?></dd>
-                    </div>
-                    <div>
-                        <dt>Operations Service</dt>
-                        <dd><?php echo htmlspecialchars($waybill['operations_service'] ?: '-'); ?></dd>
-                    </div>
-                    <div>
-                        <dt>Load Status</dt>
-                        <dd><?php echo htmlspecialchars($waybill['load_status'] ?: '-'); ?></dd>
-                    </div>
-                    <div>
-                        <dt>Current Track</dt>
-                        <dd><?php echo htmlspecialchars($waybill['current_track'] ?: '-'); ?></dd>
-                    </div>
-                    <div>
-                        <dt>Destination Track</dt>
-                        <dd><?php echo htmlspecialchars($waybill['destination_track'] ?: '-'); ?></dd>
-                    </div>
-                </dl>
-            </article>
-
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>Action</th>
+                                <th>Car</th>
+                                <th>Type</th>
+                                <th>Load</th>
+                                <th>Service</th>
+                                <th>From / Current Track</th>
+                                <th>To / Destination</th>
+                                <th>Destination Track</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($group['moves'] as $waybill): ?>
+                            <tr>
+                                <td><strong><?php echo htmlspecialchars(getGeneratedMoveActionLabel($waybill)); ?></strong></td>
+                                <td><?php echo htmlspecialchars(trim(($waybill['reporting_marks'] ?? '') . ' ' . ($waybill['road_number'] ?? '')) ?: '-'); ?></td>
+                                <td><?php echo htmlspecialchars($waybill['equipment_type'] ?: '-'); ?></td>
+                                <td><?php echo htmlspecialchars($waybill['load_status'] ?: '-'); ?></td>
+                                <td><?php echo htmlspecialchars($waybill['operations_service'] ?: '-'); ?></td>
+                                <td>
+                                    <?php echo htmlspecialchars($waybill['origin_industry_name'] ?? ($waybill['origin_name'] ?? '-')); ?>
+                                    <?php if (!empty($waybill['current_track'])): ?>
+                                    <br><small><?php echo htmlspecialchars($waybill['current_track']); ?></small>
+                                    <?php endif; ?>
+                                </td>
+                                <td><?php echo htmlspecialchars($waybill['destination_industry_name'] ?? ($waybill['destination_name'] ?? '-')); ?></td>
+                                <td><?php echo htmlspecialchars($waybill['destination_track'] ?: '-'); ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
             <?php endforeach; ?>
         </div>
 
