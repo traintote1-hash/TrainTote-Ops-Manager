@@ -172,12 +172,19 @@ function getCompatibleSetoutDestinations(array $industries, array $car, int $ope
     return array_values(array_filter(
         $industries,
         function ($industry) use ($car, $serviceField, $operatingBaseId) {
-            return (int)$industry['id'] !== $operatingBaseId
-                && industrySupportsOperationsService(
-                    $industry,
-                    $serviceField,
-                    $car['operations_service'] ?? ''
-                );
+            if ((int)$industry['id'] === $operatingBaseId) {
+                return false;
+            }
+
+            if (industryLooksLikeOperatingBase($industry)) {
+                return false;
+            }
+
+            return industrySupportsOperationsService(
+                $industry,
+                $serviceField,
+                $car['operations_service'] ?? ''
+            );
         }
     ));
 }
@@ -415,7 +422,7 @@ if (
                     $skippedCarDiagnostics[] = buildSkippedCarDiagnostic(
                         $car,
                         $setoutReason,
-                        'Looking for industry that ' . $setoutServiceField . ' ' . $car['operations_service']
+                        'Looking for non-support industry that ' . $setoutServiceField . ' ' . $car['operations_service']
                     );
                     continue;
                 }
