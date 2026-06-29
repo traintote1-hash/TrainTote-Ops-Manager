@@ -32,10 +32,36 @@ $stmt->execute([
 
 $industry = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if (!$industry) {
-    die('Industry not found.');
-}
-
+if (!$industry) {
+    die('Industry not found.');
+}
+
+$previousIndustryId = null;
+$nextIndustryId = null;
+
+$stmt = $pdo->prepare("
+    SELECT id
+    FROM industries
+    WHERE railroad_id = :railroad_id
+    ORDER BY industry_name ASC, id ASC
+");
+
+$stmt->execute([
+    'railroad_id' => $industry['railroad_id']
+]);
+
+$industryIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+$currentIndustryIndex = array_search($industry['id'], $industryIds);
+
+if ($currentIndustryIndex !== false) {
+    if ($currentIndustryIndex > 0) {
+        $previousIndustryId = $industryIds[$currentIndustryIndex - 1];
+    }
+
+    if ($currentIndustryIndex < count($industryIds) - 1) {
+        $nextIndustryId = $industryIds[$currentIndustryIndex + 1];
+    }
+}
 ?>
 
 <?php include '../includes/header.php'; ?>
@@ -119,7 +145,48 @@ No Photo Uploaded
 
 </div>
 
-<div class="mt-3">
+<div class="mt-3">
+
+<?php if ($previousIndustryId): ?>
+
+<a
+href="view.php?id=<?php echo (int)$previousIndustryId; ?>"
+class="btn btn-outline-secondary me-2">
+
+Previous Industry
+
+</a>
+
+<?php else: ?>
+
+<span class="btn btn-outline-secondary me-2 disabled">
+
+Previous Industry
+
+</span>
+
+<?php endif; ?>
+
+<?php if ($nextIndustryId): ?>
+
+<a
+href="view.php?id=<?php echo (int)$nextIndustryId; ?>"
+class="btn btn-outline-secondary me-2">
+
+Next Industry
+
+</a>
+
+<?php else: ?>
+
+<span class="btn btn-outline-secondary me-2 disabled">
+
+Next Industry
+
+</span>
+
+<?php endif; ?>
+
 
 <a
 href="edit.php?id=<?php echo $industry['id']; ?>"
