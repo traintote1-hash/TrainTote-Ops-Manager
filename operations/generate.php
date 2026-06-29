@@ -64,6 +64,15 @@ function parseOperationsServiceList($value): array
     return array_values(array_unique($services));
 }
 
+function isWildcardOperationsService(string $service): bool
+{
+    return in_array(
+        normalizeOperationsServiceValue($service),
+        ['all', 'any', '*', 'all / any service'],
+        true
+    );
+}
+
 function industrySupportsOperationsService(array $industry, string $serviceField, string $operationsService): bool
 {
     $service = normalizeOperationsServiceValue($operationsService);
@@ -72,9 +81,17 @@ function industrySupportsOperationsService(array $industry, string $serviceField
         return false;
     }
 
+    $industryServices = parseOperationsServiceList($industry[$serviceField] ?? '');
+
+    foreach ($industryServices as $industryService) {
+        if (isWildcardOperationsService($industryService)) {
+            return true;
+        }
+    }
+
     return in_array(
         $service,
-        parseOperationsServiceList($industry[$serviceField] ?? ''),
+        $industryServices,
         true
     );
 }
