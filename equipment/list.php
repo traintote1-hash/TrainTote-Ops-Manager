@@ -322,7 +322,7 @@ $equipment = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <?php include '../includes/navbar.php'; ?>
 
-<div class="container-fluid mt-4">
+<div class="container-fluid tt-list-page">
 
 <div class="list-layout">
 
@@ -336,7 +336,7 @@ SIDEBAR
 
 <form method="get" id="filterForm">
 
-<h5 class="mb-3">Filters</h5>
+<h5 class="sidebar-title">Filters</h5>
 
 <!-- ACTIVE FILTER CHIPS -->
 
@@ -530,15 +530,18 @@ MAIN CONTENT
 
 <div class="content-card">
 
-<div class="mb-4">
+<div class="tt-list-header">
 
-    <h1 class="mb-1">Equipment</h1>
+    <div class="tt-list-title-block">
+        <span class="tt-list-kicker">Railroad Builder</span>
+        <h1 class="tt-list-title">Equipment</h1>
 
-    <div class="text-muted mb-3">
+        <div class="tt-list-count">
         Showing <strong><?= count($equipment) ?></strong> of <strong><?= $totalRecords ?></strong> equipment
+        </div>
     </div>
 
-    <div class="d-flex flex-column align-items-start gap-2 mb-4">
+    <div class="tt-list-actions">
         <a href="add_select.php" class="btn btn-primary">Add Equipment</a>
         <button type="submit" form="printForm" class="btn btn-success">Print Selected Car Cards</button>
     </div>

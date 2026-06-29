@@ -267,7 +267,7 @@ $waybills = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <?php include '../includes/navbar.php'; ?>
 
-<div class="container-fluid mt-4">
+<div class="container-fluid tt-list-page">
 
 <div class="list-layout">
 
@@ -281,7 +281,7 @@ SIDEBAR
 
 <form method="get" id="filterForm">
 
-<h5 class="mb-3">Filters</h5>
+<h5 class="sidebar-title">Filters</h5>
 
 <!-- ACTIVE FILTER CHIPS -->
 
@@ -386,12 +386,17 @@ MAIN CONTENT
 
 <div class="content-card">
 
-<div class="mb-4">
-    <h1 class="mb-1">Waybills</h1>
-    <div class="text-muted mb-3">
+<div class="tt-list-header">
+    <div class="tt-list-title-block">
+        <span class="tt-list-kicker">Railroad Builder</span>
+        <h1 class="tt-list-title">Waybills</h1>
+        <div class="tt-list-count">
         Showing <strong><?= count($waybills) ?></strong> of <strong><?= $totalRecords ?></strong> waybills
+        </div>
     </div>
-    <a href="add_v2.php" class="btn btn-primary mb-4">Add Waybill</a>
+    <div class="tt-list-actions">
+        <a href="add_v2.php" class="btn btn-primary">Add Waybill</a>
+    </div>
 </div>
 
 <!-- TOP TOOLBAR -->
