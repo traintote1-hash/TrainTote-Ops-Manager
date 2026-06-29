@@ -36,6 +36,265 @@ if (!$industry) {
     die('Industry not found.');
 }
 
+$defaultIndustryServiceOptions = [
+    'All' => 'All / Any Service',
+    'Grain' => 'Grain',
+    'Cement' => 'Cement',
+    'Sand' => 'Sand',
+    'Sand / Gravel' => 'Sand / Gravel',
+    'Gravel' => 'Gravel',
+    'Coal' => 'Coal',
+    'Aggregate' => 'Aggregate',
+    'Scrap Metal' => 'Scrap Metal',
+    'Steel / Pipe' => 'Steel / Pipe',
+    'Rail' => 'Rail',
+    'MOW / Riprap' => 'MOW / Riprap',
+    'Vegetable Oil' => 'Vegetable Oil',
+    'Frozen Food' => 'Frozen Food',
+    'Food Products' => 'Food Products',
+    'Food Grade Liquid' => 'Food Grade Liquid',
+    'Fuel' => 'Fuel',
+    'Propane' => 'Propane',
+    'Chemicals' => 'Chemicals',
+    'Asphalt' => 'Asphalt',
+    'Corn Syrup' => 'Corn Syrup',
+    'General Freight' => 'General Freight',
+    'Paper' => 'Paper',
+    'Paper Rolls' => 'Paper Rolls',
+    'Beer' => 'Beer',
+    'Auto Parts' => 'Auto Parts',
+    'Furniture' => 'Furniture',
+    'Appliances' => 'Appliances',
+    'Lumber' => 'Lumber',
+    'Building Materials' => 'Building Materials',
+    'Pipe' => 'Pipe',
+    'Machinery' => 'Machinery',
+    'Steel' => 'Steel',
+    'Oil' => 'Oil'
+];
+
+function normalizeIndustryServiceKey($value): string
+{
+    return strtolower(trim(preg_replace('/\s+/', ' ', (string)$value)));
+}
+
+function splitIndustryServiceValues($value): array
+{
+    $parts = preg_split('/[\r\n,]+/', (string)$value);
+    $services = [];
+
+    foreach ($parts as $part) {
+        $service = trim($part);
+
+        if ($service !== '') {
+            $services[] = $service;
+        }
+    }
+
+    return $services;
+}
+
+function addIndustryServiceOption(array &$options, string $value, ?string $label = null): void
+{
+    $value = trim($value);
+
+    if ($value === '') {
+        return;
+    }
+
+    $normalized = normalizeIndustryServiceKey($value);
+
+    if (in_array($normalized, ['all / any service', 'any', '*'], true)) {
+        $value = 'All';
+        $label = 'All / Any Service';
+        $normalized = 'all';
+    }
+
+    foreach ($options as $existingValue => $existingLabel) {
+        if (normalizeIndustryServiceKey($existingValue) === $normalized) {
+            return;
+        }
+    }
+
+    $options[$value] = $label ?? $value;
+}
+
+function buildIndustryServiceOptions(PDO $pdo, int $railroadId, array $defaultOptions, array $selectedValues = []): array
+{
+    $options = $defaultOptions;
+
+    $stmt = $pdo->prepare("
+        SELECT operations_service AS service_value
+        FROM equipment
+        WHERE railroad_id = :equipment_railroad_id
+            AND operations_service IS NOT NULL
+            AND operations_service <> ''
+    
+        UNION ALL
+    
+        SELECT receives_services AS service_value
+        FROM industries
+        WHERE railroad_id = :receives_railroad_id
+            AND receives_services IS NOT NULL
+            AND receives_services <> ''
+    
+        UNION ALL
+    
+        SELECT ships_services AS service_value
+        FROM industries
+        WHERE railroad_id = :ships_railroad_id
+            AND ships_services IS NOT NULL
+            AND ships_services <> ''
+    ");
+
+    $stmt->execute([
+        'equipment_railroad_id' => $railroadId,
+        'receives_railroad_id' => $railroadId,
+        'ships_railroad_id' => $railroadId
+    ]);
+
+    foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $serviceList) {
+        foreach (splitIndustryServiceValues($serviceList) as $service) {
+            addIndustryServiceOption($options, $service);
+        }
+    }
+
+    foreach ($selectedValues as $serviceList) {
+        foreach (splitIndustryServiceValues($serviceList) as $service) {
+            addIndustryServiceOption($options, $service);
+        }
+    }
+
+    uasort($options, function ($a, $b) {
+        if ($a === 'All / Any Service') {
+            return -1;
+        }
+
+        if ($b === 'All / Any Service') {
+            return 1;
+        }
+
+        return strcasecmp($a, $b);
+    });
+
+    return $options;
+}
+
+function buildIndustryServicePostValue(string $fieldName): string
+{
+    $services = $_POST[$fieldName] ?? [];
+
+    if (!is_array($services)) {
+        $services = [$services];
+    }
+
+    $customValue = $_POST[$fieldName . '_custom'] ?? '';
+
+    foreach (splitIndustryServiceValues($customValue) as $service) {
+        $services[] = $service;
+    }
+
+    $cleanServices = [];
+
+    foreach ($services as $service) {
+        $service = trim((string)$service);
+
+        if ($service === '') {
+            continue;
+        }
+
+        if (in_array(normalizeIndustryServiceKey($service), ['all / any service', 'any', '*'], true)) {
+            $service = 'All';
+        }
+
+        $normalized = normalizeIndustryServiceKey($service);
+
+        if (!isset($cleanServices[$normalized])) {
+            $cleanServices[$normalized] = $service;
+        }
+    }
+
+    return implode(', ', array_values($cleanServices));
+}
+
+function renderIndustryServiceCheckboxes(string $fieldName, string $label, string $helperText, array $options, string $selectedValue, string $customPlaceholder): void
+{
+    $selectedServices = [];
+
+    foreach (splitIndustryServiceValues($selectedValue) as $service) {
+        $normalized = normalizeIndustryServiceKey($service);
+
+        if (in_array($normalized, ['all / any service', 'any', '*'], true)) {
+            $normalized = 'all';
+        }
+
+        $selectedServices[$normalized] = true;
+    }
+    ?>
+
+<div class="mb-3">
+
+<label class="form-label"><?php echo htmlspecialchars($label); ?></label>
+
+<div class="form-text mb-2"><?php echo htmlspecialchars($helperText); ?></div>
+
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-2">
+
+<?php foreach ($options as $value => $displayLabel): ?>
+<?php
+$optionKey = normalizeIndustryServiceKey($value);
+if (in_array($optionKey, ['all / any service', 'any', '*'], true)) {
+    $optionKey = 'all';
+}
+?>
+
+<div class="col">
+
+<div class="form-check">
+
+<input
+type="checkbox"
+name="<?php echo htmlspecialchars($fieldName); ?>[]"
+value="<?php echo htmlspecialchars($value); ?>"
+class="form-check-input"
+id="<?php echo htmlspecialchars($fieldName . '_' . md5($value)); ?>"
+<?php if (isset($selectedServices[$optionKey])) echo 'checked'; ?>>
+
+<label
+class="form-check-label"
+for="<?php echo htmlspecialchars($fieldName . '_' . md5($value)); ?>">
+<?php echo htmlspecialchars($displayLabel); ?>
+</label>
+
+</div>
+
+</div>
+
+<?php endforeach; ?>
+
+</div>
+
+<input
+type="text"
+name="<?php echo htmlspecialchars($fieldName . '_custom'); ?>"
+class="form-control mt-2"
+placeholder="<?php echo htmlspecialchars($customPlaceholder); ?>">
+
+</div>
+
+<?php
+}
+
+$industryServiceOptions = buildIndustryServiceOptions(
+    $pdo,
+    (int)$industry['railroad_id'],
+    $defaultIndustryServiceOptions,
+    [
+        $industry['receives_services'] ?? '',
+        $industry['ships_services'] ?? ''
+    ]
+);
+
 $previousIndustryId = null;
 $nextIndustryId = null;
 
@@ -69,8 +328,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $industry_type = trim($_POST['industry_type']);
     $location = trim($_POST['location']);
     $track_capacity = (int)$_POST['track_capacity'];
-    $receives_services = trim($_POST['receives_services'] ?? '');
-    $ships_services = trim($_POST['ships_services'] ?? '');
+    $receives_services = buildIndustryServicePostValue('receives_services');
+    $ships_services = buildIndustryServicePostValue('ships_services');
     $notes = trim($_POST['notes']);
 
     $stmt = $pdo->prepare("
@@ -415,29 +674,25 @@ value="<?php echo htmlspecialchars($industry['track_capacity']); ?>">
 
 </div>
 
-<div class="mb-3">
+<?php
+renderIndustryServiceCheckboxes(
+    'receives_services',
+    'Unloads Inbound Cars Carrying',
+    'Loaded cars delivered here become empty after this industry works them.',
+    $industryServiceOptions,
+    $industry['receives_services'] ?? '',
+    'Add another inbound service, such as Frozen Food or Paper Rolls'
+);
 
-<label>Receives Services</label>
-
-<textarea
-name="receives_services"
-class="form-control"
-rows="3"
-placeholder="Sand / Gravel, Cement, General Freight"><?php echo htmlspecialchars($industry['receives_services'] ?? ''); ?></textarea>
-
-</div>
-
-<div class="mb-3">
-
-<label>Ships Services</label>
-
-<textarea
-name="ships_services"
-class="form-control"
-rows="3"
-placeholder="Grain, Scrap Metal, Vegetable Oil"><?php echo htmlspecialchars($industry['ships_services'] ?? ''); ?></textarea>
-
-</div>
+renderIndustryServiceCheckboxes(
+    'ships_services',
+    'Loads Outbound Cars With',
+    'Empty cars delivered here become loaded after this industry works them.',
+    $industryServiceOptions,
+    $industry['ships_services'] ?? '',
+    'Add another outbound service, such as Grain or Scrap Metal'
+);
+?>
 
 <div class="mb-3">
 
