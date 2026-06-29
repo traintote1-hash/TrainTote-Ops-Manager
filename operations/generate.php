@@ -783,13 +783,11 @@ include '../assets/components/sidebar.php';
     </div>
 
     <?php if (!empty($skippedCarDiagnostics)): ?>
-    <section class="tt-panel tt-generated-session-panel">
-        <div class="tt-panel-heading">
-            <div>
-                <span class="tt-panel-kicker">Skipped Cars</span>
-                <h2>Skip Diagnostics</h2>
-            </div>
-        </div>
+    <details class="tt-panel tt-generated-session-panel tt-generated-skip-diagnostics">
+        <summary>
+            <strong>Cars Not Used This Session</strong>
+            <span class="tt-muted-text"><?php echo count($skippedCarDiagnostics); ?> cars were not used. Open details.</span>
+        </summary>
 
         <div class="tt-generated-moves">
             <?php foreach ($skippedCarDiagnostics as $diagnostic): ?>
@@ -824,7 +822,7 @@ include '../assets/components/sidebar.php';
             </article>
             <?php endforeach; ?>
         </div>
-    </section>
+    </details>
     <?php endif; ?>
 
     <?php else: ?>
@@ -870,51 +868,6 @@ include '../assets/components/sidebar.php';
 
         <?php if ($skippedCarCount > 0): ?>
         <p class="tt-muted-text">Skipped <?php echo $skippedNoOperationsService; ?> car(s) missing Operations Service, <?php echo $skippedNoCompatibleDestination; ?> car(s) with no compatible move, <?php echo $skippedNoOperatingBase; ?> missing base, and <?php echo $skippedNoLocomotive; ?> missing locomotive.</p>
-        <?php endif; ?>
-
-        <?php if (!empty($skippedCarDiagnostics)): ?>
-        <div class="tt-generated-skip-diagnostics">
-            <div class="tt-panel-heading">
-                <div>
-                    <span class="tt-panel-kicker">Skipped Cars</span>
-                    <h3>Skip Diagnostics</h3>
-                </div>
-            </div>
-
-            <div class="tt-generated-moves">
-                <?php foreach ($skippedCarDiagnostics as $diagnostic): ?>
-                <article class="tt-generated-move">
-                    <div class="tt-generated-move-header">
-                        <span><?php echo htmlspecialchars($diagnostic['reason']); ?></span>
-                        <strong><?php echo htmlspecialchars(trim($diagnostic['reporting_marks'] . ' ' . $diagnostic['road_number']) ?: 'Unknown car'); ?></strong>
-                    </div>
-                    <p class="tt-muted-text"><?php echo htmlspecialchars($diagnostic['looking_for']); ?></p>
-                    <dl>
-                        <div>
-                            <dt>Car Type</dt>
-                            <dd><?php echo htmlspecialchars($diagnostic['equipment_type'] ?: '-'); ?></dd>
-                        </div>
-                        <div>
-                            <dt>Load Status</dt>
-                            <dd><?php echo htmlspecialchars($diagnostic['load_status'] ?: '-'); ?></dd>
-                        </div>
-                        <div>
-                            <dt>Operations Service</dt>
-                            <dd><?php echo htmlspecialchars($diagnostic['operations_service'] ?: '-'); ?></dd>
-                        </div>
-                        <div>
-                            <dt>Current Location</dt>
-                            <dd><?php echo htmlspecialchars($diagnostic['origin_name'] ?: '-'); ?></dd>
-                        </div>
-                        <div>
-                            <dt>Current Track</dt>
-                            <dd><?php echo htmlspecialchars($diagnostic['current_track'] ?: '-'); ?></dd>
-                        </div>
-                    </dl>
-                </article>
-                <?php endforeach; ?>
-            </div>
-        </div>
         <?php endif; ?>
 
         <div class="tt-generated-work-by-location">
@@ -967,6 +920,49 @@ include '../assets/components/sidebar.php';
             </section>
             <?php endforeach; ?>
         </div>
+
+        <?php if (!empty($skippedCarDiagnostics)): ?>
+        <details class="tt-generated-skip-diagnostics">
+            <summary>
+                <strong>Cars Not Used This Session</strong>
+                <span class="tt-muted-text"><?php echo count($skippedCarDiagnostics); ?> cars were not used. Open details.</span>
+            </summary>
+
+            <div class="tt-generated-moves">
+                <?php foreach ($skippedCarDiagnostics as $diagnostic): ?>
+                <article class="tt-generated-move">
+                    <div class="tt-generated-move-header">
+                        <span><?php echo htmlspecialchars($diagnostic['reason']); ?></span>
+                        <strong><?php echo htmlspecialchars(trim($diagnostic['reporting_marks'] . ' ' . $diagnostic['road_number']) ?: 'Unknown car'); ?></strong>
+                    </div>
+                    <p class="tt-muted-text"><?php echo htmlspecialchars($diagnostic['looking_for']); ?></p>
+                    <dl>
+                        <div>
+                            <dt>Car Type</dt>
+                            <dd><?php echo htmlspecialchars($diagnostic['equipment_type'] ?: '-'); ?></dd>
+                        </div>
+                        <div>
+                            <dt>Load Status</dt>
+                            <dd><?php echo htmlspecialchars($diagnostic['load_status'] ?: '-'); ?></dd>
+                        </div>
+                        <div>
+                            <dt>Operations Service</dt>
+                            <dd><?php echo htmlspecialchars($diagnostic['operations_service'] ?: '-'); ?></dd>
+                        </div>
+                        <div>
+                            <dt>Current Location</dt>
+                            <dd><?php echo htmlspecialchars($diagnostic['origin_name'] ?: '-'); ?></dd>
+                        </div>
+                        <div>
+                            <dt>Current Track</dt>
+                            <dd><?php echo htmlspecialchars($diagnostic['current_track'] ?: '-'); ?></dd>
+                        </div>
+                    </dl>
+                </article>
+                <?php endforeach; ?>
+            </div>
+        </details>
+        <?php endif; ?>
 
         <form method="post" class="tt-generated-actions">
             <input
