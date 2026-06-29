@@ -354,6 +354,7 @@ if (
                 e.current_industry_id,
                 e.current_track,
                 i.industry_name AS origin_name,
+                i.industry_type AS origin_industry_type,
                 i.receives_services AS origin_receives_services,
                 i.ships_services AS origin_ships_services
             FROM equipment e
@@ -438,6 +439,18 @@ if (
                     'Set out ' . $loadText . ' ' . $serviceText . ' car at ' . $destination['industry_name']
                 );
 
+                continue;
+            }
+
+            if (industryLooksLikeOperatingBase([
+                'industry_name' => $car['origin_name'] ?? '',
+                'industry_type' => $car['origin_industry_type'] ?? ''
+            ])) {
+                $skippedCarDiagnostics[] = buildSkippedCarDiagnostic(
+                    $car,
+                    'At support location, not selected operating base',
+                    'Select this location as the operating base or move this car to a customer industry.'
+                );
                 continue;
             }
 
