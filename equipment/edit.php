@@ -60,6 +60,33 @@ if (!$equipment) {
 
 }
 
+$previousEquipmentId = null;
+$nextEquipmentId = null;
+
+$stmt = $pdo->prepare("
+    SELECT id
+    FROM equipment
+    WHERE railroad_id = :railroad_id
+    ORDER BY reporting_marks ASC, road_number ASC, id ASC
+");
+
+$stmt->execute([
+    'railroad_id' => $equipment['railroad_id']
+]);
+
+$equipmentIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+$currentEquipmentIndex = array_search($equipment['id'], $equipmentIds);
+
+if ($currentEquipmentIndex !== false) {
+    if ($currentEquipmentIndex > 0) {
+        $previousEquipmentId = $equipmentIds[$currentEquipmentIndex - 1];
+    }
+
+    if ($currentEquipmentIndex < count($equipmentIds) - 1) {
+        $nextEquipmentId = $equipmentIds[$currentEquipmentIndex + 1];
+    }
+}
+
 /*
 |--------------------------------------------------------------------------
 | Load Railroad
@@ -711,11 +738,51 @@ Save Changes
 
 <a
 href="view.php?id=<?php echo $id; ?>"
-class="btn btn-secondary">
+class="btn btn-secondary me-2">
 
 Cancel
 
 </a>
+
+<?php if ($previousEquipmentId): ?>
+
+<a
+href="edit.php?id=<?php echo (int)$previousEquipmentId; ?>"
+class="btn btn-outline-secondary me-2">
+
+Previous Equipment
+
+</a>
+
+<?php else: ?>
+
+<span class="btn btn-outline-secondary me-2 disabled">
+
+Previous Equipment
+
+</span>
+
+<?php endif; ?>
+
+<?php if ($nextEquipmentId): ?>
+
+<a
+href="edit.php?id=<?php echo (int)$nextEquipmentId; ?>"
+class="btn btn-outline-secondary me-2">
+
+Next Equipment
+
+</a>
+
+<?php else: ?>
+
+<span class="btn btn-outline-secondary me-2 disabled">
+
+Next Equipment
+
+</span>
+
+<?php endif; ?>
 
 </div>
 
@@ -1279,11 +1346,51 @@ Save Changes
 
 <a
 href="view.php?id=<?php echo $id; ?>"
-class="btn btn-secondary btn-lg">
+class="btn btn-secondary btn-lg me-2">
 
 Cancel
 
 </a>
+
+<?php if ($previousEquipmentId): ?>
+
+<a
+href="edit.php?id=<?php echo (int)$previousEquipmentId; ?>"
+class="btn btn-outline-secondary btn-lg me-2">
+
+Previous Equipment
+
+</a>
+
+<?php else: ?>
+
+<span class="btn btn-outline-secondary btn-lg me-2 disabled">
+
+Previous Equipment
+
+</span>
+
+<?php endif; ?>
+
+<?php if ($nextEquipmentId): ?>
+
+<a
+href="edit.php?id=<?php echo (int)$nextEquipmentId; ?>"
+class="btn btn-outline-secondary btn-lg me-2">
+
+Next Equipment
+
+</a>
+
+<?php else: ?>
+
+<span class="btn btn-outline-secondary btn-lg me-2 disabled">
+
+Next Equipment
+
+</span>
+
+<?php endif; ?>
 
 </div>
 
