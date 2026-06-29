@@ -16,6 +16,76 @@ $difficulty =
 $carCount =
     $_SESSION['generated_car_count'] ?? 0;
 
+$operatingBaseName =
+    $_SESSION['generated_operating_base_name'] ?? '';
+
+$locomotiveLabel =
+    $_SESSION['generated_locomotive_label'] ?? '';
+
+function getPrintedMoveActionLabel(array $move): string
+{
+    $moveType = strtoupper(trim((string)($move['move_type'] ?? '')));
+
+    if ($moveType === 'PULL') {
+        return 'PULL';
+    }
+
+    if ($moveType === 'SETOUT') {
+        return 'SPOT';
+    }
+
+    return $moveType ?: 'WORK';
+}
+
+function getPrintedMoveWorkLocation(array $move): string
+{
+    $moveType = strtoupper(trim((string)($move['move_type'] ?? '')));
+
+    if ($moveType === 'PULL') {
+        $location = $move['origin_industry_name'] ?? ($move['origin_name'] ?? '');
+    }
+    else {
+        $location = $move['destination_industry_name'] ?? ($move['destination_name'] ?? '');
+    }
+
+    $location = trim((string)$location);
+
+    return $location !== '' ? $location : 'Unassigned Work Location';
+}
+
+function groupPrintedMovesByLocation(array $moves): array
+{
+    $groups = [];
+
+    foreach ($moves as $move) {
+        $location = getPrintedMoveWorkLocation($move);
+        $key = strtolower($location);
+
+        if (!isset($groups[$key])) {
+            $groups[$key] = [
+                'location' => $location,
+                'moves' => []
+            ];
+        }
+
+        $groups[$key]['moves'][] = $move;
+    }
+
+    return array_values($groups);
+}
+
+$setoutMoveCount = count(array_filter(
+    $sessionWaybills,
+    fn($move) => ($move['move_type'] ?? '') === 'SETOUT'
+));
+
+$pullMoveCount = count(array_filter(
+    $sessionWaybills,
+    fn($move) => ($move['move_type'] ?? '') === 'PULL'
+));
+
+$workLocationGroups = groupPrintedMovesByLocation($sessionWaybills);
+
 ?>
 
 <?php include '../includes/header.php'; ?>
@@ -24,16 +94,80 @@ $carCount =
 
 <style>
 
+body {
+    padding: 20px;
+    color: #111;
+}
+
+.work-order-header {
+    margin-bottom: 18px;
+}
+
+.work-order-meta {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(130px, 1fr));
+    gap: 8px 16px;
+    margin: 16px 0;
+}
+
+.work-order-meta div {
+    border: 1px solid #bbb;
+    padding: 6px 8px;
+}
+
+.work-order-meta span {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    color: #555;
+}
+
+.location-work {
+    margin: 18px 0;
+    page-break-inside: avoid;
+}
+
+.location-work h4 {
+    border-bottom: 2px solid #111;
+    padding-bottom: 4px;
+    margin-bottom: 8px;
+}
+
+table.work-order-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.work-order-table th,
+.work-order-table td {
+    border: 1px solid #777;
+    padding: 4px 5px;
+    vertical-align: top;
+}
+
+.work-order-table th {
+    background: #eee;
+}
+
 @media print {
 
     .no-print {
         display: none;
     }
 
-}
+    body {
+        padding: 0;
+    }
 
-body {
-    padding: 20px;
+    .container {
+        max-width: none;
+        width: 100%;
+    }
+
+    .location-work {
+        break-inside: avoid;
+    }
 }
 
 </style>
@@ -64,23 +198,24 @@ Close
 
 </div>
 
+<div class="work-order-header">
+
 <h1>TrainTote Ops Manager</h1>
 
-<h3>Switch List</h3>
+<h3>Local Switcher Work Order</h3>
 
-<p>
+<div class="work-order-meta">
 
-<strong>Difficulty:</strong>
+<div><span>Operating Base</span><strong><?php echo htmlspecialchars($operatingBaseName ?: '-'); ?></strong></div>
+<div><span>Assigned Locomotive</span><strong><?php echo htmlspecialchars($locomotiveLabel ?: '-'); ?></strong></div>
+<div><span>Difficulty</span><strong><?php echo htmlspecialchars(ucfirst($difficulty)); ?></strong></div>
+<div><span>Cars Requested</span><strong><?php echo (int)$carCount; ?></strong></div>
+<div><span>Setouts</span><strong><?php echo (int)$setoutMoveCount; ?></strong></div>
+<div><span>Pulls</span><strong><?php echo (int)$pullMoveCount; ?></strong></div>
 
-<?php echo htmlspecialchars(ucfirst($difficulty)); ?>
+</div>
 
-<br>
-
-<strong>Cars Requested:</strong>
-
-<?php echo (int)$carCount; ?>
-
-</p>
+</div>
 
 <hr>
 
@@ -90,57 +225,42 @@ Close
 
 <?php else: ?>
 
-<?php foreach ($sessionWaybills as $index => $waybill): ?>
+<?php foreach ($workLocationGroups as $group): ?>
 
-<div class="mb-4">
+<section class="location-work">
 
-<h4>
+<h4><?php echo htmlspecialchars($group['location']); ?></h4>
 
-Move <?php echo $index + 1; ?>
+<table class="work-order-table">
+<thead>
+<tr>
+<th>Action</th>
+<th>Car</th>
+<th>Type</th>
+<th>Load</th>
+<th>Service</th>
+<th>Track</th>
+<th>From</th>
+<th>To</th>
+</tr>
+</thead>
+<tbody>
+<?php foreach ($group['moves'] as $waybill): ?>
+<tr>
+<td><strong><?php echo htmlspecialchars(getPrintedMoveActionLabel($waybill)); ?></strong></td>
+<td><?php echo htmlspecialchars(trim(($waybill['reporting_marks'] ?? '') . ' ' . ($waybill['road_number'] ?? '')) ?: '-'); ?></td>
+<td><?php echo htmlspecialchars($waybill['equipment_type'] ?: '-'); ?></td>
+<td><?php echo htmlspecialchars($waybill['load_status'] ?: '-'); ?></td>
+<td><?php echo htmlspecialchars($waybill['operations_service'] ?: '-'); ?></td>
+<td><?php echo htmlspecialchars(($waybill['destination_track'] ?: ($waybill['current_track'] ?? '')) ?: '-'); ?></td>
+<td><?php echo htmlspecialchars($waybill['origin_industry_name'] ?? ($waybill['origin_name'] ?? '-')); ?></td>
+<td><?php echo htmlspecialchars($waybill['destination_industry_name'] ?? ($waybill['destination_name'] ?? '-')); ?></td>
+</tr>
+<?php endforeach; ?>
+</tbody>
+</table>
 
-</h4>
-
-<p>
-
-<strong>Car:</strong>
-
-<?php
-echo htmlspecialchars(
-    $waybill['reporting_marks']
-    . ' '
-    . $waybill['road_number']
-);
-?>
-
-<br>
-
-<strong>Origin:</strong>
-
-<?php echo htmlspecialchars($waybill['origin_name']); ?>
-
-<br>
-
-<strong>Destination:</strong>
-
-<?php echo htmlspecialchars($waybill['destination_name']); ?>
-
-<br>
-
-<strong>Commodity:</strong>
-
-<?php echo htmlspecialchars($waybill['commodity']); ?>
-
-<br>
-
-<strong>Status:</strong>
-
-<?php echo htmlspecialchars($waybill['status']); ?>
-
-</p>
-
-<hr>
-
-</div>
+</section>
 
 <?php endforeach; ?>
 
