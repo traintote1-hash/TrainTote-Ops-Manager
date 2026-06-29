@@ -62,6 +62,33 @@ if ($currentIndustryIndex !== false) {
         $nextIndustryId = $industryIds[$currentIndustryIndex + 1];
     }
 }
+
+function formatIndustryServiceList($value): string
+{
+    $parts = preg_split('/[\r\n,]+/', (string)$value);
+    $services = [];
+
+    foreach ($parts as $part) {
+        $service = trim($part);
+
+        if ($service === '') {
+            continue;
+        }
+
+        $normalized = strtolower(trim(preg_replace('/\s+/', ' ', $service)));
+
+        if (in_array($normalized, ['all', 'all / any service', 'any', '*'], true)) {
+            $service = 'All / Any Service';
+            $normalized = 'all';
+        }
+
+        if (!isset($services[$normalized])) {
+            $services[$normalized] = $service;
+        }
+    }
+
+    return implode(', ', array_values($services));
+}
 ?>
 
 <?php include '../includes/header.php'; ?>
@@ -127,13 +154,13 @@ No Photo Uploaded
 </p>
 
 <p>
-<strong>Receives Services:</strong><br>
-<?php echo nl2br(htmlspecialchars($industry['receives_services'] ?? '')); ?>
+<strong>Unloads Inbound Cars Carrying:</strong><br>
+<?php echo htmlspecialchars(formatIndustryServiceList($industry['receives_services'] ?? '') ?: '-'); ?>
 </p>
 
 <p>
-<strong>Ships Services:</strong><br>
-<?php echo nl2br(htmlspecialchars($industry['ships_services'] ?? '')); ?>
+<strong>Loads Outbound Cars With:</strong><br>
+<?php echo htmlspecialchars(formatIndustryServiceList($industry['ships_services'] ?? '') ?: '-'); ?>
 </p>
 
 <p>
