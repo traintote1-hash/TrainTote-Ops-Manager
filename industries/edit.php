@@ -126,7 +126,7 @@ function buildIndustryServiceOptions(PDO $pdo, int $railroadId, array $defaultOp
     $stmt = $pdo->prepare("
         SELECT operations_service AS service_value
         FROM equipment
-        WHERE railroad_id = :railroad_id
+        WHERE railroad_id = :equipment_railroad_id
             AND operations_service IS NOT NULL
             AND operations_service <> ''
     
@@ -134,7 +134,7 @@ function buildIndustryServiceOptions(PDO $pdo, int $railroadId, array $defaultOp
     
         SELECT receives_services AS service_value
         FROM industries
-        WHERE railroad_id = :railroad_id
+        WHERE railroad_id = :receives_railroad_id
             AND receives_services IS NOT NULL
             AND receives_services <> ''
     
@@ -142,14 +142,15 @@ function buildIndustryServiceOptions(PDO $pdo, int $railroadId, array $defaultOp
     
         SELECT ships_services AS service_value
         FROM industries
-        WHERE railroad_id = :railroad_id
+        WHERE railroad_id = :ships_railroad_id
             AND ships_services IS NOT NULL
             AND ships_services <> ''
-    
-    " );
+    ");
 
     $stmt->execute([
-        'railroad_id' => $railroadId
+        'equipment_railroad_id' => $railroadId,
+        'receives_railroad_id' => $railroadId,
+        'ships_railroad_id' => $railroadId
     ]);
 
     foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $serviceList) {
