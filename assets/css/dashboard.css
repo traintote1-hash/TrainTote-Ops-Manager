@@ -786,16 +786,30 @@
 }
 
 
-/* Dashboard Operations Command Center */
-.tt-command-center-page {
+/* Dashboard Home */
+.tt-dashboard-home-page {
     padding-bottom: 32px;
 }
 
-.tt-command-hero {
-    align-items: stretch;
+.tt-dashboard-home-hero {
+    align-items: center;
+    background: #fff;
+    color: #1f2937;
+    border: 1px solid #d8dee6;
+    border-left: 4px solid #8B1E24;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, .06);
 }
 
-.tt-hero-actions {
+.tt-dashboard-home-hero .tt-hero-kicker {
+    color: #8B1E24;
+}
+
+.tt-dashboard-home-hero p {
+    color: #64748b;
+    opacity: 1;
+}
+
+.tt-home-hero-actions {
     display: flex;
     align-items: center;
     justify-content: flex-end;
@@ -803,158 +817,91 @@
     flex-wrap: wrap;
 }
 
-.tt-command-section {
+.tt-primary-module-grid {
     display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 14px;
 }
 
-.tt-readiness-grid {
+.tt-module-card {
     display: grid;
-    grid-template-columns: repeat(3, minmax(180px, 1fr));
-    gap: 14px;
+    align-content: start;
+    gap: 8px;
+    min-height: 198px;
+    position: relative;
+    overflow: hidden;
 }
 
-.tt-readiness-card,
-.tt-workflow-card {
-    display: grid;
-    gap: 6px;
-    min-height: 132px;
-    padding: 16px;
-    background: #fff;
-    border: 1px solid #d8dee6;
-    border-radius: 8px;
+.tt-module-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 4px;
+    background: #8B1E24;
+}
+
+.tt-module-card:nth-child(2)::before {
+    background: #2E8B57;
+}
+
+.tt-module-card:nth-child(3)::before {
+    background: #D97706;
+}
+
+.tt-module-card:nth-child(4)::before {
+    background: #64748b;
+}
+
+.tt-module-card h2 {
+    margin: 0;
     color: #1f2937;
-    text-decoration: none;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, .06);
+    font-size: 1.22rem;
 }
 
-.tt-readiness-card:hover,
-.tt-workflow-card:hover,
-.tt-warning-list a:hover,
-.tt-admin-summary-card a:hover,
-.tt-recent-item a:hover,
-.tt-recent-waybill a:hover {
-    color: #1f2937;
-    text-decoration: none;
-}
-
-.tt-readiness-card span,
-.tt-admin-summary-card span {
-    color: #64748b;
-    font-size: .78rem;
-    font-weight: 800;
-    text-transform: uppercase;
-}
-
-.tt-readiness-card strong {
+.tt-module-card strong {
     color: #8B1E24;
-    font-size: 2rem;
+    font-size: 2.1rem;
     line-height: 1;
 }
 
-.tt-readiness-card small,
-.tt-workflow-card small {
+.tt-module-card p {
+    margin: 0;
     color: #64748b;
-    line-height: 1.3;
+    line-height: 1.35;
 }
 
-.tt-readiness-good strong {
-    color: #137333;
-}
-
-.tt-readiness-warning {
-    border-color: #f2c078;
-    background: #fffaf0;
-}
-
-.tt-readiness-warning strong {
-    color: #b45309;
-}
-
-.tt-setup-warnings {
-    border-left: 4px solid #b45309;
-}
-
-.tt-warning-list {
-    display: grid;
-    gap: 10px;
-}
-
-.tt-warning-list a {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    min-height: 46px;
-    padding: 10px 12px;
-    border: 1px solid #f2c078;
-    border-radius: 8px;
-    background: #fffaf0;
-    color: #1f2937;
-    text-decoration: none;
-}
-
-.tt-warning-list span {
-    color: #8B1E24;
-    font-weight: 700;
-    white-space: nowrap;
-}
-
-.tt-workflow-grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(170px, 1fr));
-    gap: 14px;
-}
-
-.tt-workflow-card span {
+.tt-module-action {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 34px;
-    height: 34px;
-    border-radius: 999px;
-    background: #f3f6fa;
-    color: #8B1E24;
-    font-weight: 800;
+    justify-self: start;
+    min-height: 38px;
+    margin-top: auto;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: #8B1E24;
+    color: #fff;
+    font-weight: 700;
+    text-decoration: none;
 }
 
-.tt-workflow-card strong {
-    font-size: 1.05rem;
+.tt-module-action:hover {
+    background: #73181d;
+    color: #fff;
+    text-decoration: none;
 }
 
-.tt-workflow-primary {
-    border-color: rgba(46, 139, 87, .35);
-    box-shadow: inset 4px 0 0 #2E8B57, 0 1px 3px rgba(15, 23, 42, .06);
-}
-
-.tt-admin-summary-grid,
-.tt-recent-grid {
+.tt-dashboard-section {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 14px;
 }
 
-.tt-admin-summary-card {
+.tt-recent-grid {
     display: grid;
-    gap: 6px;
-    min-height: 148px;
-}
-
-.tt-admin-summary-card h3 {
-    margin: 0;
-    color: #1f2937;
-}
-
-.tt-admin-summary-card strong {
-    color: #8B1E24;
-    font-size: 1.8rem;
-    line-height: 1;
-}
-
-.tt-admin-summary-card a {
-    color: #0d6efd;
-    font-weight: 700;
-    text-decoration: none;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
 }
 
 .tt-recent-panel {
@@ -973,6 +920,12 @@
 
 .tt-recent-item a,
 .tt-recent-waybill a {
+    color: #1f2937;
+    text-decoration: none;
+}
+
+.tt-recent-item a:hover,
+.tt-recent-waybill a:hover {
     color: #1f2937;
     text-decoration: none;
 }
@@ -1011,28 +964,69 @@
     border-bottom: 0;
 }
 
+.tt-operations-minimal-panel {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    border-left: 4px solid #8B1E24;
+}
+
+.tt-operations-minimal-panel h2 {
+    margin: 0;
+    color: #1f2937;
+    font-size: 1.25rem;
+}
+
+.tt-operations-minimal-panel p {
+    margin: 6px 0 0;
+    color: #64748b;
+}
+
+.tt-operations-minimal-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.tt-operations-minimal-actions .btn-primary {
+    background: #8B1E24;
+    border-color: #8B1E24;
+}
+
+.tt-operations-minimal-actions .btn-primary:hover {
+    background: #73181d;
+    border-color: #73181d;
+}
+
 @media(max-width:1100px) {
-    .tt-readiness-grid,
-    .tt-workflow-grid,
-    .tt-admin-summary-grid,
+    .tt-primary-module-grid,
     .tt-recent-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
+@media(max-width:760px) {
+    .tt-dashboard-home-hero,
+    .tt-operations-minimal-panel {
+        display: grid;
+    }
+
+    .tt-home-hero-actions,
+    .tt-operations-minimal-actions {
+        justify-content: flex-start;
+    }
+}
+
 @media(max-width:700px) {
-    .tt-readiness-grid,
-    .tt-workflow-grid,
-    .tt-admin-summary-grid,
+    .tt-primary-module-grid,
     .tt-recent-grid {
         grid-template-columns: 1fr;
     }
 
-    .tt-warning-list a {
-        display: grid;
-    }
-
-    .tt-warning-list span {
-        white-space: normal;
+    .tt-module-action,
+    .tt-operations-minimal-actions .btn {
+        width: 100%;
     }
 }
