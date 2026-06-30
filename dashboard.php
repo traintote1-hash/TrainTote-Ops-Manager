@@ -26,6 +26,11 @@ $equipmentCount = 0;
 $industryCount = 0;
 $waybillCount = 0;
 $jobCount = 0;
+$activeCarsCount = 0;
+$readyForSessionCount = 0;
+$activeLocomotiveCount = 0;
+$missingOperationsServiceCount = 0;
+$missingLocationCount = 0;
 
 $recentEquipment = [];
 $recentIndustries = [];
@@ -81,6 +86,96 @@ if ($railroad) {
     ]);
 
     $jobCount = (int)$stmt->fetchColumn();
+
+    $nonLocomotiveCondition = "
+        (
+            equipment_class IS NULL
+            OR equipment_class = ''
+            OR equipment_class <> 'Locomotive'
+        )
+    ";
+
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM equipment
+        WHERE railroad_id = :railroad_id
+            AND active = 1
+            AND $nonLocomotiveCondition
+    ");
+
+    $stmt->execute([
+        'railroad_id' => $railroad['id']
+    ]);
+
+    $activeCarsCount = (int)$stmt->fetchColumn();
+
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM equipment
+        WHERE railroad_id = :railroad_id
+            AND active = 1
+            AND $nonLocomotiveCondition
+            AND current_industry_id IS NOT NULL
+            AND current_industry_id <> 0
+            AND operations_service IS NOT NULL
+            AND TRIM(operations_service) <> ''
+    ");
+
+    $stmt->execute([
+        'railroad_id' => $railroad['id']
+    ]);
+
+    $readyForSessionCount = (int)$stmt->fetchColumn();
+
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM equipment
+        WHERE railroad_id = :railroad_id
+            AND active = 1
+            AND equipment_class = 'Locomotive'
+    ");
+
+    $stmt->execute([
+        'railroad_id' => $railroad['id']
+    ]);
+
+    $activeLocomotiveCount = (int)$stmt->fetchColumn();
+
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM equipment
+        WHERE railroad_id = :railroad_id
+            AND active = 1
+            AND $nonLocomotiveCondition
+            AND (
+                operations_service IS NULL
+                OR TRIM(operations_service) = ''
+            )
+    ");
+
+    $stmt->execute([
+        'railroad_id' => $railroad['id']
+    ]);
+
+    $missingOperationsServiceCount = (int)$stmt->fetchColumn();
+
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM equipment
+        WHERE railroad_id = :railroad_id
+            AND active = 1
+            AND $nonLocomotiveCondition
+            AND (
+                current_industry_id IS NULL
+                OR current_industry_id = 0
+            )
+    ");
+
+    $stmt->execute([
+        'railroad_id' => $railroad['id']
+    ]);
+
+    $missingLocationCount = (int)$stmt->fetchColumn();
 
     $stmt = $pdo->prepare("
         SELECT *
@@ -177,56 +272,18 @@ if ($railroad) {
                 <p>Manage your railroad, prepare your equipment, and launch operations.</p>
             </div>
         </div>
-
-        <div class="tt-home-hero-actions">
-            <a href="operations/index.php" class="btn btn-outline-secondary">Open Operations</a>
-        </div>
     </section>
 
-    <section class="tt-primary-module-grid" aria-label="Railroad management modules">
-        <article class="tt-panel tt-module-card">
-            <span class="tt-panel-kicker">Railroad</span>
-            <h2>Equipment</h2>
-            <strong><?php echo $equipmentCount; ?></strong>
-            <p>Cars, locomotives, and rolling stock.</p>
-            <a href="equipment/list.php" class="tt-module-action">Open Equipment</a>
-        </article>
+    <section class="tt-dashboard-column-grid" aria-label="Railroad management dashboard">
+        <div class="tt-dashboard-lane">
+            <article class="tt-panel tt-dashboard-summary-card">
+                <span class="tt-panel-kicker">Database Summary</span>
+                <h2>Equipment</h2>
+                <strong><?php echo $equipmentCount; ?></strong>
+                <a href="equipment/list.php">Open Equipment</a>
+            </article>
 
-        <article class="tt-panel tt-module-card">
-            <span class="tt-panel-kicker">Railroad</span>
-            <h2>Industries</h2>
-            <strong><?php echo $industryCount; ?></strong>
-            <p>Customers, yards, interchanges, and locations.</p>
-            <a href="industries/list.php" class="tt-module-action">Open Industries</a>
-        </article>
-
-        <article class="tt-panel tt-module-card">
-            <span class="tt-panel-kicker">Traffic</span>
-            <h2>Waybills</h2>
-            <strong><?php echo $waybillCount; ?></strong>
-            <p>Car movement paperwork and traffic records.</p>
-            <a href="waybills/list.php" class="tt-module-action">Open Waybills</a>
-        </article>
-
-        <article class="tt-panel tt-module-card">
-            <span class="tt-panel-kicker">Operations</span>
-            <h2>Jobs</h2>
-            <strong><?php echo $jobCount; ?></strong>
-            <p>Assigned work, routes, and operating jobs.</p>
-            <a href="jobs/list.php" class="tt-module-action">Open Jobs</a>
-        </article>
-    </section>
-
-    <section class="tt-dashboard-section tt-recent-section">
-        <div class="tt-section-header">
-            <div>
-                <span class="tt-panel-kicker">Recent Activity</span>
-                <h2>Latest Railroad Updates</h2>
-            </div>
-        </div>
-
-        <div class="tt-recent-grid">
-            <div class="tt-panel tt-recent-panel">
+            <article class="tt-panel tt-recent-panel">
                 <div class="tt-panel-heading">
                     <div>
                         <span class="tt-panel-kicker">Recent</span>
@@ -255,9 +312,18 @@ if ($railroad) {
                     </a>
                 </div>
                 <?php endforeach; ?>
-            </div>
+            </article>
+        </div>
 
-            <div class="tt-panel tt-recent-panel">
+        <div class="tt-dashboard-lane">
+            <article class="tt-panel tt-dashboard-summary-card">
+                <span class="tt-panel-kicker">Database Summary</span>
+                <h2>Industries</h2>
+                <strong><?php echo $industryCount; ?></strong>
+                <a href="industries/list.php">Open Industries</a>
+            </article>
+
+            <article class="tt-panel tt-recent-panel">
                 <div class="tt-panel-heading">
                     <div>
                         <span class="tt-panel-kicker">Recent</span>
@@ -286,9 +352,18 @@ if ($railroad) {
                     </a>
                 </div>
                 <?php endforeach; ?>
-            </div>
+            </article>
+        </div>
 
-            <div class="tt-panel tt-recent-panel">
+        <div class="tt-dashboard-lane">
+            <article class="tt-panel tt-dashboard-summary-card">
+                <span class="tt-panel-kicker">Database Summary</span>
+                <h2>Waybills</h2>
+                <strong><?php echo $waybillCount; ?></strong>
+                <a href="waybills/list.php">Open Waybills</a>
+            </article>
+
+            <article class="tt-panel tt-recent-panel">
                 <div class="tt-panel-heading">
                     <div>
                         <span class="tt-panel-kicker">Recent</span>
@@ -308,9 +383,18 @@ if ($railroad) {
                     <span><?php echo htmlspecialchars($waybill['origin_name']); ?> to <?php echo htmlspecialchars($waybill['destination_name']); ?></span>
                 </div>
                 <?php endforeach; ?>
-            </div>
+            </article>
+        </div>
 
-            <div class="tt-panel tt-recent-panel">
+        <div class="tt-dashboard-lane">
+            <article class="tt-panel tt-dashboard-summary-card">
+                <span class="tt-panel-kicker">Database Summary</span>
+                <h2>Jobs</h2>
+                <strong><?php echo $jobCount; ?></strong>
+                <a href="jobs/list.php">Open Jobs</a>
+            </article>
+
+            <article class="tt-panel tt-recent-panel">
                 <div class="tt-panel-heading">
                     <div>
                         <span class="tt-panel-kicker">Recent</span>
@@ -343,20 +427,59 @@ if ($railroad) {
                     <?php endif; ?>
                 </div>
                 <?php endforeach; ?>
-            </div>
+            </article>
         </div>
     </section>
 
-    <section class="tt-panel tt-operations-minimal-panel">
-        <div>
-            <span class="tt-panel-kicker">Operations</span>
-            <h2>Operations</h2>
-            <p>Run sessions, generate switch lists, and manage operating activity.</p>
+    <section class="tt-operations-button-strip" aria-label="Operations shortcuts">
+        <a href="operations/generate.php" class="btn btn-success">Start Operating Session</a>
+        <a href="equipment/status.php" class="btn btn-outline-secondary">Car Status Board</a>
+    </section>
+
+    <section class="tt-readiness-section">
+        <div class="tt-section-header">
+            <div>
+                <span class="tt-panel-kicker">Railroad Readiness</span>
+                <h2>Ready to Operate</h2>
+            </div>
         </div>
 
-        <div class="tt-operations-minimal-actions">
-            <a href="operations/index.php" class="btn btn-primary">Open Operations</a>
-            <a href="equipment/status.php" class="btn btn-outline-secondary">Car Status Board</a>
+        <div class="tt-readiness-grid">
+            <a href="equipment/status.php?filter=active" class="tt-readiness-card">
+                <span>Active Cars / On Layout</span>
+                <strong><?php echo $activeCarsCount; ?></strong>
+                <small>Cars available for sessions</small>
+            </a>
+
+            <a href="equipment/status.php?filter=ready" class="tt-readiness-card tt-readiness-good">
+                <span>Ready for Session</span>
+                <strong><?php echo $readyForSessionCount; ?></strong>
+                <small>Active cars with location and service</small>
+            </a>
+
+            <a href="equipment/status.php" class="tt-readiness-card">
+                <span>Active Locomotives</span>
+                <strong><?php echo $activeLocomotiveCount; ?></strong>
+                <small>Power available for assignments</small>
+            </a>
+
+            <a href="industries/list.php" class="tt-readiness-card">
+                <span>Industries / Locations</span>
+                <strong><?php echo $industryCount; ?></strong>
+                <small>Places to work on the railroad</small>
+            </a>
+
+            <a href="equipment/status.php?filter=missing_service" class="tt-readiness-card <?php if ($missingOperationsServiceCount > 0) echo 'tt-readiness-warning'; ?>">
+                <span>Cars Missing Operations Service</span>
+                <strong><?php echo $missingOperationsServiceCount; ?></strong>
+                <small>Needed for service matching</small>
+            </a>
+
+            <a href="equipment/status.php?filter=missing_location" class="tt-readiness-card <?php if ($missingLocationCount > 0) echo 'tt-readiness-warning'; ?>">
+                <span>Cars Missing Location</span>
+                <strong><?php echo $missingLocationCount; ?></strong>
+                <small>Needed before cars can be switched</small>
+            </a>
         </div>
     </section>
 </div>
