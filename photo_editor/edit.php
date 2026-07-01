@@ -517,8 +517,10 @@ function drawCropOverlay() {
 
     context.save();
     context.fillStyle = 'rgba(15, 23, 42, .32)';
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    context.clearRect(cropRect.x, cropRect.y, cropRect.width, cropRect.height);
+    context.beginPath();
+    context.rect(0, 0, canvas.width, canvas.height);
+    context.rect(cropRect.x, cropRect.y, cropRect.width, cropRect.height);
+    context.fill('evenodd');
     context.strokeStyle = '#2E8B57';
     context.lineWidth = 2;
     context.strokeRect(cropRect.x + 1, cropRect.y + 1, cropRect.width - 2, cropRect.height - 2);
