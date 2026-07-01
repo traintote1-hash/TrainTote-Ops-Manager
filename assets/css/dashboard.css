@@ -786,6 +786,334 @@
 }
 
 
+/* Operations Job Workflow */
+.tt-job-workflow-page,
+.tt-switch-list-page {
+    display: grid;
+    gap: 18px;
+}
+
+.tt-job-hero,
+.tt-switch-hero {
+    min-height: 132px;
+}
+
+.tt-job-picker-panel {
+    display: grid;
+    gap: 16px;
+    border-left: 4px solid #8B1E24;
+}
+
+.tt-job-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+}
+
+.tt-job-card {
+    display: grid;
+    gap: 14px;
+    padding: 16px;
+    border: 1px solid #d8dee6;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, .06);
+}
+
+.tt-job-card-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.tt-job-card h3 {
+    margin: 0;
+    color: #1f2937;
+    font-size: 1.12rem;
+}
+
+.tt-job-status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 26px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: #f3f6fa;
+    color: #64748b;
+    font-size: .78rem;
+    font-weight: 800;
+}
+
+.tt-job-status.is-active {
+    background: #e7f6ee;
+    color: #137333;
+}
+
+.tt-job-meta {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+}
+
+.tt-job-meta div {
+    display: grid;
+    gap: 2px;
+}
+
+.tt-job-meta dt {
+    color: #64748b;
+    font-size: .72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.tt-job-meta dd {
+    margin: 0;
+    color: #1f2937;
+}
+
+.tt-job-card-action {
+    margin: 0;
+}
+
+.tt-job-card-action .btn {
+    width: 100%;
+    font-weight: 700;
+}
+
+.tt-switch-hero-actions,
+.tt-switch-footer-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.tt-switch-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.tt-switch-summary-grid div {
+    padding: 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.tt-switch-summary-grid span,
+.tt-switch-summary-grid strong {
+    display: block;
+}
+
+.tt-switch-summary-grid span {
+    color: #64748b;
+    font-size: .74rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.tt-switch-summary-grid strong {
+    margin-top: 4px;
+    color: #8B1E24;
+    font-size: 1.55rem;
+    line-height: 1;
+}
+
+.tt-switch-two-column {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.tt-switch-section {
+    display: grid;
+    gap: 12px;
+}
+
+.tt-switch-pill-list,
+.tt-switch-route-list {
+    margin: 0;
+    padding-left: 0;
+    list-style: none;
+    display: grid;
+    gap: 8px;
+}
+
+.tt-switch-pill-list li,
+.tt-switch-route-list li {
+    padding: 8px 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #f8fafc;
+    color: #1f2937;
+    font-weight: 600;
+}
+
+.tt-switch-route-list {
+    counter-reset: route;
+}
+
+.tt-switch-route-list li {
+    counter-increment: route;
+}
+
+.tt-switch-route-list li::before {
+    content: counter(route) ". ";
+    color: #8B1E24;
+    font-weight: 800;
+}
+
+.tt-switch-work-group {
+    display: grid;
+    gap: 8px;
+}
+
+.tt-switch-work-group + .tt-switch-work-group {
+    padding-top: 12px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.tt-switch-work-group h3 {
+    margin: 0;
+    color: #1f2937;
+    font-size: 1rem;
+}
+
+.tt-switch-table {
+    margin-bottom: 0;
+    border: 1px solid #e2e8f0;
+}
+
+.tt-switch-table thead th {
+    background: #f3f6fa;
+    color: #475569;
+    font-size: .76rem;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.tt-switch-table tbody td {
+    vertical-align: middle;
+}
+
+.tt-complete-job-panel {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    border-left: 4px solid #2E8B57;
+}
+
+.tt-complete-job-panel h2 {
+    margin: 0;
+    color: #1f2937;
+    font-size: 1.2rem;
+}
+
+.tt-switch-footer-actions {
+    justify-content: flex-start;
+    padding-bottom: 18px;
+}
+
+@media(max-width:1000px) {
+    .tt-switch-summary-grid,
+    .tt-switch-two-column {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media(max-width:700px) {
+    .tt-job-card-header,
+    .tt-complete-job-panel {
+        display: grid;
+    }
+
+    .tt-switch-summary-grid,
+    .tt-switch-two-column {
+        grid-template-columns: 1fr;
+    }
+
+    .tt-switch-hero-actions,
+    .tt-switch-footer-actions {
+        justify-content: flex-start;
+    }
+
+    .tt-switch-hero-actions .btn,
+    .tt-switch-footer-actions .btn,
+    .tt-complete-job-panel .btn {
+        width: 100%;
+    }
+}
+
+@media print {
+    body {
+        background: #fff !important;
+        color: #000;
+        font-size: 11pt;
+    }
+
+    body > nav,
+    .tt-sidebar,
+    .no-print {
+        display: none !important;
+    }
+
+    .tt-shell {
+        display: block;
+        min-height: 0;
+        background: #fff;
+    }
+
+    .tt-content {
+        padding: 0;
+    }
+
+    .tt-switch-list-page {
+        gap: 10px;
+    }
+
+    .tt-session-hero,
+    .tt-panel,
+    .tt-switch-summary-grid div {
+        box-shadow: none !important;
+        border-color: #999 !important;
+    }
+
+    .tt-session-hero {
+        min-height: 0;
+        padding: 12px 0;
+        background: #fff !important;
+        color: #000 !important;
+        border: 0;
+    }
+
+    .tt-session-kicker,
+    .tt-session-hero p,
+    .tt-muted-text {
+        color: #333 !important;
+    }
+
+    .tt-switch-summary-grid,
+    .tt-switch-two-column {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .tt-switch-section {
+        break-inside: avoid;
+        page-break-inside: avoid;
+        padding: 10px;
+    }
+
+    .tt-switch-table thead th {
+        background: #eee !important;
+        color: #000;
+    }
+}
+
+
 /* Dashboard Home */
 .tt-dashboard-home-page {
     gap: 16px;
