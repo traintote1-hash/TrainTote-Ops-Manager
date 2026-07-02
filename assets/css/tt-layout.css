@@ -57,3 +57,14 @@
         margin-top: var(--tt-space-3, 1rem);
     }
 }
+/*=====================================================================
+ Global Sticky Navbar
+ Purpose: Keep the standard includes/navbar.php top navigation visible
+ while pages scroll without taking it out of normal document flow.
+=====================================================================*/
+
+body > nav.navbar {
+    position: sticky;
+    top: 0;
+    z-index: 1030;
+}
