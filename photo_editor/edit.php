@@ -115,16 +115,15 @@ $imageUrl =
 
 .photo-editor-shell{
     display:grid;
-    grid-template-columns:minmax(0,1fr) 320px;
     gap:16px;
-    align-items:start;
 }
 
 .photo-editor-stage{
     display:grid;
     place-items:center;
-    min-height:62vh;
-    padding:16px;
+    width:100%;
+    min-height:58vh;
+    padding:24px;
     background:#f3f6fa;
     border:1px solid #d8dee6;
     border-radius:8px;
@@ -147,7 +146,10 @@ $imageUrl =
 
 .photo-editor-controls{
     display:grid;
-    gap:12px;
+    grid-template-columns:repeat(4, minmax(240px, 320px));
+    justify-content:center;
+    align-items:start;
+    gap:16px;
 }
 
 .photo-control-card{
@@ -156,6 +158,7 @@ $imageUrl =
     border-radius:8px;
     padding:14px;
     box-shadow:0 1px 3px rgba(15,23,42,.06);
+    min-height:100%;
 }
 
 .photo-control-card h2{
@@ -209,8 +212,19 @@ $imageUrl =
     z-index:99999;
 }
 
-@media(max-width:1000px){
-    .photo-editor-shell{
+@media(max-width:1200px){
+    .photo-editor-controls{
+        grid-template-columns:repeat(2, minmax(240px, 320px));
+    }
+}
+
+@media(max-width:700px){
+    .photo-editor-stage{
+        min-height:42vh;
+        padding:12px;
+    }
+
+    .photo-editor-controls{
         grid-template-columns:1fr;
     }
 }
@@ -321,11 +335,6 @@ $imageUrl =
             name="id"
             value="<?php echo $id; ?>">
 
-            <input
-            type="hidden"
-            name="cropped_image"
-            id="cropped_image">
-
             <button
             type="submit"
             class="btn btn-success w-100">
@@ -379,6 +388,8 @@ Please wait...
 <script>
 
 const originalImage = <?php echo json_encode($imageUrl); ?>;
+const recordType = <?php echo json_encode($type); ?>;
+const recordId = <?php echo (int)$id; ?>;
 const canvas = document.getElementById('photoCanvas');
 const context = canvas.getContext('2d');
 const stage = document.getElementById('photoStage');
@@ -618,6 +629,48 @@ async function canvasToDataUrl(outputCanvas) {
     });
 }
 
+function canvasToBlob(outputCanvas, mimeType, quality) {
+    return new Promise(function(resolve, reject) {
+        outputCanvas.toBlob(
+            function(blob) {
+                if (!blob) {
+                    reject(new Error('Unable to export image.'));
+                    return;
+                }
+
+                resolve(blob);
+            },
+            mimeType,
+            quality
+        );
+    });
+}
+
+function canvasHasTransparency(outputCanvas) {
+    const sampleCanvas = document.createElement('canvas');
+    const sampleContext = sampleCanvas.getContext('2d', { willReadFrequently: true });
+    const maxSampleSize = 320;
+    const scale = Math.min(
+        maxSampleSize / outputCanvas.width,
+        maxSampleSize / outputCanvas.height,
+        1
+    );
+
+    sampleCanvas.width = Math.max(1, Math.round(outputCanvas.width * scale));
+    sampleCanvas.height = Math.max(1, Math.round(outputCanvas.height * scale));
+    sampleContext.drawImage(outputCanvas, 0, 0, sampleCanvas.width, sampleCanvas.height);
+
+    const imageData = sampleContext.getImageData(0, 0, sampleCanvas.width, sampleCanvas.height).data;
+
+    for (let i = 3; i < imageData.length; i += 4) {
+        if (imageData[i] < 255) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 function limitOutputSize(outputCanvas) {
     const maxDimension = 2200;
     const largestSide = Math.max(outputCanvas.width, outputCanvas.height);
@@ -637,7 +690,7 @@ function limitOutputSize(outputCanvas) {
     return resizedCanvas;
 }
 
-async function exportEditedImage(useCrop) {
+function buildEditedOutputCanvas(useCrop) {
     const rotatedCanvas = buildRotatedCanvas();
     const outputCanvas = document.createElement('canvas');
     const outputContext = outputCanvas.getContext('2d');
@@ -660,7 +713,24 @@ async function exportEditedImage(useCrop) {
         outputContext.drawImage(rotatedCanvas, 0, 0);
     }
 
-    return canvasToDataUrl(limitOutputSize(outputCanvas));
+    return limitOutputSize(outputCanvas);
+}
+
+async function exportEditedImage(useCrop) {
+    return canvasToDataUrl(buildEditedOutputCanvas(useCrop));
+}
+
+async function exportEditedBlob(useCrop) {
+    const outputCanvas = buildEditedOutputCanvas(useCrop);
+    const hasTransparency = canvasHasTransparency(outputCanvas);
+    const mimeType = hasTransparency ? 'image/png' : 'image/jpeg';
+    const extension = hasTransparency ? 'png' : 'jpg';
+    const blob = await canvasToBlob(outputCanvas, mimeType, hasTransparency ? undefined : 0.9);
+
+    return {
+        blob: blob,
+        filename: 'edited-photo.' + extension
+    };
 }
 
 async function loadSource(src, message) {
@@ -783,13 +853,32 @@ document
     showOverlay();
 
     try {
-        document.getElementById('cropped_image').value = await exportEditedImage(true);
-        HTMLFormElement.prototype.submit.call(this);
+        const exportResult = await exportEditedBlob(true);
+        const formData = new FormData();
+
+        formData.append('action', 'save_image');
+        formData.append('type', recordType);
+        formData.append('id', recordId);
+        formData.append('edited_image', exportResult.blob, exportResult.filename);
+
+        const response = await fetch('save.php', {
+            method: 'POST',
+            credentials: 'same-origin',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+            throw new Error(result.error || 'Unable to save image.');
+        }
+
+        window.location.href = result.redirect_url;
     }
     catch (err) {
         console.error(err);
         hideOverlay();
-        alert('Unable to save image.');
+        alert(err.message || 'Unable to save image.');
     }
 });
 
