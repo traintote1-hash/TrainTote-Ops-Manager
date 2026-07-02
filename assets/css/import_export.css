@@ -1,0 +1,67 @@
+.tt-import-export-page {
+    display: grid;
+    gap: 18px;
+}
+
+.tt-import-hero {
+    background: linear-gradient(135deg, #8B1E24, #5f1418);
+    color: #fff;
+    border-radius: 8px;
+    padding: 22px 24px;
+    box-shadow: 0 8px 22px rgba(31, 41, 55, .12);
+}
+
+.tt-import-hero h1 {
+    margin: 0;
+    font-size: 1.9rem;
+}
+
+.tt-import-hero p {
+    margin: 8px 0 0;
+    color: rgba(255,255,255,.88);
+}
+
+.tt-import-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+}
+
+.tt-import-card {
+    display: grid;
+    gap: 10px;
+    background: #fff;
+    border: 1px solid #d8dee6;
+    border-radius: 8px;
+    padding: 18px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, .06);
+}
+
+.tt-import-card h2,
+.tt-import-card h3 {
+    margin: 0;
+    color: #1f2937;
+}
+
+.tt-import-actions,
+.tt-import-button-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.tt-preview-table th {
+    white-space: nowrap;
+}
+
+.tt-status-ready { color: #137333; font-weight: 700; }
+.tt-status-warning { color: #b45309; font-weight: 700; }
+.tt-status-duplicate { color: #0d6efd; font-weight: 700; }
+.tt-status-error { color: #b91c1c; font-weight: 700; }
+
+@media(max-width:700px) {
+    .tt-import-actions .btn,
+    .tt-import-button-row .btn {
+        width: 100%;
+    }
+}
