@@ -234,520 +234,238 @@ $setouts = array_filter(
     }
 
 );
-?>
-
-<?php include '../includes/header.php'; ?>
-
-<title>Switch List</title>
-
-</head>
-
-<body>
-
-<?php include '../includes/navbar.php'; ?>
-
-<div class="container mt-4">
-
-<div class="d-flex justify-content-between align-items-center mb-4">
-
-<h1>
-
-<?php echo htmlspecialchars($job['job_name']); ?>
-
-Switch List
-
-</h1>
-
-<div>
-
-<button
-onclick="window.print();"
-class="btn btn-dark me-2">
-
-Print
-
-</button>
-
-<a
-href="select_job.php"
-class="btn btn-secondary">
-
-Back
-
-</a>
-
-</div>
-
-</div>
-
-<div class="card mb-4">
-
-<div class="card-body">
-
-<h4>
-
-Assigned Locomotives
-
-</h4>
-
-<?php if (count($locomotives) == 0): ?>
-
-<p class="text-muted">
-
-No locomotives assigned.
-
-</p>
-
-<?php else: ?>
-
-<ul>
-
-<?php foreach ($locomotives as $loco): ?>
-
-<li>
-
-<?php
-
-echo htmlspecialchars(
-
-    trim(
-
-        $loco['road_name']
-
-        . ' '
-
-        . $loco['road_number']
-
-    )
-
-);
-
-?>
-
-</li>
-
-<?php endforeach; ?>
-
-</ul>
-
-<?php endif; ?>
-
-</div>
-
-</div>
-
-<div class="card mb-4">
-
-<div class="card-body">
-
-<h4>
-
-Assigned Industries
-
-</h4>
-
-<?php if (count($industries) == 0): ?>
-
-<p class="text-muted">
-
-No industries assigned.
-
-</p>
-
-<?php else: ?>
-
-<ol>
-
-<?php foreach ($industries as $industry): ?>
-
-<li>
-
-<?php echo htmlspecialchars($industry['industry_name']); ?>
-
-</li>
-
-<?php endforeach; ?>
-
-</ol>
-
-<?php endif; ?>
-
-</div>
-
-</div>
-
-<!-- PICK UP -->
-
-<div class="card mb-4">
-
-<div class="card-body">
-
-<h3>
-
-Pick Up
-
-</h3>
-
-<?php
 
 $pickupGroups = [];
 
 foreach ($pickups as $car) {
-
     $location = $car['origin_name'] ?: 'Unknown';
-
     $pickupGroups[$location][] = $car;
-
 }
-
-?>
-
-<?php if (count($pickupGroups) == 0): ?>
-
-<p class="text-muted">
-
-No pickups.
-
-</p>
-
-<?php else: ?>
-
-<?php foreach ($pickupGroups as $location => $group): ?>
-
-<h5 class="mt-4">
-
-<?php echo htmlspecialchars($location); ?>
-
-</h5>
-
-<table class="table table-striped align-middle">
-
-<thead>
-
-<tr>
-
-<th>Car</th>
-<th>Track</th>
-<th>Destination</th>
-<th>Commodity</th>
-<th>Cycle</th>
-
-</tr>
-
-</thead>
-
-<tbody>
-
-<?php foreach ($group as $car): ?>
-
-<tr>
-
-<td>
-
-<strong>
-
-<?php
-
-echo htmlspecialchars(
-
-    trim(
-
-        $car['reporting_marks']
-
-        . ' '
-
-        . $car['road_number']
-
-    )
-
-);
-
-?>
-
-</strong>
-
-</td>
-
-<td>
-
-<?php echo htmlspecialchars($car['current_track'] ?: '-'); ?>
-
-</td>
-
-<td>
-
-<?php echo htmlspecialchars($car['destination_name'] ?: '-'); ?>
-
-</td>
-
-<td>
-
-<?php echo htmlspecialchars($car['commodity'] ?: ''); ?>
-
-</td>
-
-<td>
-
-<?php echo htmlspecialchars($car['current_cycle']); ?>
-
-/
-
-<?php echo htmlspecialchars($car['cycle_count']); ?>
-
-</td>
-
-</tr>
-
-<?php endforeach; ?>
-
-</tbody>
-
-</table>
-
-<?php endforeach; ?>
-
-<?php endif; ?>
-
-</div>
-
-</div>
-
-<!-- SET OUT -->
-
-<div class="card mb-4">
-
-<div class="card-body">
-
-<h3>
-
-Set Out
-
-</h3>
-
-<?php
 
 $setoutGroups = [];
 
 foreach ($setouts as $car) {
-
     $destination = $car['destination_name'] ?: 'Unknown';
-
     $setoutGroups[$destination][] = $car;
-
 }
 
 ?>
 
-<?php if (count($setoutGroups) == 0): ?>
-
-<p class="text-muted">
-
-No set outs.
-
-</p>
-
-<?php else: ?>
-
-<?php foreach ($setoutGroups as $destination => $group): ?>
-
-<h5 class="mt-4">
-
-<?php echo htmlspecialchars($destination); ?>
-
-</h5>
-
-<table class="table table-striped align-middle">
-
-<thead>
-
-<tr>
-
-<th>Car</th>
-<th>Origin</th>
-<th>Commodity</th>
-<th>Status</th>
-<th>Cycle</th>
-
-</tr>
-
-</thead>
-
-<tbody>
-
-<?php foreach ($group as $car): ?>
-
-<tr>
-
-<td>
-
-<strong>
-
 <?php
-
-echo htmlspecialchars(
-
-    trim(
-
-        $car['reporting_marks']
-
-        . ' '
-
-        . $car['road_number']
-
-    )
-
-);
-
+$pageTitle = 'Switch List';
+include '../assets/components/header.php';
+include '../assets/components/sidebar.php';
 ?>
+<link rel="stylesheet" href="../assets/css/dashboard.css">
 
-</strong>
+<div class="tt-switch-list-page">
+    <div class="tt-session-hero tt-switch-hero">
+        <div>
+            <span class="tt-session-kicker">Job Switch List</span>
+            <h1><?php echo htmlspecialchars($job['job_name']); ?></h1>
+            <p>
+                <?php echo htmlspecialchars($job['job_type'] ?: 'Operating job'); ?>
+                <?php if (!empty($job['home_location'])): ?>
+                based at <?php echo htmlspecialchars($job['home_location']); ?>
+                <?php endif; ?>
+            </p>
+        </div>
 
-</td>
+        <div class="tt-switch-hero-actions no-print">
+            <button onclick="window.print();" class="btn btn-light">Print</button>
+            <a href="select_job.php" class="btn btn-outline-light">Back to Jobs</a>
+        </div>
+    </div>
 
-<td>
+    <div class="tt-switch-summary-grid">
+        <div>
+            <span>Assigned Locomotives</span>
+            <strong><?php echo count($locomotives); ?></strong>
+        </div>
+        <div>
+            <span>Assigned Industries</span>
+            <strong><?php echo count($industries); ?></strong>
+        </div>
+        <div>
+            <span>Pick Up</span>
+            <strong><?php echo count($pickups); ?></strong>
+        </div>
+        <div>
+            <span>Set Out</span>
+            <strong><?php echo count($setouts); ?></strong>
+        </div>
+    </div>
 
-<?php echo htmlspecialchars($car['origin_name'] ?: 'Unknown'); ?>
+    <div class="tt-switch-two-column">
+        <section class="tt-panel tt-switch-section">
+            <div class="tt-panel-heading">
+                <div>
+                    <span class="tt-panel-kicker">Power</span>
+                    <h2>Assigned Locomotives</h2>
+                </div>
+            </div>
 
-</td>
+            <?php if (count($locomotives) == 0): ?>
+            <p class="tt-muted-text">No locomotives assigned.</p>
+            <?php else: ?>
+            <ul class="tt-switch-pill-list">
+                <?php foreach ($locomotives as $loco): ?>
+                <li>
+                    <?php
+                    echo htmlspecialchars(
+                        trim(
+                            ($loco['road_name'] ?? '')
+                            . ' '
+                            . ($loco['road_number'] ?? '')
+                        )
+                    );
+                    ?>
+                </li>
+                <?php endforeach; ?>
+            </ul>
+            <?php endif; ?>
+        </section>
 
-<td>
+        <section class="tt-panel tt-switch-section">
+            <div class="tt-panel-heading">
+                <div>
+                    <span class="tt-panel-kicker">Route</span>
+                    <h2>Assigned Industries</h2>
+                </div>
+            </div>
 
-<?php echo htmlspecialchars($car['commodity'] ?: ''); ?>
+            <?php if (count($industries) == 0): ?>
+            <p class="tt-muted-text">No industries assigned.</p>
+            <?php else: ?>
+            <ol class="tt-switch-route-list">
+                <?php foreach ($industries as $industry): ?>
+                <li><?php echo htmlspecialchars($industry['industry_name']); ?></li>
+                <?php endforeach; ?>
+            </ol>
+            <?php endif; ?>
+        </section>
+    </div>
 
-</td>
+    <section class="tt-panel tt-switch-section">
+        <div class="tt-panel-heading">
+            <div>
+                <span class="tt-panel-kicker">Work</span>
+                <h2>Pick Up</h2>
+            </div>
+        </div>
 
-<td>
+        <?php if (count($pickupGroups) == 0): ?>
+        <p class="tt-muted-text">No pickups.</p>
+        <?php else: ?>
+        <?php foreach ($pickupGroups as $location => $group): ?>
+        <div class="tt-switch-work-group">
+            <h3><?php echo htmlspecialchars($location); ?></h3>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle tt-switch-table">
+                    <thead>
+                        <tr>
+                            <th>Car</th>
+                            <th>Track</th>
+                            <th>Destination</th>
+                            <th>Commodity</th>
+                            <th>Cycle</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($group as $car): ?>
+                        <tr>
+                            <td><strong><?php echo htmlspecialchars(trim($car['reporting_marks'] . ' ' . $car['road_number'])); ?></strong></td>
+                            <td><?php echo htmlspecialchars($car['current_track'] ?: '-'); ?></td>
+                            <td><?php echo htmlspecialchars($car['destination_name'] ?: '-'); ?></td>
+                            <td><?php echo htmlspecialchars($car['commodity'] ?: ''); ?></td>
+                            <td><?php echo htmlspecialchars($car['current_cycle']); ?> / <?php echo htmlspecialchars($car['cycle_count']); ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <?php endforeach; ?>
+        <?php endif; ?>
+    </section>
 
-<?php echo htmlspecialchars($car['waybill_status'] ?: ''); ?>
+    <section class="tt-panel tt-switch-section">
+        <div class="tt-panel-heading">
+            <div>
+                <span class="tt-panel-kicker">Work</span>
+                <h2>Set Out</h2>
+            </div>
+        </div>
 
-</td>
+        <?php if (count($setoutGroups) == 0): ?>
+        <p class="tt-muted-text">No set outs.</p>
+        <?php else: ?>
+        <?php foreach ($setoutGroups as $destination => $group): ?>
+        <div class="tt-switch-work-group">
+            <h3><?php echo htmlspecialchars($destination); ?></h3>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle tt-switch-table">
+                    <thead>
+                        <tr>
+                            <th>Car</th>
+                            <th>Origin</th>
+                            <th>Commodity</th>
+                            <th>Status</th>
+                            <th>Cycle</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($group as $car): ?>
+                        <tr>
+                            <td><strong><?php echo htmlspecialchars(trim($car['reporting_marks'] . ' ' . $car['road_number'])); ?></strong></td>
+                            <td><?php echo htmlspecialchars($car['origin_name'] ?: 'Unknown'); ?></td>
+                            <td><?php echo htmlspecialchars($car['commodity'] ?: ''); ?></td>
+                            <td><?php echo htmlspecialchars($car['waybill_status'] ?: ''); ?></td>
+                            <td><?php echo htmlspecialchars($car['current_cycle']); ?> / <?php echo htmlspecialchars($car['cycle_count']); ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <?php endforeach; ?>
+        <?php endif; ?>
+    </section>
 
-<td>
+    <section class="tt-panel tt-switch-section">
+        <div class="tt-panel-heading">
+            <div>
+                <span class="tt-panel-kicker">Notes</span>
+                <h2>Switching Notes</h2>
+            </div>
+        </div>
+        <p class="tt-muted-text">Future home for pull and spot instructions.</p>
+    </section>
 
-<?php echo htmlspecialchars($car['current_cycle']); ?>
+    <section class="tt-panel tt-switch-section">
+        <div class="tt-panel-heading">
+            <div>
+                <span class="tt-panel-kicker">Train Makeup</span>
+                <h2>Locomotive Consist</h2>
+            </div>
+        </div>
+        <p class="tt-muted-text">Future home for MU consists and train makeup.</p>
+    </section>
 
-/
+    <section class="tt-panel tt-switch-section tt-complete-job-panel no-print">
+        <div>
+            <span class="tt-panel-kicker">Finish</span>
+            <h2>Complete Job</h2>
+            <p class="tt-muted-text">Move cars and advance waybills.</p>
+        </div>
 
-<?php echo htmlspecialchars($car['cycle_count']); ?>
+        <a href="complete_job.php?job_id=<?php echo $jobId; ?>" class="btn btn-success">Complete Job</a>
+    </section>
 
-</td>
-
-</tr>
-
-<?php endforeach; ?>
-
-</tbody>
-
-</table>
-
-<?php endforeach; ?>
-
-<?php endif; ?>
-
+    <div class="tt-switch-footer-actions no-print">
+        <button onclick="window.print();" class="btn btn-dark">Print Switch List</button>
+        <a href="select_job.php" class="btn btn-secondary">Back to Jobs</a>
+    </div>
 </div>
 
-</div>
-
-<!-- SWITCHING NOTES -->
-
-<div class="card mb-4">
-
-<div class="card-body">
-
-<h3>
-
-Switching Notes
-
-</h3>
-
-<p class="text-muted">
-
-Future home for pull and spot instructions.
-
-</p>
-
-</div>
-
-</div>
-
-<!-- LOCOMOTIVE CONSIST -->
-
-<div class="card mb-4">
-
-<div class="card-body">
-
-<h3>
-
-Locomotive Consist
-
-</h3>
-
-<p class="text-muted">
-
-Future home for MU consists and train makeup.
-
-</p>
-
-</div>
-
-</div>
-
-<!-- COMPLETE JOB -->
-
-<div class="card mb-4">
-
-<div class="card-body">
-
-<h3>
-
-Complete Job
-
-</h3>
-
-<p class="text-muted">
-
-Move cars and advance waybills.
-
-</p>
-
-<a
-
-href="complete_job.php?job_id=<?php echo $jobId; ?>"
-
-class="btn btn-success">
-
-Complete Job
-
-</a>
-
-</div>
-
-</div>
-
-<div class="mb-5">
-
-<button
-
-onclick="window.print();"
-
-class="btn btn-dark me-2">
-
-Print Switch List
-
-</button>
-
-<a
-
-href="select_job.php"
-
-class="btn btn-secondary">
-
-Back to Jobs
-
-</a>
-
-</div>
-
-</div>
-
-<?php include '../includes/footer.php'; ?>
+<?php include '../assets/components/footer.php'; ?>

@@ -25,6 +25,7 @@ $railroad = $stmt->fetch(PDO::FETCH_ASSOC);
 $equipmentCount = 0;
 $industryCount = 0;
 $waybillCount = 0;
+$jobCount = 0;
 $activeCarsCount = 0;
 $readyForSessionCount = 0;
 $activeLocomotiveCount = 0;
@@ -34,11 +35,7 @@ $missingLocationCount = 0;
 $recentEquipment = [];
 $recentIndustries = [];
 $recentWaybills = [];
-
-$hasGeneratedSession = !empty($_SESSION['generated_session'] ?? []);
-$printSwitchListHref = $hasGeneratedSession
-    ? 'operations/print.php'
-    : 'operations/generate.php';
+$recentJobs = [];
 
 if ($railroad) {
 
@@ -77,6 +74,18 @@ if ($railroad) {
     ]);
 
     $waybillCount = (int)$stmt->fetchColumn();
+
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM jobs
+        WHERE railroad_id = :railroad_id
+    ");
+
+    $stmt->execute([
+        'railroad_id' => $railroad['id']
+    ]);
+
+    $jobCount = (int)$stmt->fetchColumn();
 
     $nonLocomotiveCondition = "
         (
@@ -220,6 +229,24 @@ if ($railroad) {
     ]);
 
     $recentWaybills = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $stmt = $pdo->prepare("
+        SELECT
+            j.*,
+            i.industry_name AS home_location
+        FROM jobs j
+        LEFT JOIN industries i
+            ON j.home_industry_id = i.id
+        WHERE j.railroad_id = :railroad_id
+        ORDER BY j.id DESC
+        LIMIT 5
+    ");
+
+    $stmt->execute([
+        'railroad_id' => $railroad['id']
+    ]);
+
+    $recentJobs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 ?>
@@ -235,24 +262,181 @@ if ($railroad) {
 
 <?php include 'includes/navbar.php'; ?>
 
-<div class="container mt-5 tt-dashboard-page tt-command-center-page">
+<div class="container mt-5 tt-dashboard-page tt-dashboard-home-page">
 
-    <section class="tt-hero tt-command-hero">
+    <section class="tt-hero tt-dashboard-home-hero">
         <div class="tt-hero-main">
             <div>
-                <span class="tt-hero-kicker">Operations Command Center</span>
+                <span class="tt-hero-kicker">Dashboard</span>
                 <h1>TrainTote Ops Manager</h1>
-                <p>Check railroad readiness, clean up setup issues, and launch your next operating session.</p>
+                <p>Manage your railroad, prepare your equipment, and launch operations.</p>
             </div>
-        </div>
-
-        <div class="tt-hero-actions">
-            <a href="operations/generate.php" class="btn btn-success">Start Operating Session</a>
-            <a href="equipment/status.php" class="btn btn-light">Car Status Board</a>
         </div>
     </section>
 
-    <section class="tt-command-section">
+    <section class="tt-dashboard-column-grid" aria-label="Railroad management dashboard">
+        <div class="tt-dashboard-lane">
+            <article class="tt-panel tt-dashboard-summary-card">
+                <span class="tt-panel-kicker">Database Summary</span>
+                <h2>Equipment</h2>
+                <strong><?php echo $equipmentCount; ?></strong>
+                <a href="equipment/list.php">Open Equipment</a>
+            </article>
+
+            <article class="tt-panel tt-recent-panel">
+                <div class="tt-panel-heading">
+                    <div>
+                        <span class="tt-panel-kicker">Recent</span>
+                        <h3>Recent Equipment</h3>
+                    </div>
+                </div>
+
+                <?php if (count($recentEquipment) == 0): ?>
+                <p class="tt-muted-text">No equipment added yet.</p>
+                <?php endif; ?>
+
+                <?php foreach ($recentEquipment as $item): ?>
+                <div class="tt-recent-item">
+                    <?php if (!empty($item['photo_filename'])): ?>
+                    <a href="equipment/view.php?id=<?php echo (int)$item['id']; ?>">
+                        <img
+                        src="uploads/<?php echo htmlspecialchars($item['photo_filename']); ?>"
+                        alt=""
+                        class="tt-recent-thumb">
+                    </a>
+                    <?php endif; ?>
+
+                    <a href="equipment/view.php?id=<?php echo (int)$item['id']; ?>">
+                        <strong><?php echo htmlspecialchars(trim($item['reporting_marks'] . ' ' . $item['road_number'])); ?></strong>
+                        <span><?php echo htmlspecialchars($item['equipment_type'] ?? ''); ?></span>
+                    </a>
+                </div>
+                <?php endforeach; ?>
+            </article>
+        </div>
+
+        <div class="tt-dashboard-lane">
+            <article class="tt-panel tt-dashboard-summary-card">
+                <span class="tt-panel-kicker">Database Summary</span>
+                <h2>Industries</h2>
+                <strong><?php echo $industryCount; ?></strong>
+                <a href="industries/list.php">Open Industries</a>
+            </article>
+
+            <article class="tt-panel tt-recent-panel">
+                <div class="tt-panel-heading">
+                    <div>
+                        <span class="tt-panel-kicker">Recent</span>
+                        <h3>Recent Industries</h3>
+                    </div>
+                </div>
+
+                <?php if (count($recentIndustries) == 0): ?>
+                <p class="tt-muted-text">No industries added yet.</p>
+                <?php endif; ?>
+
+                <?php foreach ($recentIndustries as $industry): ?>
+                <div class="tt-recent-item">
+                    <?php if (!empty($industry['photo_filename'])): ?>
+                    <a href="industries/view.php?id=<?php echo (int)$industry['id']; ?>">
+                        <img
+                        src="uploads/<?php echo htmlspecialchars($industry['photo_filename']); ?>"
+                        alt=""
+                        class="tt-recent-thumb">
+                    </a>
+                    <?php endif; ?>
+
+                    <a href="industries/view.php?id=<?php echo (int)$industry['id']; ?>">
+                        <strong><?php echo htmlspecialchars($industry['industry_name']); ?></strong>
+                        <span><?php echo htmlspecialchars($industry['industry_type'] ?? ''); ?></span>
+                    </a>
+                </div>
+                <?php endforeach; ?>
+            </article>
+        </div>
+
+        <div class="tt-dashboard-lane">
+            <article class="tt-panel tt-dashboard-summary-card">
+                <span class="tt-panel-kicker">Database Summary</span>
+                <h2>Waybills</h2>
+                <strong><?php echo $waybillCount; ?></strong>
+                <a href="waybills/list.php">Open Waybills</a>
+            </article>
+
+            <article class="tt-panel tt-recent-panel">
+                <div class="tt-panel-heading">
+                    <div>
+                        <span class="tt-panel-kicker">Recent</span>
+                        <h3>Recent Waybills</h3>
+                    </div>
+                </div>
+
+                <?php if (count($recentWaybills) == 0): ?>
+                <p class="tt-muted-text">No waybills created yet.</p>
+                <?php endif; ?>
+
+                <?php foreach ($recentWaybills as $waybill): ?>
+                <div class="tt-recent-waybill">
+                    <a href="waybills/view.php?id=<?php echo (int)$waybill['id']; ?>">
+                        <strong><?php echo htmlspecialchars(trim($waybill['reporting_marks'] . ' ' . $waybill['road_number'])); ?></strong>
+                    </a>
+                    <span><?php echo htmlspecialchars($waybill['origin_name']); ?> to <?php echo htmlspecialchars($waybill['destination_name']); ?></span>
+                </div>
+                <?php endforeach; ?>
+            </article>
+        </div>
+
+        <div class="tt-dashboard-lane">
+            <article class="tt-panel tt-dashboard-summary-card">
+                <span class="tt-panel-kicker">Database Summary</span>
+                <h2>Jobs</h2>
+                <strong><?php echo $jobCount; ?></strong>
+                <a href="jobs/list.php">Open Jobs</a>
+            </article>
+
+            <article class="tt-panel tt-recent-panel">
+                <div class="tt-panel-heading">
+                    <div>
+                        <span class="tt-panel-kicker">Recent</span>
+                        <h3>Recent Jobs</h3>
+                    </div>
+                </div>
+
+                <?php if (count($recentJobs) == 0): ?>
+                <p class="tt-muted-text">No jobs created yet.</p>
+                <?php endif; ?>
+
+                <?php foreach ($recentJobs as $job): ?>
+                <?php
+                    $jobName = trim($job['job_name'] ?? '');
+                    if ($jobName === '') {
+                        $jobName = 'Job #' . (int)$job['id'];
+                    }
+
+                    $jobDetails = array_filter([
+                        trim($job['job_type'] ?? ''),
+                        trim($job['home_location'] ?? '')
+                    ]);
+                ?>
+                <div class="tt-recent-waybill">
+                    <a href="jobs/view.php?id=<?php echo (int)$job['id']; ?>">
+                        <strong><?php echo htmlspecialchars($jobName); ?></strong>
+                    </a>
+                    <?php if (!empty($jobDetails)): ?>
+                    <span><?php echo htmlspecialchars(implode(' at ', $jobDetails)); ?></span>
+                    <?php endif; ?>
+                </div>
+                <?php endforeach; ?>
+            </article>
+        </div>
+    </section>
+
+    <section class="tt-operations-button-strip" aria-label="Operations shortcuts">
+        <a href="operations/generate.php" class="btn btn-success">Start Operating Session</a>
+        <a href="equipment/status.php" class="btn btn-outline-secondary">Car Status Board</a>
+    </section>
+
+    <section class="tt-readiness-section">
         <div class="tt-section-header">
             <div>
                 <span class="tt-panel-kicker">Railroad Readiness</span>
@@ -296,185 +480,6 @@ if ($railroad) {
                 <strong><?php echo $missingLocationCount; ?></strong>
                 <small>Needed before cars can be switched</small>
             </a>
-        </div>
-    </section>
-
-    <?php if ($missingOperationsServiceCount > 0 || $missingLocationCount > 0 || $activeLocomotiveCount === 0): ?>
-    <section class="tt-panel tt-setup-warnings">
-        <div class="tt-panel-heading">
-            <div>
-                <span class="tt-panel-kicker">Setup Warnings</span>
-                <h3>Before You Start</h3>
-            </div>
-            <span class="tt-status-pill tt-status-ready">Action Needed</span>
-        </div>
-
-        <div class="tt-warning-list">
-            <?php if ($missingOperationsServiceCount > 0): ?>
-            <a href="equipment/status.php?filter=missing_service">
-                <strong><?php echo $missingOperationsServiceCount; ?> active cars need Operations Service</strong>
-                <span>Open Car Status Board</span>
-            </a>
-            <?php endif; ?>
-
-            <?php if ($missingLocationCount > 0): ?>
-            <a href="equipment/status.php?filter=missing_location">
-                <strong><?php echo $missingLocationCount; ?> active cars need a current location</strong>
-                <span>Open Car Status Board</span>
-            </a>
-            <?php endif; ?>
-
-            <?php if ($activeLocomotiveCount === 0): ?>
-            <a href="equipment/status.php">
-                <strong>No active locomotive assigned</strong>
-                <span>Open Car Status Board</span>
-            </a>
-            <?php endif; ?>
-        </div>
-    </section>
-    <?php endif; ?>
-
-    <section class="tt-command-section">
-        <div class="tt-section-header">
-            <div>
-                <span class="tt-panel-kicker">Operations Workflow</span>
-                <h2>Run Today's Session</h2>
-            </div>
-        </div>
-
-        <div class="tt-workflow-grid">
-            <a href="equipment/status.php" class="tt-workflow-card">
-                <span>1</span>
-                <strong>Check Car Status</strong>
-                <small>Set active cars, locations, loads, and services.</small>
-            </a>
-
-            <a href="industries/list.php" class="tt-workflow-card">
-                <span>2</span>
-                <strong>Review Industries</strong>
-                <small>Confirm what each location loads and unloads.</small>
-            </a>
-
-            <a href="operations/generate.php" class="tt-workflow-card tt-workflow-primary">
-                <span>3</span>
-                <strong>Start Operating Session</strong>
-                <small>Build local switcher work from active cars.</small>
-            </a>
-
-            <a href="<?php echo htmlspecialchars($printSwitchListHref); ?>" class="tt-workflow-card">
-                <span>4</span>
-                <strong>Print Switch List</strong>
-                <small><?php echo $hasGeneratedSession ? 'Open the latest generated work order.' : 'Generate a session before printing.'; ?></small>
-            </a>
-        </div>
-    </section>
-
-    <section class="tt-admin-summary-grid">
-        <div class="tt-panel tt-admin-summary-card">
-            <span class="tt-panel-kicker">Database Summary</span>
-            <h3>Equipment</h3>
-            <strong><?php echo $equipmentCount; ?></strong>
-            <a href="equipment/list.php">Open Equipment</a>
-        </div>
-
-        <div class="tt-panel tt-admin-summary-card">
-            <span class="tt-panel-kicker">Database Summary</span>
-            <h3>Industries</h3>
-            <strong><?php echo $industryCount; ?></strong>
-            <a href="industries/list.php">Open Industries</a>
-        </div>
-
-        <div class="tt-panel tt-admin-summary-card">
-            <span class="tt-panel-kicker">Database Summary</span>
-            <h3>Waybills</h3>
-            <strong><?php echo $waybillCount; ?></strong>
-            <a href="waybills/list.php">Open Waybills</a>
-        </div>
-    </section>
-
-    <section class="tt-recent-grid">
-        <div class="tt-panel tt-recent-panel">
-            <div class="tt-panel-heading">
-                <div>
-                    <span class="tt-panel-kicker">Recent</span>
-                    <h3>Recent Equipment</h3>
-                </div>
-            </div>
-
-            <?php if (count($recentEquipment) == 0): ?>
-            <p class="tt-muted-text">No equipment added yet.</p>
-            <?php endif; ?>
-
-            <?php foreach ($recentEquipment as $item): ?>
-            <div class="tt-recent-item">
-                <?php if (!empty($item['photo_filename'])): ?>
-                <a href="equipment/view.php?id=<?php echo (int)$item['id']; ?>">
-                    <img
-                    src="uploads/<?php echo htmlspecialchars($item['photo_filename']); ?>"
-                    alt=""
-                    class="tt-recent-thumb">
-                </a>
-                <?php endif; ?>
-
-                <a href="equipment/view.php?id=<?php echo (int)$item['id']; ?>">
-                    <strong><?php echo htmlspecialchars(trim($item['reporting_marks'] . ' ' . $item['road_number'])); ?></strong>
-                    <span><?php echo htmlspecialchars($item['equipment_type'] ?? ''); ?></span>
-                </a>
-            </div>
-            <?php endforeach; ?>
-        </div>
-
-        <div class="tt-panel tt-recent-panel">
-            <div class="tt-panel-heading">
-                <div>
-                    <span class="tt-panel-kicker">Recent</span>
-                    <h3>Recent Industries</h3>
-                </div>
-            </div>
-
-            <?php if (count($recentIndustries) == 0): ?>
-            <p class="tt-muted-text">No industries added yet.</p>
-            <?php endif; ?>
-
-            <?php foreach ($recentIndustries as $industry): ?>
-            <div class="tt-recent-item">
-                <?php if (!empty($industry['photo_filename'])): ?>
-                <a href="industries/view.php?id=<?php echo (int)$industry['id']; ?>">
-                    <img
-                    src="uploads/<?php echo htmlspecialchars($industry['photo_filename']); ?>"
-                    alt=""
-                    class="tt-recent-thumb">
-                </a>
-                <?php endif; ?>
-
-                <a href="industries/view.php?id=<?php echo (int)$industry['id']; ?>">
-                    <strong><?php echo htmlspecialchars($industry['industry_name']); ?></strong>
-                    <span><?php echo htmlspecialchars($industry['industry_type'] ?? ''); ?></span>
-                </a>
-            </div>
-            <?php endforeach; ?>
-        </div>
-
-        <div class="tt-panel tt-recent-panel">
-            <div class="tt-panel-heading">
-                <div>
-                    <span class="tt-panel-kicker">Recent</span>
-                    <h3>Recent Waybills</h3>
-                </div>
-            </div>
-
-            <?php if (count($recentWaybills) == 0): ?>
-            <p class="tt-muted-text">No waybills created yet.</p>
-            <?php endif; ?>
-
-            <?php foreach ($recentWaybills as $waybill): ?>
-            <div class="tt-recent-waybill">
-                <a href="waybills/view.php?id=<?php echo (int)$waybill['id']; ?>">
-                    <strong><?php echo htmlspecialchars(trim($waybill['reporting_marks'] . ' ' . $waybill['road_number'])); ?></strong>
-                </a>
-                <span><?php echo htmlspecialchars($waybill['origin_name']); ?> to <?php echo htmlspecialchars($waybill['destination_name']); ?></span>
-            </div>
-            <?php endforeach; ?>
         </div>
     </section>
 </div>
