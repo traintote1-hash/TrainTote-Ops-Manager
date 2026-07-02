@@ -11,15 +11,38 @@ if (!isset($_SESSION['user_id'])) {
 
 $type = $_GET['type'] ?? '';
 $id = (int)($_GET['id'] ?? 0);
+$returnUrl = '';
 
-if (
-    !in_array($type, ['equipment', 'industry']) ||
-    $id <= 0
-) {
+if (!in_array($type, ['equipment', 'industry', 'temp'], true)) {
     die('Invalid request.');
 }
 
-if ($type === 'equipment') {
+if ($type === 'temp') {
+    $tempPhoto = $_SESSION['ai_photo'] ?? '';
+    $safeTempPhoto = basename($tempPhoto);
+
+    if ($tempPhoto === '' || $safeTempPhoto !== $tempPhoto) {
+        die('No temporary photo found.');
+    }
+
+    $tempPath = dirname(__DIR__) . '/uploads/temp/' . $safeTempPhoto;
+
+    if (!is_file($tempPath)) {
+        die('No temporary photo found.');
+    }
+
+    $title = 'Temporary Equipment Photo';
+    $returnUrl = '../equipment/add.php';
+    $imageUrl =
+        '../uploads/temp/' .
+        str_replace('%2F', '/', rawurlencode($safeTempPhoto)) .
+        '?v=' .
+        time();
+}
+elseif ($id <= 0) {
+    die('Invalid request.');
+}
+elseif ($type === 'equipment') {
 
     $stmt = $pdo->prepare("
         SELECT e.*
@@ -78,15 +101,18 @@ else {
 
 }
 
-if (empty($record['photo_filename'])) {
-    die('No photo found.');
-}
+if ($type !== 'temp') {
+    if (empty($record['photo_filename'])) {
+        die('No photo found.');
+    }
 
-$imageUrl =
-    '../uploads/' .
-    str_replace('%2F', '/', rawurlencode($record['photo_filename'])) .
-    '?v=' .
-    time();
+    $returnUrl = '../' . $type . '/view.php?id=' . $id;
+    $imageUrl =
+        '../uploads/' .
+        str_replace('%2F', '/', rawurlencode($record['photo_filename'])) .
+        '?v=' .
+        time();
+}
 
 ?>
 
@@ -246,9 +272,9 @@ $imageUrl =
     </div>
 
     <a
-    href="../<?php echo $type; ?>/view.php?id=<?php echo $id; ?>"
+    href="<?php echo htmlspecialchars($returnUrl); ?>"
     class="btn btn-outline-secondary">
-        Back to Record
+        <?php echo $type === 'temp' ? 'Back to Add Equipment' : 'Back to Record'; ?>
     </a>
 </div>
 
@@ -342,7 +368,7 @@ $imageUrl =
             </button>
 
             <a
-            href="../<?php echo $type; ?>/view.php?id=<?php echo $id; ?>"
+            href="<?php echo htmlspecialchars($returnUrl); ?>"
             class="btn btn-secondary w-100 mt-2">
                 Cancel
             </a>
