@@ -46,15 +46,28 @@ function ttJmriInferLocomotiveType(string $model): string
 {
     $modelText = ttJmriNormalizeText($model);
 
-    if (str_contains($modelText, 'steam') || preg_match('/^(\d+-\d+-\d+|\d+-\d+)$/', $modelText)) {
+    if (strpos($modelText, 'steam') !== false || preg_match('/^(\d+-\d+-\d+|\d+-\d+)$/', $modelText)) {
         return 'Steam';
     }
 
-    if (str_contains($modelText, 'electric') || str_starts_with($modelText, 'gg1') || str_starts_with($modelText, 'e60')) {
+    if (strpos($modelText, 'electric') !== false || strpos($modelText, 'gg1') === 0 || strpos($modelText, 'e60') === 0) {
         return 'Electric';
     }
 
     return 'Diesel';
+}
+
+function ttJmriLooksLikeHeaderRow(array $row, string $line): bool
+{
+    $first = ttJmriNormalizeText($row[0] ?? '');
+    $second = ttJmriNormalizeText($row[1] ?? '');
+    $lineText = ttJmriNormalizeText($line);
+
+    if (($first === 'car number' || $first === 'locomotive number') && strpos($second, 'road') !== false) {
+        return true;
+    }
+
+    return preg_match('/^(car|locomotive) number\b/', $lineText) === 1;
 }
 
 function ttJmriReadImportRows(array $file): array
@@ -80,7 +93,9 @@ function ttJmriReadImportRows(array $file): array
     }
 
     $contents = str_replace(["\r\n", "\r"], "\n", $contents);
-    $lines = array_values(array_filter(explode("\n", $contents), fn($line) => trim($line) !== ''));
+    $lines = array_values(array_filter(explode("\n", $contents), function ($line) {
+        return trim($line) !== '';
+    }));
     $commaMarker = isset($lines[0]) && strtolower(trim($lines[0])) === 'comma';
     $isComma = $commaMarker || $extension === 'csv';
 
@@ -98,9 +113,11 @@ function ttJmriReadImportRows(array $file): array
             $parsed = preg_split('/\s+/', trim($line));
         }
 
-        $parsed = array_map(fn($value) => trim((string)$value), $parsed ?: []);
+        $parsed = array_map(function ($value) {
+            return trim((string)$value);
+        }, $parsed ?: []);
 
-        if (!empty($parsed)) {
+        if (!empty($parsed) && !ttJmriLooksLikeHeaderRow($parsed, $line)) {
             $rows[] = $parsed;
         }
     }
