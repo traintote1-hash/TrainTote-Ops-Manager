@@ -236,6 +236,40 @@ $aiPhoto =
 
     ?? '';
 
+$aiReportingMarksConfidence =
+
+    strtolower(trim($aiData['reporting_marks_confidence'] ?? ''));
+
+$aiRoadNumberConfidence =
+
+    strtolower(trim($aiData['road_number_confidence'] ?? ''));
+
+$aiConfidence =
+
+    strtolower(trim($aiData['ai_confidence'] ?? ''));
+
+$aiReviewNotes =
+
+    trim($aiData['ai_review_notes'] ?? '');
+
+$showAiReviewWarning =
+
+    !empty($aiData)
+
+    && (
+
+        empty($aiData['reporting_marks'] ?? '')
+
+        || empty($aiData['road_number'] ?? '')
+
+        || in_array($aiReportingMarksConfidence, ['low', 'medium'], true)
+
+        || in_array($aiRoadNumberConfidence, ['low', 'medium'], true)
+
+        || $aiReviewNotes !== ''
+
+    );
+
 /*
 |--------------------------------------------------------------------------
 | Equipment Classes
@@ -1079,6 +1113,48 @@ Add Equipment
 Add Equipment
 
 </h1>
+
+<?php if ($showAiReviewWarning): ?>
+
+<div class="alert alert-warning">
+
+<strong>Review AI-read car initials and number.</strong>
+The scanner only fills reporting marks and road number when they appear clearly readable.
+Please verify these fields before saving.
+
+<?php if ($aiReviewNotes !== ''): ?>
+
+<div class="mt-2">
+
+<?php echo htmlspecialchars($aiReviewNotes); ?>
+
+</div>
+
+<?php endif; ?>
+
+<?php if ($aiReportingMarksConfidence !== '' || $aiRoadNumberConfidence !== '' || $aiConfidence !== ''): ?>
+
+<div class="small text-muted mt-2">
+
+<?php if ($aiReportingMarksConfidence !== ''): ?>
+Reporting marks confidence: <?php echo htmlspecialchars($aiReportingMarksConfidence); ?>.
+<?php endif; ?>
+
+<?php if ($aiRoadNumberConfidence !== ''): ?>
+Road number confidence: <?php echo htmlspecialchars($aiRoadNumberConfidence); ?>.
+<?php endif; ?>
+
+<?php if ($aiConfidence !== ''): ?>
+Overall AI confidence: <?php echo htmlspecialchars($aiConfidence); ?>.
+<?php endif; ?>
+
+</div>
+
+<?php endif; ?>
+
+</div>
+
+<?php endif; ?>
 
 <?php if (!empty($errors)): ?>
 

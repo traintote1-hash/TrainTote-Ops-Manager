@@ -236,7 +236,11 @@ Return ONLY valid JSON.
   "length_ft":"",
   "scale":"",
   "load_status":"",
-  "notes":""
+  "notes":"",
+  "reporting_marks_confidence":"",
+  "road_number_confidence":"",
+  "ai_confidence":"",
+  "ai_review_notes":""
 }
 
 equipment_class must be one of:
@@ -308,16 +312,34 @@ Snow Plow
 Jordan Spreader
 Tool Car
 Track Geometry Car
-Scale Test Car
 Water Car
 Rail Train Car
 Other
 
-Rules:
+Strict OCR rules for reporting_marks and road_number:
 
-- reporting_marks should contain visible reporting marks.
+- Do not guess reporting marks.
+- Do not guess road numbers.
+- reporting_marks must be actual visible reporting marks printed on the car, usually 2 to 4 letters near the road number.
+- road_number must be actual visible digits printed as the car road number.
+- Do not infer reporting marks from car color, car type, logo, paint scheme, railroad style, herald, ownership, or prior knowledge.
+- Do not substitute digits from dimensional data, capacity data, load limit, light weight, built date, labels, stencils, or nearby non-road-number text.
+- Prefer OCR-visible text over railroad logos.
+- A railroad logo or road name may help road_name only; it does not prove reporting_marks unless the reporting marks themselves are clearly readable.
+- If reporting marks are not clearly readable, return reporting_marks as an empty string.
+- If the road number is not clearly readable, return road_number as an empty string.
+- If there are multiple possible text candidates, leave the uncertain field blank and list the candidates in ai_review_notes.
+- Use reporting_marks_confidence and road_number_confidence values: high, medium, low, or blank.
+- Use high only when the text is clearly readable from the image.
+- If confidence would be low, leave the field blank and explain in ai_review_notes.
 
-- road_number should contain visible numbers.
+Examples:
+
+- If a brown freight car visibly reads SOO 600362, return reporting_marks "SOO" and road_number "600362".
+- If text resembles SOO 600362 but is partially blocked or blurry, return only the clearly readable parts and explain uncertainty in ai_review_notes.
+- Do not return TTGX 982362 unless TTGX and 982362 are clearly visible on the car.
+
+Other field rules:
 
 - road_name should contain the railroad name if visible.
 
@@ -388,9 +410,11 @@ Grain Service
 
 Otherwise blank.
 
-- notes should contain assumptions or unusual observations.
+- notes should contain assumptions or unusual observations, but do not use notes to justify guessed reporting marks or road numbers.
 
-- if uncertain, provide your best estimate.
+- ai_confidence should summarize overall identification confidence as high, medium, or low.
+
+- ai_review_notes should tell the user what needs manual review, especially uncertain reporting marks, uncertain road number, or multiple visible text candidates.
 
 - if unknown, return an empty string.
 
@@ -687,7 +711,13 @@ require_once '../config/database.php';
 |--------------------------------------------------------------------------
 */
 
-$stmt = $pdo->prepare("
+$existingEquipment = false;
+$detectedReportingMarks = trim($equipment['reporting_marks'] ?? '');
+$detectedRoadNumber = trim($equipment['road_number'] ?? '');
+
+if ($detectedReportingMarks !== '' && $detectedRoadNumber !== '') {
+
+    $stmt = $pdo->prepare("
 
 SELECT
 
@@ -711,33 +741,23 @@ LIMIT 1
 
 ");
 
-$stmt->execute([
+    $stmt->execute([
 
-    trim(
+        $detectedReportingMarks,
 
-        $equipment['reporting_marks']
+        $detectedRoadNumber
 
-        ?? ''
+    ]);
 
-    ),
+    $existingEquipment =
 
-    trim(
+        $stmt->fetch(
 
-        $equipment['road_number']
+            PDO::FETCH_ASSOC
 
-        ?? ''
+        );
 
-    )
-
-]);
-
-$existingEquipment =
-
-    $stmt->fetch(
-
-        PDO::FETCH_ASSOC
-
-    );
+}
 
 if (
 
@@ -944,6 +964,30 @@ $_SESSION['ai_data'] = [
     'notes' =>
 
         $equipment['notes']
+
+        ?? '',
+
+    'reporting_marks_confidence' =>
+
+        $equipment['reporting_marks_confidence']
+
+        ?? '',
+
+    'road_number_confidence' =>
+
+        $equipment['road_number_confidence']
+
+        ?? '',
+
+    'ai_confidence' =>
+
+        $equipment['ai_confidence']
+
+        ?? '',
+
+    'ai_review_notes' =>
+
+        $equipment['ai_review_notes']
 
         ?? ''
 
