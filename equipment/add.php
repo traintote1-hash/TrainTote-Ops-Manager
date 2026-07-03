@@ -252,23 +252,59 @@ $aiReviewNotes =
 
     trim($aiData['ai_review_notes'] ?? '');
 
+$hasAiRead =
+
+    !empty($aiData);
+
+$aiReadLabel =
+
+    trim(
+
+        ($aiData['reporting_marks'] ?? '')
+
+        . ' ' .
+
+        ($aiData['road_number'] ?? '')
+
+    );
+
+$aiHasBlankIdentity =
+
+    empty($aiData['reporting_marks'] ?? '')
+
+    || empty($aiData['road_number'] ?? '');
+
+$aiHasUncertainConfidence =
+
+    in_array($aiReportingMarksConfidence, ['low', 'medium'], true)
+
+    || in_array($aiRoadNumberConfidence, ['low', 'medium'], true)
+
+    || in_array($aiConfidence, ['low', 'medium'], true);
+
 $showAiReviewWarning =
 
-    !empty($aiData)
+    $hasAiRead
 
     && (
 
-        empty($aiData['reporting_marks'] ?? '')
+        $aiHasBlankIdentity
 
-        || empty($aiData['road_number'] ?? '')
-
-        || in_array($aiReportingMarksConfidence, ['low', 'medium'], true)
-
-        || in_array($aiRoadNumberConfidence, ['low', 'medium'], true)
-
-        || $aiReviewNotes !== ''
+        || $aiHasUncertainConfidence
 
     );
+
+$showAiReviewInfo =
+
+    $hasAiRead
+
+    && !$showAiReviewWarning
+
+    && $aiReportingMarksConfidence === 'high'
+
+    && $aiRoadNumberConfidence === 'high'
+
+    && $aiConfidence === 'high';
 
 /*
 |--------------------------------------------------------------------------
@@ -1096,6 +1132,38 @@ Add Equipment
 
 }
 
+.ai-review-notice {
+
+    border-radius: 8px;
+
+    margin-bottom: 1rem;
+
+    padding: .65rem .85rem;
+
+}
+
+.ai-review-notice.is-info {
+
+    background: #f8fafc;
+
+    border: 1px solid #d8dee6;
+
+    color: #475569;
+
+    font-size: .95rem;
+
+}
+
+.ai-review-notice.is-warning {
+
+    background: #fff3cd;
+
+    border: 1px solid #ffecb5;
+
+    color: #664d03;
+
+}
+
 </style>
 
 </head>
@@ -1114,9 +1182,19 @@ Add Equipment
 
 </h1>
 
+<?php if ($showAiReviewInfo): ?>
+
+<div class="ai-review-notice is-info">
+
+AI read: <strong><?php echo htmlspecialchars($aiReadLabel); ?></strong>. Please verify before saving.
+
+</div>
+
+<?php endif; ?>
+
 <?php if ($showAiReviewWarning): ?>
 
-<div class="alert alert-warning">
+<div class="ai-review-notice is-warning">
 
 <strong>Review AI-read car initials and number.</strong>
 The scanner only fills reporting marks and road number when they appear clearly readable.
