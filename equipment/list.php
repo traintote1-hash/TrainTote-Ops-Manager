@@ -543,8 +543,13 @@ MAIN CONTENT
         Showing <strong><?= count($equipment) ?></strong> of <strong><?= $totalRecords ?></strong> equipment
         </div>
     </div>
+</div>
 
-    <div class="tt-list-actions">
+<!-- TOP TOOLBAR -->
+
+<div class="top-toolbar">
+<div class="toolbar-left">
+<div class="tt-list-actions">
         <a href="add_select.php" class="btn btn-primary">Add Equipment</a>
         <select name="bulk_action" class="form-select bulk-action-select" required>
             <option value="">Bulk Action</option>
@@ -556,13 +561,36 @@ MAIN CONTENT
         </select>
         <button type="submit" class="btn btn-success">Apply Bulk Action</button>
     </div>
-
 </div>
 
-<!-- TOP TOOLBAR -->
+<div class="pagination-area top-pagination">
 
-<div class="top-toolbar">
-<div class="toolbar-right ms-auto"></div>
+<?php if ($perPage !== 'all' && $totalPages > 1): ?>
+
+    <?php if ($page > 1): ?>
+        <a class="btn btn-outline-secondary btn-sm"
+           href="?<?= http_build_query(array_merge($_GET, ['page' => $page - 1])) ?>">
+            &lt;
+        </a>
+    <?php endif; ?>
+
+    <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+        <a class="btn btn-sm <?= $i === $page ? 'btn-primary' : 'btn-outline-secondary' ?>"
+           href="?<?= http_build_query(array_merge($_GET, ['page' => $i])) ?>">
+            <?= $i ?>
+        </a>
+    <?php endfor; ?>
+
+    <?php if ($page < $totalPages): ?>
+        <a class="btn btn-outline-secondary btn-sm"
+           href="?<?= http_build_query(array_merge($_GET, ['page' => $page + 1])) ?>">
+            &gt;
+        </a>
+    <?php endif; ?>
+
+<?php endif; ?>
+
+</div>
 <div class="toolbar-right">
     <label class="small me-2">Show</label>
     <select id="perPage" class="form-select form-select-sm">
