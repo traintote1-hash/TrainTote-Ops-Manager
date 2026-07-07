@@ -322,7 +322,7 @@ $equipment = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <?php include '../includes/navbar.php'; ?>
 
-<div class="container-fluid tt-list-page">
+<div class="container-fluid mt-4 tt-equipment-list-page">
 
 <div class="list-layout">
 
@@ -530,6 +530,9 @@ MAIN CONTENT
 
 <div class="content-card">
 
+<form id="bulkActionForm" method="post" action="bulk_action.php">
+<input type="hidden" name="return_url" value="<?= htmlspecialchars('list.php' . (!empty($_SERVER['QUERY_STRING']) ? '?' . $_SERVER['QUERY_STRING'] : ''), ENT_QUOTES, 'UTF-8') ?>">
+
 <div class="tt-list-header">
 
     <div class="tt-list-title-block">
@@ -543,7 +546,15 @@ MAIN CONTENT
 
     <div class="tt-list-actions">
         <a href="add_select.php" class="btn btn-primary">Add Equipment</a>
-        <button type="submit" form="printForm" class="btn btn-success">Print Selected Car Cards</button>
+        <select name="bulk_action" class="form-select bulk-action-select" required>
+            <option value="">Bulk Action</option>
+            <option value="print_cards">Print Selected Car Cards</option>
+            <option value="edit_queue">Edit Queue</option>
+            <option value="set_active">Set Active</option>
+            <option value="set_inactive">Set Inactive</option>
+            <option value="delete_selected">Delete Selected</option>
+        </select>
+        <button type="submit" class="btn btn-success">Apply Bulk Action</button>
     </div>
 
 </div>
@@ -563,8 +574,6 @@ MAIN CONTENT
     </select>
 </div>
 </div>
-
-<form id="printForm" method="post" action="print_cards_svg.php">
 
 <div class="table-responsive">
 
@@ -702,11 +711,9 @@ MAIN CONTENT
 
 </div>
 
-<div class="mt-3">
-    <button type="submit" class="btn btn-success">Print Selected Car Cards</button>
-</div>
 
 </form>
+
 
 <hr>
 
