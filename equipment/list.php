@@ -543,7 +543,6 @@ MAIN CONTENT
 
     <div class="tt-list-actions">
         <a href="add_select.php" class="btn btn-primary">Add Equipment</a>
-        <a href="../import_export/index.php" class="btn btn-outline-primary">Import / Export</a>
         <button type="submit" form="printForm" class="btn btn-success">Print Selected Car Cards</button>
     </div>
 
