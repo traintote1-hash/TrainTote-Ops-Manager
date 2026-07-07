@@ -14,6 +14,13 @@ body > nav.navbar.mb-4 {
     padding: 24px;
 }
 
+.tt-equipment-list-page {
+    width: 100%;
+    max-width: none;
+    padding-right: 24px;
+    padding-left: 24px;
+}
+
 .list-layout {
     display: flex;
     gap: 18px;
@@ -82,6 +89,10 @@ PAGE HEADER
     justify-content: flex-end;
     gap: 10px;
     flex-wrap: wrap;
+}
+
+.bulk-action-select {
+    min-width: 220px;
 }
 
 /*
@@ -436,6 +447,11 @@ MOBILE
         padding: 18px 12px;
     }
 
+    .tt-equipment-list-page {
+        padding-right: 12px;
+        padding-left: 12px;
+    }
+
     .tt-list-header {
         display: grid;
     }
@@ -445,6 +461,10 @@ MOBILE
     }
 
     .tt-list-actions .btn {
+        width: 100%;
+    }
+
+    .bulk-action-select {
         width: 100%;
     }
 
