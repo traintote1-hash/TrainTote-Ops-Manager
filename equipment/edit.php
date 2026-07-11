@@ -389,6 +389,8 @@ $service = $_POST['service']
     ?? $equipment['service']
     ?? '';
 
+$active = (string) ($_POST['active'] ?? $equipment['active'] ?? '1') === '0' ? 0 : 1;
+
 $load_status = $_POST['load_status']
     ?? $equipment['load_status']
     ?? 'Empty';
@@ -537,6 +539,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             operations_service = ?,
 
+            active = ?,
+
             load_status = ?,
 
             current_industry_id = ?,
@@ -574,6 +578,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $service,
 
             $operations_service,
+
+            $active,
 
             $load_status,
 
@@ -1163,6 +1169,36 @@ Operations
 <div class="card-body">
 
 <div class="row">
+
+<div class="col-md-2 mb-3">
+
+<label class="form-label">
+
+Equipment Status
+
+</label>
+
+<select
+name="active"
+class="form-select">
+
+<option value="1"
+<?php if ($active === 1) echo 'selected'; ?>>
+
+Active
+
+</option>
+
+<option value="0"
+<?php if ($active === 0) echo 'selected'; ?>>
+
+Inactive
+
+</option>
+
+</select>
+
+</div>
 
 <div class="col-md-2 mb-3">
 
