@@ -22,6 +22,29 @@ $stmt->execute([
 
 $railroad = $stmt->fetch(PDO::FETCH_ASSOC);
 
+$completionMessage = is_string($_SESSION['switch_completion_message'] ?? null)
+    ? $_SESSION['switch_completion_message']
+    : '';
+$completionError = is_string($_SESSION['switch_completion_error'] ?? null)
+    ? $_SESSION['switch_completion_error']
+    : '';
+$completionStorageKeyToClear = is_string($_SESSION['switch_completion_clear_storage_key'] ?? null)
+    ? $_SESSION['switch_completion_clear_storage_key']
+    : '';
+unset(
+    $_SESSION['switch_completion_message'],
+    $_SESSION['switch_completion_error'],
+    $_SESSION['switch_completion_clear_storage_key']
+);
+
+if (!preg_match('/^tt_switch_progress_generated_[a-f0-9]{24}$/', $completionStorageKeyToClear)) {
+    $completionStorageKeyToClear = '';
+}
+
+if (!is_string($_SESSION['switch_completion_csrf_token'] ?? null)) {
+    $_SESSION['switch_completion_csrf_token'] = bin2hex(random_bytes(24));
+}
+
 $sessionWaybills = [];
 $skippedCarDiagnostics = [];
 $skippedNoOperationsService = 0;
@@ -31,10 +54,48 @@ $skippedNoLocomotive = 0;
 $skippedCarCount = 0;
 $setoutMoveCount = 0;
 $pullMoveCount = 0;
-$generatedSessionId = $_SESSION['generated_session_id'] ?? '';
+$generatedSessionId = is_string($_SESSION['generated_session_id'] ?? null)
+    ? $_SESSION['generated_session_id']
+    : '';
 
-$difficulty = $_POST['difficulty'] ?? 'medium';
-$carCount = (int)($_POST['car_count'] ?? 5);
+if (
+    $_SERVER['REQUEST_METHOD'] !== 'POST'
+    && $generatedSessionId !== ''
+    && is_array($_SESSION['generated_session'] ?? null)
+) {
+    $sessionWaybills = $_SESSION['generated_session'];
+    $storedSkipCounts = is_array($_SESSION['generated_skip_counts'] ?? null)
+        ? $_SESSION['generated_skip_counts']
+        : [];
+    $skippedNoOperationsService = (int)($storedSkipCounts['missing_operations_service'] ?? 0);
+    $skippedNoCompatibleDestination = (int)($storedSkipCounts['no_compatible_destination'] ?? 0);
+    $skippedNoOperatingBase = (int)($storedSkipCounts['no_operating_base'] ?? 0);
+    $skippedNoLocomotive = (int)($storedSkipCounts['no_locomotive'] ?? 0);
+    $skippedCarDiagnostics = is_array($_SESSION['generated_skip_diagnostics'] ?? null)
+        ? $_SESSION['generated_skip_diagnostics']
+        : [];
+    $skippedCarCount = $skippedNoOperationsService
+        + $skippedNoCompatibleDestination
+        + $skippedNoOperatingBase
+        + $skippedNoLocomotive;
+    $setoutMoveCount = count(array_filter(
+        $sessionWaybills,
+        fn($move) => is_array($move) && ($move['move_type'] ?? '') === 'SETOUT'
+    ));
+    $pullMoveCount = count(array_filter(
+        $sessionWaybills,
+        fn($move) => is_array($move) && ($move['move_type'] ?? '') === 'PULL'
+    ));
+}
+
+$difficulty = $_POST['difficulty']
+    ?? $_SESSION['generated_difficulty']
+    ?? 'medium';
+$carCount = (int)(
+    $_POST['car_count']
+    ?? $_SESSION['generated_car_count']
+    ?? 5
+);
 
 if ($carCount < 1) {
     $carCount = 1;
@@ -660,6 +721,11 @@ if (
         'no_locomotive' => $skippedNoLocomotive
     ];
     $_SESSION['generated_skip_diagnostics'] = $skippedCarDiagnostics;
+
+    if (!empty($sessionWaybills)) {
+        header('Location: generate.php?generated=1#generated-switch-list');
+        exit;
+    }
 }
 
 $workLocationGroups = groupGeneratedMovesByLocation($sessionWaybills);
@@ -678,8 +744,27 @@ include '../assets/components/header.php';
 include '../assets/components/sidebar.php';
 ?>
 <link rel="stylesheet" href="../assets/css/dashboard.css">
+<link rel="stylesheet" href="../assets/css/switch_list_completion.css">
 
 <div class="tt-session-start-page">
+    <?php if ($completionStorageKeyToClear !== ''): ?>
+    <span
+    hidden
+    data-switch-clear-storage-key="<?php echo htmlspecialchars($completionStorageKeyToClear); ?>"></span>
+    <?php endif; ?>
+
+    <?php if ($completionMessage !== ''): ?>
+    <div class="alert alert-success tt-session-alert" role="status">
+        <?php echo htmlspecialchars($completionMessage); ?>
+    </div>
+    <?php endif; ?>
+
+    <?php if ($completionError !== ''): ?>
+    <div class="alert alert-danger tt-session-alert" role="alert">
+        <?php echo htmlspecialchars($completionError); ?>
+    </div>
+    <?php endif; ?>
+
     <div class="tt-session-hero">
         <div>
             <span class="tt-session-kicker">Operations Mission Control</span>
@@ -887,7 +972,7 @@ include '../assets/components/sidebar.php';
         </aside>
     </div>
 
-    <?php if ($_SERVER['REQUEST_METHOD'] === 'POST'): ?>
+    <?php if ($_SERVER['REQUEST_METHOD'] === 'POST' || count($sessionWaybills) > 0): ?>
 
     <?php if (count($sessionWaybills) == 0): ?>
 
@@ -945,8 +1030,10 @@ include '../assets/components/sidebar.php';
     <?php else: ?>
 
     <section
+    id="generated-switch-list"
     class="tt-panel tt-generated-session-panel"
     data-switch-progress
+    data-switch-exceptions="1"
     data-switch-storage-key="<?php echo htmlspecialchars($generatedSwitchProgressStorageKey); ?>">
         <div class="tt-panel-heading">
             <div>
@@ -990,11 +1077,26 @@ include '../assets/components/sidebar.php';
         <p class="tt-muted-text">Skipped <?php echo $skippedNoOperationsService; ?> car(s) missing Operations Service, <?php echo $skippedNoCompatibleDestination; ?> car(s) with no compatible move, <?php echo $skippedNoOperatingBase; ?> missing base, and <?php echo $skippedNoLocomotive; ?> missing locomotive.</p>
         <?php endif; ?>
 
-        <div class="tt-switch-progress no-print" data-switch-progress-counter>
-            0 of <?php echo count($sessionWaybills); ?> moves complete
-        </div>
+        <form
+        method="post"
+        action="complete_switch_list.php"
+        class="tt-switch-completion-form"
+        data-switch-completion-form>
+            <input
+            type="hidden"
+            name="csrf_token"
+            value="<?php echo htmlspecialchars($_SESSION['switch_completion_csrf_token']); ?>">
 
-        <div class="tt-generated-work-by-location">
+            <input
+            type="hidden"
+            name="generated_session_id"
+            value="<?php echo htmlspecialchars($generatedSessionId); ?>">
+
+            <div class="tt-switch-progress no-print" data-switch-progress-counter>
+                0 moved, 0 not moved, <?php echo count($sessionWaybills); ?> pending
+            </div>
+
+            <div class="tt-generated-work-by-location">
             <div class="tt-panel-heading">
                 <div>
                     <span class="tt-panel-kicker">Work by Location</span>
@@ -1010,7 +1112,8 @@ include '../assets/components/sidebar.php';
                     <table class="table table-sm align-middle">
                         <thead>
                             <tr>
-                                <th class="tt-switch-done-column">Done</th>
+                                <th class="tt-switch-done-column">Moved</th>
+                                <th class="tt-switch-exception-column">Not Moved</th>
                                 <th>Action</th>
                                 <th>Car</th>
                                 <th>Type</th>
@@ -1018,7 +1121,7 @@ include '../assets/components/sidebar.php';
                                 <th>Service</th>
                                 <th>From / Current Track</th>
                                 <th>To / Destination</th>
-                                <th>Destination Track</th>
+                                <th class="tt-switch-destination-column">Destination Track</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1027,15 +1130,70 @@ include '../assets/components/sidebar.php';
                             $carLabel = trim(($waybill['reporting_marks'] ?? '') . ' ' . ($waybill['road_number'] ?? ''));
                             $moveKey = (string)($waybill['completion_key'] ?? '');
                             ?>
-                            <tr>
+                            <tr
+                            data-switch-move-row
+                            data-switch-move-key="<?php echo htmlspecialchars($moveKey); ?>">
                                 <td class="tt-switch-done-cell">
                                     <label>
                                         <input
                                         type="checkbox"
                                         class="tt-switch-move-checkbox"
                                         data-switch-move-key="<?php echo htmlspecialchars($moveKey); ?>"
-                                        aria-label="Mark <?php echo htmlspecialchars(strtolower(getGeneratedMoveActionLabel($waybill)) . ' ' . ($carLabel ?: 'car')); ?> complete">
+                                        aria-label="Mark <?php echo htmlspecialchars(strtolower(getGeneratedMoveActionLabel($waybill)) . ' ' . ($carLabel ?: 'car')); ?> moved">
                                     </label>
+                                    <input
+                                    type="hidden"
+                                    name="moves[<?php echo htmlspecialchars($moveKey); ?>][outcome]"
+                                    value="pending"
+                                    data-switch-outcome>
+                                </td>
+                                <td class="tt-switch-exception-column">
+                                    <button
+                                    type="button"
+                                    class="btn btn-sm btn-outline-warning tt-switch-not-moved-button"
+                                    data-switch-not-moved
+                                    aria-pressed="false">
+                                        Not Moved
+                                    </button>
+
+                                    <div class="tt-switch-exception-fields" data-switch-exception-fields hidden>
+                                        <label
+                                        class="visually-hidden"
+                                        for="tt-switch-reason-<?php echo htmlspecialchars($moveKey); ?>">
+                                            Reason <?php echo htmlspecialchars($carLabel ?: 'car'); ?> was not moved
+                                        </label>
+                                        <select
+                                        id="tt-switch-reason-<?php echo htmlspecialchars($moveKey); ?>"
+                                        name="moves[<?php echo htmlspecialchars($moveKey); ?>][reason_code]"
+                                        class="form-select form-select-sm"
+                                        data-switch-reason
+                                        disabled>
+                                            <option value="">Select a reason</option>
+                                            <option value="track_blocked">Track blocked</option>
+                                            <option value="car_inaccessible">Car inaccessible</option>
+                                            <option value="industry_track_full">Industry track full</option>
+                                            <option value="bad_order">Bad order</option>
+                                            <option value="wrong_car">Wrong car</option>
+                                            <option value="customer_not_ready">Customer not ready</option>
+                                            <option value="locomotive_or_crew_issue">Locomotive or crew issue</option>
+                                            <option value="other">Other</option>
+                                        </select>
+
+                                        <label
+                                        class="visually-hidden"
+                                        for="tt-switch-reason-notes-<?php echo htmlspecialchars($moveKey); ?>">
+                                            Not Moved notes for <?php echo htmlspecialchars($carLabel ?: 'car'); ?>
+                                        </label>
+                                        <input
+                                        id="tt-switch-reason-notes-<?php echo htmlspecialchars($moveKey); ?>"
+                                        type="text"
+                                        name="moves[<?php echo htmlspecialchars($moveKey); ?>][reason_notes]"
+                                        class="form-control form-control-sm"
+                                        maxlength="250"
+                                        placeholder="Optional note (required for Other)"
+                                        data-switch-reason-notes
+                                        disabled>
+                                    </div>
                                 </td>
                                 <td><strong><?php echo htmlspecialchars(getGeneratedMoveActionLabel($waybill)); ?></strong></td>
                                 <td class="tt-switch-primary-move"><?php echo htmlspecialchars($carLabel ?: '-'); ?></td>
@@ -1049,7 +1207,22 @@ include '../assets/components/sidebar.php';
                                     <?php endif; ?>
                                 </td>
                                 <td><?php echo htmlspecialchars($waybill['destination_industry_name'] ?? ($waybill['destination_name'] ?? '-')); ?></td>
-                                <td><?php echo htmlspecialchars($waybill['destination_track'] ?: '-'); ?></td>
+                                <td class="tt-switch-destination-column">
+                                    <label
+                                    class="visually-hidden"
+                                    for="tt-switch-destination-track-<?php echo htmlspecialchars($moveKey); ?>">
+                                        Destination Track for <?php echo htmlspecialchars($carLabel ?: 'car'); ?>
+                                    </label>
+                                    <input
+                                    id="tt-switch-destination-track-<?php echo htmlspecialchars($moveKey); ?>"
+                                    type="text"
+                                    name="moves[<?php echo htmlspecialchars($moveKey); ?>][destination_track]"
+                                    class="form-control form-control-sm tt-switch-destination-input"
+                                    maxlength="50"
+                                    placeholder="Optional"
+                                    data-switch-destination-track
+                                    disabled>
+                                </td>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -1057,7 +1230,24 @@ include '../assets/components/sidebar.php';
                 </div>
             </section>
             <?php endforeach; ?>
-        </div>
+            </div>
+
+            <section class="tt-panel tt-switch-completion-panel no-print">
+                <div>
+                    <h3>Complete Switch List</h3>
+                    <p class="tt-muted-text" data-switch-completion-status>
+                        Resolve every pending move before completing the switch list.
+                    </p>
+                </div>
+                <button
+                type="submit"
+                class="btn btn-success"
+                data-switch-complete-button
+                disabled>
+                    Complete Switch List
+                </button>
+            </section>
+        </form>
 
         <?php if (!empty($skippedCarDiagnostics)): ?>
         <details class="tt-generated-skip-diagnostics">
