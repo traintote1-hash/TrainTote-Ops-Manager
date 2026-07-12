@@ -1,0 +1,3 @@
+ALTER TABLE industries
+    ADD COLUMN IF NOT EXISTS active TINYINT(1) NOT NULL DEFAULT 1
+    AFTER track_capacity;

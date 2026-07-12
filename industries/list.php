@@ -46,6 +46,10 @@ $search = trim($_GET['search'] ?? '');
 
 $typeFilters     = array_values(array_filter(array_map('strval', (array)($_GET['industry_type'] ?? []))));
 $locationFilters = array_values(array_filter(array_map('strval', (array)($_GET['location']      ?? []))));
+$activeFilters   = array_values(array_filter(
+    array_map('strval', (array)($_GET['active'] ?? [])),
+    static fn(string $value): bool => $value === '0' || $value === '1'
+));
 
 /*
 |--------------------------------------------------------------------------
@@ -57,7 +61,8 @@ $allowedSorts = [
     'industry_name',
     'industry_type',
     'location',
-    'track_capacity'
+    'track_capacity',
+    'active'
 ];
 
 $sort = $_GET['sort'] ?? 'industry_name';
@@ -76,6 +81,7 @@ $orderBy = match ($sort) {
     'industry_type'  => 'industry_type',
     'location'       => 'location',
     'track_capacity' => 'track_capacity',
+    'active'         => 'active',
     default          => 'industry_name',
 };
 
@@ -160,6 +166,10 @@ if (!empty($locationFilters)) {
     $where[] = buildInClause('location', $locationFilters, 'loc', $params);
 }
 
+if (!empty($activeFilters)) {
+    $where[] = buildInClause('active', $activeFilters, 'active', $params);
+}
+
 $whereSQL = implode(' AND ', $where);
 
 /*
@@ -204,6 +214,44 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $industries = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+$bulkMessageCode = $_GET['bulk_message'] ?? '';
+$bulkCount = max(0, (int)($_GET['bulk_count'] ?? 0));
+$bulkMessage = '';
+$bulkMessageType = 'success';
+
+switch ($bulkMessageCode) {
+    case 'none_selected':
+        $bulkMessage = 'Select at least one industry before applying a bulk action.';
+        $bulkMessageType = 'warning';
+        break;
+    case 'invalid_action':
+        $bulkMessage = 'Choose a valid bulk action.';
+        $bulkMessageType = 'warning';
+        break;
+    case 'none_authorized':
+        $bulkMessage = 'None of the selected industries could be updated.';
+        $bulkMessageType = 'warning';
+        break;
+    case 'active_set':
+        $bulkMessage = $bulkCount . ($bulkCount === 1 ? ' industry was' : ' industries were') . ' set to Active.';
+        break;
+    case 'inactive_set':
+        $bulkMessage = $bulkCount . ($bulkCount === 1 ? ' industry was' : ' industries were') . ' set to Inactive.';
+        break;
+    case 'industries_deleted':
+        $bulkMessage = $bulkCount . ($bulkCount === 1 ? ' industry was' : ' industries were') . ' deleted.';
+        break;
+    case 'bulk_edit_complete':
+        $bulkMessage = 'Bulk Edit completed.';
+        break;
+    case 'delete_failed':
+        $bulkMessage = 'The selected industries could not be deleted. No industries were removed.';
+        $bulkMessageType = 'danger';
+        break;
+}
+
+$returnUrl = 'list.php' . (!empty($_SERVER['QUERY_STRING']) ? '?' . $_SERVER['QUERY_STRING'] : '');
+
 ?>
 
 <?php include '../includes/header.php'; ?>
@@ -219,6 +267,12 @@ $industries = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <?php include '../includes/navbar.php'; ?>
 
 <div class="container-fluid tt-list-page">
+
+<?php if ($bulkMessage !== ''): ?>
+<div class="alert alert-<?= htmlspecialchars($bulkMessageType) ?>">
+    <?= htmlspecialchars($bulkMessage) ?>
+</div>
+<?php endif; ?>
 
 <div class="list-layout">
 
@@ -252,6 +306,12 @@ SIDEBAR
 <?php foreach ($locationFilters as $filter): ?>
 <a class="filter-chip" href="?<?= http_build_query(array_merge($_GET, ['location' => array_values(array_diff($locationFilters, [$filter]))])) ?>">
     × <?= htmlspecialchars($filter) ?>
+</a>
+<?php endforeach; ?>
+
+<?php foreach ($activeFilters as $filter): ?>
+<a class="filter-chip" href="?<?= http_build_query(array_merge($_GET, ['active' => array_values(array_diff($activeFilters, [$filter])), 'page' => 1])) ?>">
+    &times; <?= $filter === '1' ? 'Active' : 'Inactive' ?>
 </a>
 <?php endforeach; ?>
 
@@ -301,6 +361,24 @@ SIDEBAR
 </div>
 </div>
 
+<!-- ACTIVE STATUS -->
+
+<div class="filter-section">
+<div class="section-header"><span class="arrow">&#9658;</span> Status</div>
+<div class="section-content collapsed">
+<label class="form-check">
+    <input class="form-check-input auto-filter" type="checkbox" name="active[]" value="1"
+        <?= in_array('1', $activeFilters, true) ? 'checked' : '' ?>>
+    <span class="form-check-label">Active</span>
+</label>
+<label class="form-check">
+    <input class="form-check-input auto-filter" type="checkbox" name="active[]" value="0"
+        <?= in_array('0', $activeFilters, true) ? 'checked' : '' ?>>
+    <span class="form-check-label">Inactive</span>
+</label>
+</div>
+</div>
+
 </form>
 
 </div>
@@ -330,7 +408,22 @@ MAIN CONTENT
 
 <!-- TOP TOOLBAR -->
 
+<form method="post" action="bulk_action.php" id="industryBulkForm">
+<input type="hidden" name="return_url" value="<?= htmlspecialchars($returnUrl, ENT_QUOTES, 'UTF-8') ?>">
+
 <div class="top-toolbar">
+<div class="toolbar-left">
+    <div class="tt-list-actions">
+        <select name="bulk_action" class="form-select bulk-action-select">
+            <option value="">Bulk Action</option>
+            <option value="bulk_edit">Bulk Edit</option>
+            <option value="set_active">Set Active</option>
+            <option value="set_inactive">Set Inactive</option>
+            <option value="delete_selected">Delete Selected</option>
+        </select>
+        <button type="submit" class="btn btn-success">Apply Bulk Action</button>
+    </div>
+</div>
 <div class="toolbar-right ms-auto"></div>
 <div class="toolbar-right">
     <label class="small me-2">Show</label>
@@ -350,6 +443,10 @@ MAIN CONTENT
 
 <thead>
 <tr>
+
+<th width="40">
+    <input type="checkbox" id="selectAll">
+</th>
 
 <th>Photo</th>
 
@@ -377,6 +474,12 @@ MAIN CONTENT
 </a>
 </th>
 
+<th>
+<a class="sort-link" href="?<?= http_build_query(array_merge($_GET, ['sort' => 'active', 'dir' => ($sort === 'active' && $dir === 'asc') ? 'desc' : 'asc'])) ?>">
+    Status &#9650;&#9660;
+</a>
+</th>
+
 <th></th>
 
 </tr>
@@ -387,6 +490,10 @@ MAIN CONTENT
 <?php foreach ($industries as $industry): ?>
 
 <tr class="clickable-row" data-href="view.php?id=<?= $industry['id'] ?>">
+
+<td onclick="event.stopPropagation();">
+    <input type="checkbox" name="industry_ids[]" value="<?= (int)$industry['id'] ?>">
+</td>
 
 <td>
 <?php if (!empty($industry['photo_filename'])): ?>
@@ -409,6 +516,14 @@ MAIN CONTENT
 
 <td><?= htmlspecialchars($industry['track_capacity']) ?> cars</td>
 
+<td>
+<?php if ((int)($industry['active'] ?? 1) === 1): ?>
+    <span class="badge bg-success">Active</span>
+<?php else: ?>
+    <span class="badge bg-secondary">Inactive</span>
+<?php endif; ?>
+</td>
+
 <td onclick="event.stopPropagation();">
     <a href="edit.php?id=<?= $industry['id'] ?>" class="btn btn-sm btn-outline-primary">Edit</a>
 </td>
@@ -422,6 +537,8 @@ MAIN CONTENT
 </table>
 
 </div>
+
+</form>
 
 <hr>
 
@@ -463,5 +580,16 @@ MAIN CONTENT
 </div>
 
 <script src="../assets/js/list_v2.js"></script>
+<script>
+const industrySelectAll = document.getElementById('selectAll');
+
+if (industrySelectAll) {
+    industrySelectAll.addEventListener('change', function () {
+        document.querySelectorAll('input[name="industry_ids[]"]').forEach(function (checkbox) {
+            checkbox.checked = industrySelectAll.checked;
+        });
+    });
+}
+</script>
 
 <?php include '../includes/footer.php'; ?>

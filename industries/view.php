@@ -36,6 +36,10 @@ if (!$industry) {
     die('Industry not found.');
 }
 
+$industryActive = !array_key_exists('active', $industry) || $industry['active'] === null
+    ? 1
+    : ((int)$industry['active'] === 1 ? 1 : 0);
+
 $previousIndustryId = null;
 $nextIndustryId = null;
 
@@ -144,11 +148,20 @@ No Photo Uploaded
 </p>
 
 <p>
-<strong>Location:</strong>
-<?php echo htmlspecialchars($industry['location']); ?>
-</p>
-
-<p>
+<strong>Location:</strong>
+<?php echo htmlspecialchars($industry['location']); ?>
+</p>
+
+<p>
+<strong>Industry Status:</strong>
+<?php if ($industryActive === 1): ?>
+<span class="badge bg-success">Active</span>
+<?php else: ?>
+<span class="badge bg-secondary">Inactive</span>
+<?php endif; ?>
+</p>
+
+<p>
 <strong>Track Capacity:</strong>
 <?php echo htmlspecialchars($industry['track_capacity']); ?> Cars
 </p>

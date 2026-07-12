@@ -36,6 +36,31 @@ if (!$industry) {
     die('Industry not found.');
 }
 
+function industryEditQueueReturnUrl(string $returnUrl, string $message): string
+{
+    $parts = parse_url(trim($returnUrl));
+
+    if ($parts === false || isset($parts['scheme']) || isset($parts['host'])) {
+        $parts = ['path' => 'list.php'];
+    }
+
+    $path = $parts['path'] ?? 'list.php';
+
+    if ($path === '' || basename($path) !== 'list.php') {
+        $parts = ['path' => 'list.php'];
+    }
+
+    $query = [];
+
+    if (!empty($parts['query'])) {
+        parse_str($parts['query'], $query);
+    }
+
+    $query['bulk_message'] = $message;
+
+    return 'list.php?' . http_build_query($query);
+}
+
 $defaultIndustryServiceOptions = [
     'All' => 'All / Any Service',
     'Grain' => 'Grain',
@@ -295,24 +320,69 @@ $industryServiceOptions = buildIndustryServiceOptions(
     ]
 );
 
+$active = (string)($_POST['active'] ?? $industry['active'] ?? '1') === '0' ? 0 : 1;
+
 $previousIndustryId = null;
 $nextIndustryId = null;
+$queueMode = false;
+$queuePosition = null;
+$industryIds = [];
+$rawQueue = $_SESSION['industry_edit_queue'] ?? null;
 
-$stmt = $pdo->prepare("
-    SELECT id
-    FROM industries
-    WHERE railroad_id = :railroad_id
-    ORDER BY industry_name ASC, id ASC
-");
+if (is_array($rawQueue)) {
+    $queueIds = array_values(array_unique(array_filter(
+        array_map('intval', $rawQueue),
+        static fn(int $queueId): bool => $queueId > 0
+    )));
 
-$stmt->execute([
-    'railroad_id' => $industry['railroad_id']
-]);
+    if (!empty($queueIds)) {
+        $queuePlaceholders = implode(',', array_fill(0, count($queueIds), '?'));
+        $queueStmt = $pdo->prepare("
+            SELECT id
+            FROM industries
+            WHERE railroad_id = ?
+            AND id IN ($queuePlaceholders)
+        ");
+        $queueStmt->execute(array_merge([$industry['railroad_id']], $queueIds));
+        $authorizedQueueSet = array_fill_keys(
+            array_map('intval', $queueStmt->fetchAll(PDO::FETCH_COLUMN)),
+            true
+        );
+        $authorizedQueueIds = array_values(array_filter(
+            $queueIds,
+            static fn(int $queueId): bool => isset($authorizedQueueSet[$queueId])
+        ));
 
-$industryIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
-$currentIndustryIndex = array_search($industry['id'], $industryIds);
+        if (in_array($id, $authorizedQueueIds, true)) {
+            $queueMode = true;
+            $industryIds = $authorizedQueueIds;
+            $_SESSION['industry_edit_queue'] = $authorizedQueueIds;
+        }
+    }
+}
+
+if (!$queueMode) {
+    $stmt = $pdo->prepare("
+        SELECT id
+        FROM industries
+        WHERE railroad_id = :railroad_id
+        ORDER BY industry_name ASC, id ASC
+    ");
+
+    $stmt->execute([
+        'railroad_id' => $industry['railroad_id']
+    ]);
+
+    $industryIds = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+}
+
+$currentIndustryIndex = array_search($id, $industryIds, true);
 
 if ($currentIndustryIndex !== false) {
+    if ($queueMode) {
+        $queuePosition = $currentIndustryIndex + 1;
+    }
+
     if ($currentIndustryIndex > 0) {
         $previousIndustryId = $industryIds[$currentIndustryIndex - 1];
     }
@@ -328,6 +398,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $industry_type = trim($_POST['industry_type']);
     $location = trim($_POST['location']);
     $track_capacity = (int)$_POST['track_capacity'];
+    $active = (string)($_POST['active'] ?? $industry['active'] ?? '1') === '0' ? 0 : 1;
     $receives_services = buildIndustryServicePostValue('receives_services');
     $ships_services = buildIndustryServicePostValue('ships_services');
     $notes = trim($_POST['notes']);
@@ -339,6 +410,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             industry_type = :industry_type,
             location = :location,
             track_capacity = :track_capacity,
+            active = :active,
             receives_services = :receives_services,
             ships_services = :ships_services,
             notes = :notes
@@ -351,6 +423,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'industry_type' => $industry_type,
         'location' => $location,
         'track_capacity' => $track_capacity,
+        'active' => $active,
         'receives_services' => $receives_services,
         'ships_services' => $ships_services,
         'notes' => $notes,
@@ -510,6 +583,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     }
 
+    if ($queueMode) {
+        if ($nextIndustryId) {
+            header('Location: edit.php?id=' . (int)$nextIndustryId);
+            exit;
+        }
+
+        $queueReturnUrl = (string)($_SESSION['industry_edit_queue_return_url'] ?? 'list.php');
+        unset($_SESSION['industry_edit_queue'], $_SESSION['industry_edit_queue_return_url']);
+        header('Location: ' . industryEditQueueReturnUrl($queueReturnUrl, 'bulk_edit_complete'));
+        exit;
+    }
+
     header("Location: view.php?id=$id");
 
     exit;
@@ -531,6 +616,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="container mt-5">
 
 <h1>Edit Industry</h1>
+
+<?php if ($queueMode): ?>
+<div class="alert alert-secondary py-2">
+Editing selected industry <?php echo (int)$queuePosition; ?> of <?php echo count($industryIds); ?>
+</div>
+<?php endif; ?>
 
 <div class="mb-4">
 
@@ -671,6 +762,17 @@ type="number"
 name="track_capacity"
 class="form-control"
 value="<?php echo htmlspecialchars($industry['track_capacity']); ?>">
+
+</div>
+
+<div class="mb-3">
+
+<label>Industry Status</label>
+
+<select name="active" class="form-select">
+<option value="1" <?php if ($active === 1) echo 'selected'; ?>>Active</option>
+<option value="0" <?php if ($active === 0) echo 'selected'; ?>>Inactive</option>
+</select>
 
 </div>
 

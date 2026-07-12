@@ -281,12 +281,15 @@ $industryServiceOptions = buildIndustryServiceOptions(
     $defaultIndustryServiceOptions
 );
 
+$active = (string)($_POST['active'] ?? '1') === '0' ? 0 : 1;
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $industry_name = trim($_POST['industry_name']);
     $industry_type = trim($_POST['industry_type']);
     $location = trim($_POST['location']);
     $track_capacity = (int)$_POST['track_capacity'];
+    $active = (string)($_POST['active'] ?? '1') === '0' ? 0 : 1;
     $receives_services = buildIndustryServicePostValue('receives_services');
     $ships_services = buildIndustryServicePostValue('ships_services');
     $notes = trim($_POST['notes']);
@@ -299,6 +302,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             industry_type,
             location,
             track_capacity,
+            active,
             receives_services,
             ships_services,
             notes
@@ -310,6 +314,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             :industry_type,
             :location,
             :track_capacity,
+            :active,
             :receives_services,
             :ships_services,
             :notes
@@ -323,6 +328,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'industry_type' => $industry_type,
         'location' => $location,
         'track_capacity' => $track_capacity,
+        'active' => $active,
         'receives_services' => $receives_services,
         'ships_services' => $ships_services,
         'notes' => $notes
@@ -533,6 +539,17 @@ type="number"
 name="track_capacity"
 class="form-control"
 value="0">
+
+</div>
+
+<div class="mb-3">
+
+<label>Industry Status</label>
+
+<select name="active" class="form-select">
+<option value="1" <?php if ($active === 1) echo 'selected'; ?>>Active</option>
+<option value="0" <?php if ($active === 0) echo 'selected'; ?>>Inactive</option>
+</select>
 
 </div>
 
