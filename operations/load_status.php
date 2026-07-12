@@ -3,7 +3,7 @@ session_start();
 require_once '../config/database.php';
 require_once 'lib.php';
 if (!isset($_SESSION['user_id'])) { header('Location: ../login.php'); exit; }
-$railroad=ttOperationsRailroad($pdo,(int)$_SESSION['user_id']);$railroadId=(int)$railroad['id'];$error='';$message='';
+$railroad=ttOperationsRailroad($pdo,(int)$_SESSION['user_id']);$railroadId=(int)$railroad['id'];ttOperationsRequireRailroadOwner($pdo,$railroadId,(int)$_SESSION['user_id']);$error='';$message='';
 if($_SERVER['REQUEST_METHOD']==='POST'){
     try{
         ttOperationsRequireCsrf();

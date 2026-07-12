@@ -3,11 +3,52 @@ require_once __DIR__ . '/lib.php';
 
 function ttChooseOperationsMoves(array $assignment, array $cars, array $industries, array $startingIds, array $reservedIds, array $routeStops = []): array
 {
-    $selectedRoute = ($assignment['work_scope'] ?? 'entire_railroad') === 'selected_route' && count($routeStops) > 0;
+    $selectedRoute = ($assignment['work_scope'] ?? 'entire_railroad') === 'selected_route';
     if ($selectedRoute) {
-        return ttChooseRouteExchangeMoves($assignment, $cars, $industries, $startingIds, $reservedIds, $routeStops);
+        if (!$routeStops) {
+            throw new RuntimeException('This Job Title uses Selected Route / Territory but has no route stops. Add at least one stop or change the scope to Entire Railroad.');
+        }
+        return ttChooseSelectedRouteMoves($assignment, $cars, $industries, $startingIds, $reservedIds, $routeStops);
     }
     return ttChooseBroadOperationsMoves($assignment, $cars, $industries, $startingIds, $reservedIds);
+}
+
+function ttChooseSelectedRouteMoves(array $assignment, array $cars, array $industries, array $startingIds, array $reservedIds, array $routeStops): array
+{
+    $max=max(0,(int)$assignment['requested_car_count']);$baseId=(int)$assignment['operating_base_industry_id'];$endId=(int)$assignment['end_industry_id'];
+    $industryById=[];$occupancy=[];foreach($industries as $industry){$id=(int)$industry['id'];$industryById[$id]=$industry;$occupancy[$id]=0;}foreach($cars as $car){$id=(int)$car['current_industry_id'];if($id>0)$occupancy[$id]=($occupancy[$id]??0)+1;}
+    usort($routeStops,static fn($a,$b)=>(int)$a['sequence_number']<=>(int)$b['sequence_number']);
+    $routeIds=array_map(static fn($stop)=>(int)$stop['industry_id'],$routeStops);$supportIds=[$baseId,$endId];
+    foreach($routeStops as $stop){$supportIds[]=(int)$stop['pull_destination_industry_id'];$supportIds[]=(int)$stop['replacement_source_industry_id'];}
+    $allowedIds=array_values(array_unique(array_filter(array_merge($routeIds,$supportIds))));$used=[];$moves=[];$diagnostics=[];$capacityDelta=[];
+    foreach($routeStops as $stopIndex=>$stop){
+        if(count($moves)>=$max)break;$stopId=(int)$stop['industry_id'];$stopIndustry=$industryById[$stopId]??null;if(!$stopIndustry)continue;
+        $destination=ttResolvePullDestination($stop,$stopIndex,$routeStops,$industryById,$allowedIds,$baseId);$pullCandidates=[];$spotCandidates=[];
+        foreach($cars as $car){$carId=(int)$car['id'];$originId=(int)$car['current_industry_id'];if(isset($used[$carId])||in_array($carId,$reservedIds,true)||!in_array($originId,$allowedIds,true)||trim((string)$car['operations_service'])==='')continue;
+            if($originId===$stopId&&ttRouteOutboundReady($car,$stopIndustry))$pullCandidates[]=$car;
+            elseif($originId!==$stopId&&ttReplacementSourceMatches($car,$stop,$startingIds,$baseId)&&ttCarCompatibleWithIndustry($car,$stopIndustry))$spotCandidates[]=$car;
+        }
+        usort($pullCandidates,'ttCarSort');usort($spotCandidates,'ttCarSort');$pulls=[];$spots=[];
+        if((int)($stop['exchange_enabled']??0)===1){
+            foreach($pullCandidates as $outCar){if(count($moves)+count($pulls)+count($spots)+2>$max||!$destination)break;if(!ttLoadMatches((string)$outCar['load_status'],(string)$stop['outbound_load_status']))continue;$match=null;
+                foreach($spotCandidates as $index=>$candidate){if(isset($used[(int)$candidate['id']])||!ttLoadMatches((string)$candidate['load_status'],(string)$stop['inbound_load_status']))continue;if(ttNormalizeService($candidate['operations_service'])===ttNormalizeService($outCar['operations_service'])){$match=$index;break;}}
+                if($match===null)continue;$inCar=$spotCandidates[$match];$destId=(int)$destination['id'];$sourceId=(int)$inCar['current_industry_id'];$projected=$capacityDelta;$projected[$sourceId]=($projected[$sourceId]??0)-1;if(!ttRouteCapacityAvailable($destination,$occupancy,$projected))continue;
+                $group=bin2hex(random_bytes(12));$pulls[]=ttPlannedCarMove($outCar,$destination,'PULL','Pull '.strtolower((string)$outCar['load_status']).' car for '.$destination['industry_name'],$group,$stopIndustry['industry_name']);$spots[]=ttPlannedCarMove($inCar,$stopIndustry,'SPOT','Spot '.strtolower((string)$inCar['load_status']).' replacement from '.$inCar['origin_name'],$group,$stopIndustry['industry_name']);$used[(int)$outCar['id']]=true;$used[(int)$inCar['id']]=true;$capacityDelta[$sourceId]=($capacityDelta[$sourceId]??0)-1;$capacityDelta[$destId]=($capacityDelta[$destId]??0)+1;
+            }
+        }else{
+            foreach($pullCandidates as $car){if(count($moves)+count($pulls)+count($spots)>=$max||!$destination)break;if($stop['pull_destination_mode']==='next_compatible'&&!ttCarCompatibleWithIndustry($car,$destination))continue;if(!ttRouteCapacityAvailable($destination,$occupancy,$capacityDelta))continue;$pulls[]=ttPlannedCarMove($car,$destination,'PULL','Pull for '.$destination['industry_name'],null,$stopIndustry['industry_name']);$used[(int)$car['id']]=true;$capacityDelta[$stopId]=($capacityDelta[$stopId]??0)-1;$destId=(int)$destination['id'];$capacityDelta[$destId]=($capacityDelta[$destId]??0)+1;}
+            foreach($spotCandidates as $car){if(count($moves)+count($pulls)+count($spots)>=$max)break;if(!ttRouteCapacityAvailable($stopIndustry,$occupancy,$capacityDelta))break;$spots[]=ttPlannedCarMove($car,$stopIndustry,'SPOT','Spot from '.$car['origin_name'],null,$stopIndustry['industry_name']);$used[(int)$car['id']]=true;$sourceId=(int)$car['current_industry_id'];$capacityDelta[$sourceId]=($capacityDelta[$sourceId]??0)-1;$capacityDelta[$stopId]=($capacityDelta[$stopId]??0)+1;}
+        }
+        foreach(array_merge($pulls,$spots)as$move)$moves[]=$move;
+        if((int)($stop['exchange_enabled']??0)===1&&$pullCandidates&&!$spots)$diagnostics[]=$stopIndustry['industry_name'].': paired exchange enabled, but no feasible compatible replacement pair was available.';
+    }
+    if(count($moves)<$max)$diagnostics[]='Selected Route / Territory requested up to '.$max.' move rows; '.count($moves).' valid route-scoped rows were available. No filler work was created.';
+    return ['moves'=>$moves,'diagnostics'=>$diagnostics];
+}
+
+function ttRouteOutboundReady(array $car,array $industry):bool
+{
+    return ttIndustrySupports($industry,'ships_services',(string)$car['operations_service'])||ttIndustrySupports($industry,'receives_services',(string)$car['operations_service']);
 }
 
 function ttChooseRouteExchangeMoves(array $assignment, array $cars, array $industries, array $startingIds, array $reservedIds, array $routeStops): array

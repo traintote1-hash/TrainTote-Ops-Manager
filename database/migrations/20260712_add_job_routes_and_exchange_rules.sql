@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS job_route_stops (
     job_id INT NOT NULL,
     industry_id INT NOT NULL,
     sequence_number INT UNSIGNED NOT NULL,
+    exchange_enabled TINYINT(1) NOT NULL DEFAULT 0,
     outbound_load_status ENUM('Any','Loaded','Empty') NOT NULL DEFAULT 'Any',
     inbound_load_status ENUM('Any','Loaded','Empty') NOT NULL DEFAULT 'Any',
     pull_destination_mode ENUM('operating_base','yard','staging_interchange','selected_location','next_compatible') NOT NULL DEFAULT 'yard',
@@ -30,3 +31,21 @@ CREATE TABLE IF NOT EXISTS job_route_stops (
     UNIQUE KEY uq_job_route_stop_sequence (job_id, sequence_number),
     KEY idx_job_route_stop_railroad (railroad_id, job_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- A draft version of this migration may already have created job_route_stops.
+-- Add the opt-in flag only when it is missing so reapplying remains safe.
+SET @exchange_enabled_missing := (
+    SELECT COUNT(*) = 0
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = 'job_route_stops'
+      AND column_name = 'exchange_enabled'
+);
+SET @exchange_enabled_sql := IF(
+    @exchange_enabled_missing,
+    'ALTER TABLE job_route_stops ADD COLUMN exchange_enabled TINYINT(1) NOT NULL DEFAULT 0 AFTER sequence_number',
+    'SELECT 1'
+);
+PREPARE add_exchange_enabled FROM @exchange_enabled_sql;
+EXECUTE add_exchange_enabled;
+DEALLOCATE PREPARE add_exchange_enabled;
