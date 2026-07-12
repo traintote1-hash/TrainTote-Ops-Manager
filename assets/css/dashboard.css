@@ -1044,6 +1044,56 @@
     vertical-align: middle;
 }
 
+.tt-switch-progress {
+    justify-self: start;
+    padding: 7px 10px;
+    border: 1px solid #d8dee6;
+    border-radius: 999px;
+    background: #f8fafc;
+    color: #475569;
+    font-size: .86rem;
+    font-weight: 700;
+}
+
+.tt-switch-done-column {
+    width: 52px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.tt-switch-done-cell {
+    width: 52px;
+    text-align: center;
+}
+
+.tt-switch-done-cell label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 42px;
+    min-height: 42px;
+    margin: 0;
+    cursor: pointer;
+}
+
+.tt-switch-move-checkbox {
+    width: 22px;
+    height: 22px;
+    margin: 0;
+    cursor: pointer;
+}
+
+tr.is-switch-move-complete {
+    background: #f1f8f4;
+    color: #64748b;
+}
+
+tr.is-switch-move-complete .tt-switch-primary-move {
+    text-decoration: line-through;
+    text-decoration-thickness: 1px;
+    text-decoration-color: rgba(100, 116, 139, .75);
+}
+
 .tt-complete-job-panel {
     display: flex;
     align-items: center;
@@ -1154,6 +1204,26 @@
 
     .tt-switch-table thead th {
         background: #eee !important;
+        color: #000;
+    }
+
+    .tt-switch-done-column,
+    .tt-switch-done-cell {
+        width: 42px;
+    }
+
+    .tt-switch-done-cell label {
+        min-width: 0;
+        min-height: 0;
+    }
+
+    .tt-switch-move-checkbox {
+        width: 16px;
+        height: 16px;
+    }
+
+    tr.is-switch-move-complete {
+        background: #f2f2f2 !important;
         color: #000;
     }
 }

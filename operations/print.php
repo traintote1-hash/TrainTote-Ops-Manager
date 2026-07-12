@@ -170,7 +170,19 @@ table.work-order-table {
     background: #eee;
 }
 
-@media print {
+.work-order-done-column {
+    width: 42px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.work-order-done-box {
+    display: inline-block;
+    font-size: 16px;
+    line-height: 1;
+}
+
+@media print {
 
     .no-print {
         display: none;
@@ -254,7 +266,9 @@ Close
 <table class="work-order-table">
 <thead>
 <tr>
-<th>Action</th>
+<th class="work-order-done-column">Done</th>
+
+<th>Action</th>
 <th>Car</th>
 <th>Type</th>
 <th>Load</th>
@@ -267,7 +281,9 @@ Close
 <tbody>
 <?php foreach ($group['moves'] as $waybill): ?>
 <tr>
-<td><strong><?php echo htmlspecialchars(getPrintedMoveActionLabel($waybill)); ?></strong></td>
+<td class="work-order-done-column"><span class="work-order-done-box" aria-hidden="true">&#9744;</span></td>
+
+<td><strong><?php echo htmlspecialchars(getPrintedMoveActionLabel($waybill)); ?></strong></td>
 <td><?php echo htmlspecialchars(trim(($waybill['reporting_marks'] ?? '') . ' ' . ($waybill['road_number'] ?? '')) ?: '-'); ?></td>
 <td><?php echo htmlspecialchars($waybill['equipment_type'] ?: '-'); ?></td>
 <td><?php echo htmlspecialchars($waybill['load_status'] ?: '-'); ?></td>
