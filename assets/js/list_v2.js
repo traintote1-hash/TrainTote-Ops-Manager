@@ -4,6 +4,27 @@ AUTO SUBMIT FILTERS
 =========================================================
 */
 
+function getFilterSectionTitle(header) {
+
+    if (!header) {
+
+        return '';
+
+    }
+
+    const copy = header.cloneNode(true);
+    const arrow = copy.querySelector('.arrow');
+
+    if (arrow) {
+
+        arrow.remove();
+
+    }
+
+    return copy.textContent.trim();
+
+}
+
 document.querySelectorAll('.auto-filter').forEach(control => {
 
     control.addEventListener('change', () => {
@@ -18,12 +39,16 @@ document.querySelectorAll('.auto-filter').forEach(control => {
         if (header) {
 
             const title =
-                header.innerText.trim();
+                getFilterSectionTitle(header);
 
-            localStorage.setItem(
-                'filter_' + title,
-                'open'
-            );
+            if (title) {
+
+                localStorage.setItem(
+                    'filter_' + title,
+                    'open'
+                );
+
+            }
 
         }
 
@@ -128,10 +153,22 @@ document.querySelectorAll('.section-header').forEach(header => {
         const arrow =
             header.querySelector('.arrow');
 
+        if (!content || !arrow) {
+
+            return;
+
+        }
+
         content.classList.toggle('collapsed');
 
         const title =
-            header.innerText.trim();
+            getFilterSectionTitle(header);
+
+        if (!title) {
+
+            return;
+
+        }
 
         if (content.classList.contains('collapsed')) {
 
@@ -166,10 +203,11 @@ DEFAULT OPEN STATES
 
 document.querySelectorAll('.filter-section').forEach(section => {
 
+    const header =
+        section.querySelector('.section-header');
+
     const title =
-        section.querySelector('.section-header')
-               .innerText
-               .trim();
+        getFilterSectionTitle(header);
 
     const content =
         section.querySelector('.section-content');
@@ -177,10 +215,51 @@ document.querySelectorAll('.filter-section').forEach(section => {
     const arrow =
         section.querySelector('.arrow');
 
-    const saved =
-        localStorage.getItem(
-            'filter_' + title
-        );
+    if (!header || !title || !content || !arrow) {
+
+        return;
+
+    }
+
+    const storageKey =
+        'filter_' + title;
+
+    let saved =
+        localStorage.getItem(storageKey);
+
+    if (saved !== 'open' && saved !== 'closed') {
+
+        const legacyOpenArrow =
+            localStorage.getItem(
+                'filter_\u25BC ' + title
+            );
+
+        const legacyClosedArrow =
+            localStorage.getItem(
+                'filter_\u25BA ' + title
+            );
+
+        const legacySaved =
+            legacyOpenArrow === 'open' ||
+            legacyOpenArrow === 'closed'
+                ? legacyOpenArrow
+                : legacyClosedArrow;
+
+        if (
+            legacySaved === 'open' ||
+            legacySaved === 'closed'
+        ) {
+
+            saved = legacySaved;
+
+            localStorage.setItem(
+                storageKey,
+                saved
+            );
+
+        }
+
+    }
 
     /*
     ---------------------------------------------
