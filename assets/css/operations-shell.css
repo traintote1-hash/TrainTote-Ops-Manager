@@ -42,3 +42,29 @@
         padding: 16px;
     }
 }
+
+.tt-work-order-table .tt-location-heading > th {
+    padding: 12px 14px;
+    border-color: #aeb8c4;
+    background: #dfe6ee;
+    color: #17212b;
+    font-size: 1rem;
+    font-weight: 800;
+    letter-spacing: .04em;
+    text-align: left;
+    text-transform: uppercase;
+}
+
+@media print {
+    .tt-work-order-table thead {
+        display: table-header-group;
+    }
+
+    .tt-work-order-table .tt-location-heading > th {
+        padding: 7px 8px;
+        border: 1px solid #000;
+        background: #e8e8e8 !important;
+        color: #000 !important;
+        break-after: avoid;
+    }
+}
