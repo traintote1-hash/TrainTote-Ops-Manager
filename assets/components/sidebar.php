@@ -22,6 +22,8 @@ if ($currentOperationsPage === '/operations/sessions.php') {
     || strpos($currentOperationsPage, '/operations/complete_job.php') !== false
 ) {
     $operationsNavItem = 'switch_lists';
+} elseif (strpos($currentOperationsPage, '/operations/load_status.php') !== false) {
+    $operationsNavItem = 'load_status';
 } elseif (
     strpos($currentOperationsPage, '/operations/prepared_cuts.php') !== false
     || strpos($currentOperationsPage, '/operations/prepared_cut.php') !== false
@@ -73,6 +75,13 @@ if (!function_exists('ttOperationsNavActive')) {
         <?= $operationsNavItem === 'switch_lists' ? 'aria-current="page"' : ''; ?>
         href="/operations/switch_lists.php">
         Switch Lists / Work Orders
+        </a>
+
+        <a
+        class="<?= ttOperationsNavActive('load_status', $operationsNavItem); ?>"
+        <?= $operationsNavItem === 'load_status' ? 'aria-current="page"' : ''; ?>
+        href="/operations/load_status.php">
+        Review Load Status
         </a>
 
         <a
