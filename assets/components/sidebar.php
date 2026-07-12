@@ -30,35 +30,35 @@ if (!function_exists('ttOperationsNavActive')) {
         </a>
 
         <a
-        class="<?= ttOperationsNavActive('/operations/generate.php', $currentOperationsPage); ?>"
-        href="/operations/generate.php">
-        Generate Session
+        class="<?= ttOperationsNavActive('/operations/session', $currentOperationsPage); ?>"
+        href="/operations/sessions.php">
+        Build / Start Session
         </a>
 
         <a
-        class="<?= ttOperationsNavActive('/operations/switch_list.php', $currentOperationsPage); ?>"
-        href="/operations/switch_list.php">
-        Switch Lists
+        class="<?= ttOperationsNavActive('/operations/sessions.php', $currentOperationsPage); ?>"
+        href="/operations/sessions.php">
+        Active Sessions
         </a>
 
         <a
-        href="#">
-        Session
+        href="/operations/switch_lists.php">
+        Switch Lists / Work Orders
         </a>
 
         <a
-        href="#">
-        Crew
+        href="/operations/prepared_cuts.php">
+        Prepared Cuts
         </a>
 
         <a
-        href="#">
-        Dispatcher
+        href="/jobs/list.php">
+        Job Titles
         </a>
 
         <a
-        href="#">
-        Repairs
+        href="/operations/sessions.php?status=completed">
+        Session History
         </a>
 
     </nav>
