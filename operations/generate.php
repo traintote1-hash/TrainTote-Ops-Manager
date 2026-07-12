@@ -137,6 +137,37 @@ function buildLocomotiveLabel(array $locomotive): string
     );
 }
 
+function normalizeSelectedLocomotiveIds($values, array $locomotivesById): array
+{
+    if (!is_array($values)) {
+        return [];
+    }
+
+    $normalizedIds = [];
+
+    foreach ($values as $value) {
+        if (is_int($value)) {
+            $locomotiveId = $value;
+        }
+        elseif (is_string($value) && ctype_digit(trim($value))) {
+            $locomotiveId = (int)trim($value);
+        }
+        else {
+            continue;
+        }
+
+        if (
+            $locomotiveId > 0
+            && isset($locomotivesById[$locomotiveId])
+            && !in_array($locomotiveId, $normalizedIds, true)
+        ) {
+            $normalizedIds[] = $locomotiveId;
+        }
+    }
+
+    return $normalizedIds;
+}
+
 function buildSkippedCarDiagnostic(array $car, string $reason, string $lookingFor): array
 {
     return [
@@ -312,8 +343,9 @@ $operatingBaseOptions = [];
 $locomotives = [];
 $selectedOperatingBaseId = 0;
 $selectedOperatingBaseName = '';
-$selectedLocomotiveId = 0;
-$selectedLocomotiveLabel = '';
+$selectedLocomotiveIds = [];
+$selectedLocomotiveLabels = [];
+$selectedLocomotiveDisplay = '';
 
 if ($railroad) {
     $stmt = $pdo->prepare("
@@ -380,22 +412,66 @@ if ($railroad) {
 
     $locomotives = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    $fallbackLocomotiveId = !empty($locomotives)
-        ? (int)$locomotives[0]['id']
-        : 0;
-
-    $selectedLocomotiveId = (int)(
-        $_POST['locomotive_id']
-        ?? $_SESSION['generated_locomotive_id']
-        ?? $fallbackLocomotiveId
-    );
+    $locomotivesById = [];
 
     foreach ($locomotives as $locomotive) {
-        if ((int)$locomotive['id'] === $selectedLocomotiveId) {
-            $selectedLocomotiveLabel = buildLocomotiveLabel($locomotive);
-            break;
+        $locomotivesById[(int)$locomotive['id']] = $locomotive;
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        if (array_key_exists('locomotive_ids', $_POST)) {
+            $selectedLocomotiveIds = normalizeSelectedLocomotiveIds(
+                is_array($_POST['locomotive_ids']) ? $_POST['locomotive_ids'] : [],
+                $locomotivesById
+            );
+        }
+
+        if (empty($selectedLocomotiveIds) && array_key_exists('locomotive_id', $_POST)) {
+            $selectedLocomotiveIds = normalizeSelectedLocomotiveIds(
+                [$_POST['locomotive_id']],
+                $locomotivesById
+            );
         }
     }
+    else {
+        $rememberedLocomotiveIds = $_SESSION['generated_locomotive_ids'] ?? null;
+
+        if (is_array($rememberedLocomotiveIds)) {
+            $selectedLocomotiveIds = normalizeSelectedLocomotiveIds(
+                $rememberedLocomotiveIds,
+                $locomotivesById
+            );
+        }
+
+        if (empty($selectedLocomotiveIds) && isset($_SESSION['generated_locomotive_id'])) {
+            $selectedLocomotiveIds = normalizeSelectedLocomotiveIds(
+                [$_SESSION['generated_locomotive_id']],
+                $locomotivesById
+            );
+        }
+
+        if (empty($selectedLocomotiveIds) && !empty($locomotives)) {
+            $selectedLocomotiveIds = [(int)$locomotives[0]['id']];
+        }
+    }
+
+    $validatedSelectedLocomotiveIds = [];
+
+    foreach ($selectedLocomotiveIds as $selectedLocomotiveId) {
+        $selectedLocomotiveLabel = buildLocomotiveLabel(
+            $locomotivesById[$selectedLocomotiveId]
+        );
+
+        if ($selectedLocomotiveLabel === '') {
+            continue;
+        }
+
+        $validatedSelectedLocomotiveIds[] = $selectedLocomotiveId;
+        $selectedLocomotiveLabels[] = $selectedLocomotiveLabel;
+    }
+
+    $selectedLocomotiveIds = $validatedSelectedLocomotiveIds;
+    $selectedLocomotiveDisplay = implode(', ', $selectedLocomotiveLabels);
 }
 
 if (
@@ -406,7 +482,7 @@ if (
         $skippedNoOperatingBase = 1;
     }
 
-    if ($selectedLocomotiveId <= 0 || $selectedLocomotiveLabel === '') {
+    if (empty($selectedLocomotiveIds) || empty($selectedLocomotiveLabels)) {
         $skippedNoLocomotive = 1;
     }
 
@@ -565,8 +641,10 @@ if (
     $_SESSION['generated_car_count'] = $carCount;
     $_SESSION['generated_operating_base_id'] = $selectedOperatingBaseId;
     $_SESSION['generated_operating_base_name'] = $selectedOperatingBaseName;
-    $_SESSION['generated_locomotive_id'] = $selectedLocomotiveId;
-    $_SESSION['generated_locomotive_label'] = $selectedLocomotiveLabel;
+    $_SESSION['generated_locomotive_ids'] = $selectedLocomotiveIds;
+    $_SESSION['generated_locomotive_labels'] = $selectedLocomotiveLabels;
+    $_SESSION['generated_locomotive_id'] = $selectedLocomotiveIds[0] ?? 0;
+    $_SESSION['generated_locomotive_label'] = $selectedLocomotiveDisplay;
     $_SESSION['generated_skip_counts'] = [
         'missing_operations_service' => $skippedNoOperationsService,
         'no_compatible_destination' => $skippedNoCompatibleDestination,
@@ -654,23 +732,25 @@ include '../assets/components/sidebar.php';
                 </div>
 
                 <div class="tt-session-fieldset">
-                    <label class="form-label" for="tt-session-locomotive">Assigned Locomotive</label>
-                    <select
-                    id="tt-session-locomotive"
-                    name="locomotive_id"
-                    class="form-select">
-                        <?php if (empty($locomotives)): ?>
-                        <option value="">No active locomotives available</option>
-                        <?php else: ?>
+                    <span class="form-label d-block">Assigned Locos</span>
+                    <?php if (empty($locomotives)): ?>
+                    <div class="tt-session-locomotive-empty">No active locomotives available</div>
+                    <?php else: ?>
+                    <div class="tt-session-locomotive-list" role="group" aria-label="Assigned Locos">
                         <?php foreach ($locomotives as $locomotive): ?>
-                        <option
-                        value="<?php echo (int)$locomotive['id']; ?>"
-                        <?php if ((int)$locomotive['id'] === $selectedLocomotiveId) echo 'selected'; ?>>
-                            <?php echo htmlspecialchars(buildLocomotiveLabel($locomotive)); ?>
-                        </option>
+                        <?php $locomotiveId = (int)$locomotive['id']; ?>
+                        <label class="tt-session-locomotive-option">
+                            <input
+                            class="form-check-input"
+                            type="checkbox"
+                            name="locomotive_ids[]"
+                            value="<?php echo $locomotiveId; ?>"
+                            <?php if (in_array($locomotiveId, $selectedLocomotiveIds, true)) echo 'checked'; ?>>
+                            <span><?php echo htmlspecialchars(buildLocomotiveLabel($locomotive)); ?></span>
+                        </label>
                         <?php endforeach; ?>
-                        <?php endif; ?>
-                    </select>
+                    </div>
+                    <?php endif; ?>
                 </div>
 
                 <div class="tt-session-fieldset">
@@ -759,8 +839,8 @@ include '../assets/components/sidebar.php';
                 </div>
                 <p class="tt-muted-text">Crew assignment controls will live here when that workflow is ready.</p>
                 <div class="tt-session-placeholder-row">
-                    <span>Engineer</span>
-                    <strong><?php echo htmlspecialchars($selectedLocomotiveLabel ?: 'Not assigned'); ?></strong>
+                    <span>Assigned Locos</span>
+                    <strong><?php echo htmlspecialchars($selectedLocomotiveDisplay ?: 'Not assigned'); ?></strong>
                 </div>
                 <div class="tt-session-placeholder-row">
                     <span>Base</span>
@@ -776,7 +856,7 @@ include '../assets/components/sidebar.php';
 
     <div class="alert alert-warning tt-session-alert">
         <strong>No compatible operating moves available.</strong>
-        <span>Select an operating base and active locomotive, then make sure active cars have Operations Service and compatible industry service fields.</span>
+        <span>Select an operating base and at least one active locomotive, then make sure active cars have Operations Service and compatible industry service fields.</span>
         <?php if ($skippedCarCount > 0): ?>
         <span><?php echo $skippedCarCount; ?> item(s) skipped: <?php echo $skippedNoOperationsService; ?> missing Operations Service, <?php echo $skippedNoCompatibleDestination; ?> with no compatible destination, <?php echo $skippedNoOperatingBase; ?> missing operating base, <?php echo $skippedNoLocomotive; ?> missing locomotive.</span>
         <?php endif; ?>
@@ -845,8 +925,8 @@ include '../assets/components/sidebar.php';
                 <strong><?php echo htmlspecialchars($selectedOperatingBaseName ?: '-'); ?></strong>
             </div>
             <div>
-                <span>Locomotive</span>
-                <strong><?php echo htmlspecialchars($selectedLocomotiveLabel ?: '-'); ?></strong>
+                <span>Assigned Locos</span>
+                <strong><?php echo htmlspecialchars($selectedLocomotiveDisplay ?: '-'); ?></strong>
             </div>
             <div>
                 <span>Cars Requested</span>
@@ -980,10 +1060,12 @@ include '../assets/components/sidebar.php';
             name="operating_base_id"
             value="<?php echo (int)$selectedOperatingBaseId; ?>">
 
+            <?php foreach ($selectedLocomotiveIds as $selectedLocomotiveId): ?>
             <input
             type="hidden"
-            name="locomotive_id"
+            name="locomotive_ids[]"
             value="<?php echo (int)$selectedLocomotiveId; ?>">
+            <?php endforeach; ?>
 
             <button
             type="submit"

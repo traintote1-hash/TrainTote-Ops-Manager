@@ -19,8 +19,28 @@ $carCount =
 $operatingBaseName =
     $_SESSION['generated_operating_base_name'] ?? '';
 
-$locomotiveLabel =
-    $_SESSION['generated_locomotive_label'] ?? '';
+$storedLocomotiveLabels =
+    $_SESSION['generated_locomotive_labels'] ?? null;
+
+$locomotiveLabels = [];
+
+if (is_array($storedLocomotiveLabels)) {
+    foreach ($storedLocomotiveLabels as $storedLocomotiveLabel) {
+        if (!is_string($storedLocomotiveLabel) && !is_numeric($storedLocomotiveLabel)) {
+            continue;
+        }
+
+        $storedLocomotiveLabel = trim((string)$storedLocomotiveLabel);
+
+        if ($storedLocomotiveLabel !== '') {
+            $locomotiveLabels[] = $storedLocomotiveLabel;
+        }
+    }
+}
+
+$locomotiveLabel = !empty($locomotiveLabels)
+    ? implode(', ', $locomotiveLabels)
+    : trim((string)($_SESSION['generated_locomotive_label'] ?? ''));
 
 function getPrintedMoveActionLabel(array $move): string
 {
@@ -207,7 +227,7 @@ Close
 <div class="work-order-meta">
 
 <div><span>Operating Base</span><strong><?php echo htmlspecialchars($operatingBaseName ?: '-'); ?></strong></div>
-<div><span>Assigned Locomotive</span><strong><?php echo htmlspecialchars($locomotiveLabel ?: '-'); ?></strong></div>
+<div><span>Assigned Locos</span><strong><?php echo htmlspecialchars($locomotiveLabel ?: '-'); ?></strong></div>
 <div><span>Difficulty</span><strong><?php echo htmlspecialchars(ucfirst($difficulty)); ?></strong></div>
 <div><span>Cars Requested</span><strong><?php echo (int)$carCount; ?></strong></div>
 <div><span>Setouts</span><strong><?php echo (int)$setoutMoveCount; ?></strong></div>
