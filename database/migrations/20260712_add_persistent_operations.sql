@@ -1,0 +1,177 @@
+-- Persistent Operations foundation. Apply once after 20260712_add_switch_completion_history.sql.
+-- Idempotent table creation preserves legacy jobs and operation_switch_* history.
+
+CREATE TABLE IF NOT EXISTS operating_sessions (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    railroad_id INT NOT NULL,
+    created_by_user_id INT NOT NULL,
+    session_number VARCHAR(16) NOT NULL,
+    session_name VARCHAR(120) NULL,
+    operating_date DATE NOT NULL,
+    status ENUM('draft','ready','in_progress','completed','cancelled') NOT NULL DEFAULT 'draft',
+    notes TEXT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    started_at DATETIME NULL,
+    completed_at DATETIME NULL,
+    cancelled_at DATETIME NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_operating_session_number (railroad_id, session_number),
+    KEY idx_operating_sessions_status (railroad_id, status, operating_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS operation_assignments (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    railroad_id INT NOT NULL,
+    session_id BIGINT UNSIGNED NOT NULL,
+    job_template_id INT NULL,
+    assignment_number VARCHAR(24) NOT NULL,
+    sequence_number INT UNSIGNED NOT NULL,
+    title_snapshot VARCHAR(120) NOT NULL,
+    type_snapshot VARCHAR(64) NOT NULL,
+    description_snapshot TEXT NULL,
+    operating_pattern VARCHAR(64) NOT NULL,
+    status ENUM('draft','ready','waiting','in_progress','needs_review','completed','cancelled') NOT NULL DEFAULT 'draft',
+    operating_base_industry_id INT NULL,
+    starting_track VARCHAR(120) NULL,
+    start_method ENUM('locomotives_only','coupled_selected','prepared_cut','manual','auto_build','inherit') NOT NULL DEFAULT 'locomotives_only',
+    prepared_cut_id BIGINT UNSIGNED NULL,
+    requested_car_count INT UNSIGNED NOT NULL DEFAULT 10,
+    difficulty ENUM('easy','medium','hard') NOT NULL DEFAULT 'medium',
+    crew_name VARCHAR(120) NULL,
+    predecessor_assignment_id BIGINT UNSIGNED NULL,
+    dependency_mode ENUM('locomotives','cars','entire_train','continue') NULL,
+    end_plan VARCHAR(64) NOT NULL DEFAULT 'return_origin',
+    end_industry_id INT NULL,
+    end_track VARCHAR(120) NULL,
+    notes TEXT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    approved_at DATETIME NULL,
+    started_at DATETIME NULL,
+    completed_at DATETIME NULL,
+    cancelled_at DATETIME NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_operation_assignment_number (railroad_id, assignment_number),
+    UNIQUE KEY uq_operation_assignment_sequence (session_id, sequence_number),
+    KEY idx_operation_assignment_status (railroad_id, status),
+    CONSTRAINT fk_operation_assignment_session FOREIGN KEY (session_id) REFERENCES operating_sessions(id),
+    CONSTRAINT fk_operation_assignment_predecessor FOREIGN KEY (predecessor_assignment_id) REFERENCES operation_assignments(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS operation_assignment_locomotives (
+    assignment_id BIGINT UNSIGNED NOT NULL,
+    equipment_id INT NOT NULL,
+    position INT UNSIGNED NOT NULL,
+    source ENUM('selected','inherited') NOT NULL DEFAULT 'selected',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (assignment_id, equipment_id),
+    KEY idx_assignment_locomotive_equipment (equipment_id),
+    CONSTRAINT fk_assignment_locomotive_assignment FOREIGN KEY (assignment_id) REFERENCES operation_assignments(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS prepared_cuts (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    railroad_id INT NOT NULL,
+    cut_number VARCHAR(20) NOT NULL,
+    name VARCHAR(120) NOT NULL,
+    current_industry_id INT NOT NULL,
+    current_track VARCHAR(120) NOT NULL,
+    intended_job_template_id INT NULL,
+    status ENUM('ready','assigned','in_use','released','dissolved') NOT NULL DEFAULT 'ready',
+    notes TEXT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_prepared_cut_number (railroad_id, cut_number),
+    KEY idx_prepared_cut_status (railroad_id, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS prepared_cut_cars (
+    prepared_cut_id BIGINT UNSIGNED NOT NULL,
+    equipment_id INT NOT NULL,
+    position INT UNSIGNED NOT NULL,
+    PRIMARY KEY (prepared_cut_id, equipment_id),
+    KEY idx_prepared_cut_car_equipment (equipment_id),
+    CONSTRAINT fk_prepared_cut_car_cut FOREIGN KEY (prepared_cut_id) REFERENCES prepared_cuts(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS operation_assignment_starting_cars (
+    assignment_id BIGINT UNSIGNED NOT NULL,
+    equipment_id INT NOT NULL,
+    position INT UNSIGNED NOT NULL,
+    source_type ENUM('prepared_cut','selected','auto_built','inherited') NOT NULL,
+    source_id BIGINT UNSIGNED NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (assignment_id, equipment_id),
+    KEY idx_assignment_starting_car_equipment (equipment_id),
+    CONSTRAINT fk_assignment_starting_car_assignment FOREIGN KEY (assignment_id) REFERENCES operation_assignments(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS operation_switch_lists (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    railroad_id INT NOT NULL,
+    session_id BIGINT UNSIGNED NOT NULL,
+    assignment_id BIGINT UNSIGNED NOT NULL,
+    switch_list_number VARCHAR(24) NOT NULL,
+    revision_number INT UNSIGNED NOT NULL DEFAULT 1,
+    status ENUM('draft','approved','in_progress','completed','cancelled','needs_review') NOT NULL DEFAULT 'draft',
+    generated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    approved_at DATETIME NULL,
+    printed_at DATETIME NULL,
+    started_at DATETIME NULL,
+    completed_at DATETIME NULL,
+    cancelled_at DATETIME NULL,
+    generated_by_user_id INT NOT NULL,
+    approved_by_user_id INT NULL,
+    planned_move_count INT UNSIGNED NOT NULL DEFAULT 0,
+    moved_count INT UNSIGNED NOT NULL DEFAULT 0,
+    not_moved_count INT UNSIGNED NOT NULL DEFAULT 0,
+    diagnostic_summary TEXT NULL,
+    notes TEXT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_operation_switch_list_revision (assignment_id, revision_number),
+    KEY idx_operation_switch_list_status (railroad_id, status, updated_at),
+    CONSTRAINT fk_operation_switch_list_session FOREIGN KEY (session_id) REFERENCES operating_sessions(id),
+    CONSTRAINT fk_operation_switch_list_assignment FOREIGN KEY (assignment_id) REFERENCES operation_assignments(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS operation_switch_list_moves (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    switch_list_id BIGINT UNSIGNED NOT NULL,
+    railroad_id INT NOT NULL,
+    sequence_number INT UNSIGNED NOT NULL,
+    movement_group VARCHAR(36) NOT NULL,
+    equipment_id INT NULL,
+    reporting_marks_snapshot VARCHAR(24) NULL,
+    road_number_snapshot VARCHAR(24) NULL,
+    equipment_type_snapshot VARCHAR(80) NULL,
+    service_snapshot VARCHAR(120) NULL,
+    photo_filename_snapshot VARCHAR(255) NULL,
+    original_load_status VARCHAR(64) NULL,
+    planned_load_status VARCHAR(64) NULL,
+    origin_industry_id INT NULL,
+    origin_name_snapshot VARCHAR(120) NULL,
+    origin_track VARCHAR(120) NULL,
+    destination_industry_id INT NULL,
+    destination_name_snapshot VARCHAR(120) NULL,
+    destination_track VARCHAR(120) NULL,
+    action VARCHAR(32) NOT NULL,
+    instruction VARCHAR(255) NOT NULL,
+    work_location VARCHAR(120) NULL,
+    progress_complete TINYINT(1) NOT NULL DEFAULT 0,
+    actual_outcome ENUM('pending','moved','not_moved') NOT NULL DEFAULT 'pending',
+    actual_industry_id INT NULL,
+    actual_track VARCHAR(120) NULL,
+    actual_load_status VARCHAR(64) NULL,
+    exception_reason_code VARCHAR(64) NULL,
+    exception_notes VARCHAR(255) NULL,
+    progress_updated_at DATETIME NULL,
+    completed_at DATETIME NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_switch_list_move_sequence (switch_list_id, sequence_number),
+    KEY idx_switch_list_move_equipment (railroad_id, equipment_id),
+    CONSTRAINT fk_switch_list_move_list FOREIGN KEY (switch_list_id) REFERENCES operation_switch_lists(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
