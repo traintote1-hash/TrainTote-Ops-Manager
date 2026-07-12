@@ -213,7 +213,10 @@ if (!empty($industryIds)) {
 
 <?php include '../includes/navbar.php'; ?>
 
-<div class="container mt-4">
+<div class="tt-operations-shell">
+<?php include '../assets/components/sidebar.php'; ?>
+<section class="tt-ops-page">
+<div class="container-fluid">
 
 <h1>
 
@@ -387,4 +390,7 @@ Cancel
 </div>
 
 </form>
+</div>
+</section>
+</div>
 <?php include '../includes/footer.php'; ?>

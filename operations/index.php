@@ -19,7 +19,10 @@ include '../includes/header.php';
 
 <?php include '../includes/navbar.php'; ?>
 
-<div class="container mt-5">
+<div class="tt-operations-shell">
+<?php include '../assets/components/sidebar.php'; ?>
+<section class="tt-ops-page">
+<div class="container-fluid">
 
 <h1 class="mb-4">Operations</h1>
 
@@ -84,6 +87,10 @@ Generate Switch List
 </div>
 
 </div>
+
+</div>
+
+</section>
 
 </div>
 
