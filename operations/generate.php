@@ -655,6 +655,9 @@ if (
 }
 
 $workLocationGroups = groupGeneratedMovesByLocation($sessionWaybills);
+$renderedLocomotiveIds = !empty($selectedLocomotiveIds)
+    ? $selectedLocomotiveIds
+    : [0];
 
 ?>
 
@@ -736,21 +739,44 @@ include '../assets/components/sidebar.php';
                     <?php if (empty($locomotives)): ?>
                     <div class="tt-session-locomotive-empty">No active locomotives available</div>
                     <?php else: ?>
-                    <div class="tt-session-locomotive-list" role="group" aria-label="Assigned Locos">
-                        <?php foreach ($locomotives as $locomotive): ?>
-                        <?php $locomotiveId = (int)$locomotive['id']; ?>
-                        <label class="tt-session-locomotive-option">
-                            <input
-                            class="form-check-input"
-                            type="checkbox"
+                    <div id="tt-session-locomotive-fields" class="tt-session-locomotive-fields">
+                        <?php foreach ($renderedLocomotiveIds as $locomotiveIndex => $renderedLocomotiveId): ?>
+                        <?php $isAdditionalLocomotive = $locomotiveIndex > 0; ?>
+                        <div class="tt-session-locomotive-row<?php if ($isAdditionalLocomotive) echo ' is-removable'; ?>">
+                            <label
+                            class="visually-hidden"
+                            for="tt-session-locomotive-<?php echo $locomotiveIndex + 1; ?>">
+                                Assigned Loco <?php echo $locomotiveIndex + 1; ?>
+                            </label>
+                            <select
+                            id="tt-session-locomotive-<?php echo $locomotiveIndex + 1; ?>"
                             name="locomotive_ids[]"
-                            value="<?php echo $locomotiveId; ?>"
-                            <?php if (in_array($locomotiveId, $selectedLocomotiveIds, true)) echo 'checked'; ?>>
-                            <span><?php echo htmlspecialchars(buildLocomotiveLabel($locomotive)); ?></span>
-                        </label>
+                            class="form-select tt-session-locomotive-select">
+                                <option value="" <?php if ($renderedLocomotiveId === 0) echo 'selected'; ?>>Select a locomotive</option>
+                                <?php foreach ($locomotives as $locomotive): ?>
+                                <?php $locomotiveId = (int)$locomotive['id']; ?>
+                                <option
+                                value="<?php echo $locomotiveId; ?>"
+                                <?php if ($locomotiveId === $renderedLocomotiveId) echo 'selected'; ?>>
+                                    <?php echo htmlspecialchars(buildLocomotiveLabel($locomotive)); ?>
+                                </option>
+                                <?php endforeach; ?>
+                                <?php if ($isAdditionalLocomotive): ?>
+                                <option value="" data-remove-loco>Remove Loco</option>
+                                <?php endif; ?>
+                            </select>
+                        </div>
                         <?php endforeach; ?>
                     </div>
                     <?php endif; ?>
+                    <button
+                    type="button"
+                    id="tt-add-locomotive"
+                    class="tt-add-locomotive"
+                    data-locomotive-count="<?php echo count($locomotives); ?>"
+                    <?php if (empty($locomotives)) echo 'disabled'; ?>>
+                        + Add Another Loco
+                    </button>
                 </div>
 
                 <div class="tt-session-fieldset">
@@ -1086,5 +1112,164 @@ include '../assets/components/sidebar.php';
 
     <?php endif; ?>
 </div>
+
+<script>
+(function () {
+    const fields = document.getElementById('tt-session-locomotive-fields');
+    const addButton = document.getElementById('tt-add-locomotive');
+
+    if (!fields || !addButton) {
+        return;
+    }
+
+    const locomotiveCount = Number.parseInt(
+        addButton.dataset.locomotiveCount || '0',
+        10
+    );
+
+    function getRows() {
+        return Array.from(fields.querySelectorAll('.tt-session-locomotive-row'));
+    }
+
+    function getSelects() {
+        return Array.from(fields.querySelectorAll('.tt-session-locomotive-select'));
+    }
+
+    function updateRowLabels() {
+        getRows().forEach(function (row, index) {
+            const select = row.querySelector('.tt-session-locomotive-select');
+            const label = row.querySelector('label');
+            const rowNumber = index + 1;
+
+            if (!select || !label) {
+                return;
+            }
+
+            select.id = 'tt-session-locomotive-' + rowNumber;
+            label.htmlFor = select.id;
+            label.textContent = 'Assigned Loco ' + rowNumber;
+        });
+    }
+
+    function ensureRemoveOption(row) {
+        const select = row.querySelector('.tt-session-locomotive-select');
+
+        if (!select || select.querySelector('[data-remove-loco]')) {
+            return;
+        }
+
+        const removeOption = document.createElement('option');
+        removeOption.value = '';
+        removeOption.textContent = 'Remove Loco';
+        removeOption.setAttribute('data-remove-loco', '');
+        select.appendChild(removeOption);
+    }
+
+    function refreshLocomotiveOptions() {
+        const selects = getSelects();
+        const selectedValues = new Set(
+            selects.map(function (select) {
+                return select.value;
+            }).filter(function (value) {
+                return value !== '';
+            })
+        );
+
+        selects.forEach(function (select) {
+            Array.from(select.options).forEach(function (option) {
+                if (option.value === '' || option.hasAttribute('data-remove-loco')) {
+                    option.disabled = false;
+                    return;
+                }
+
+                option.disabled = selectedValues.has(option.value)
+                    && select.value !== option.value;
+            });
+        });
+
+        const allAssigned = locomotiveCount > 0
+            && selectedValues.size >= locomotiveCount;
+        const atRowCapacity = locomotiveCount > 0
+            && selects.length >= locomotiveCount;
+
+        addButton.disabled = locomotiveCount === 0
+            || allAssigned
+            || atRowCapacity;
+
+        if (allAssigned) {
+            addButton.title = 'All active locomotives are assigned';
+        }
+        else if (atRowCapacity) {
+            addButton.title = 'All locomotive dropdowns are in use';
+        }
+        else if (locomotiveCount === 0) {
+            addButton.title = 'No active locomotives are available';
+        }
+        else {
+            addButton.removeAttribute('title');
+        }
+    }
+
+    function handleLocomotiveChange(event) {
+        const select = event.currentTarget;
+        const row = select.closest('.tt-session-locomotive-row');
+        const selectedOption = select.options[select.selectedIndex];
+
+        if (
+            row
+            && row.classList.contains('is-removable')
+            && selectedOption
+            && selectedOption.hasAttribute('data-remove-loco')
+        ) {
+            row.remove();
+            updateRowLabels();
+        }
+
+        refreshLocomotiveOptions();
+    }
+
+    function bindLocomotiveSelect(select) {
+        select.addEventListener('change', handleLocomotiveChange);
+    }
+
+    getSelects().forEach(bindLocomotiveSelect);
+    updateRowLabels();
+    refreshLocomotiveOptions();
+
+    addButton.addEventListener('click', function () {
+        if (addButton.disabled) {
+            return;
+        }
+
+        const firstRow = getRows()[0];
+
+        if (!firstRow) {
+            return;
+        }
+
+        const newRow = firstRow.cloneNode(true);
+        const newSelect = newRow.querySelector('.tt-session-locomotive-select');
+
+        if (!newSelect) {
+            return;
+        }
+
+        newRow.classList.add('is-removable');
+
+        Array.from(newSelect.options).forEach(function (option) {
+            option.disabled = false;
+            option.selected = option.value === ''
+                && !option.hasAttribute('data-remove-loco');
+        });
+
+        ensureRemoveOption(newRow);
+        fields.appendChild(newRow);
+        updateRowLabels();
+        bindLocomotiveSelect(newSelect);
+        refreshLocomotiveOptions();
+        newSelect.focus();
+    });
+}());
+</script>
 
 <?php include '../assets/components/footer.php'; ?>
