@@ -177,6 +177,90 @@ foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $serviceOption) {
 */
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $returnQuery = str_replace(["\r", "\n"], '', $_POST['return_query'] ?? '');
+    $returnUrl = 'status.php' . ($returnQuery !== '' ? '?' . $returnQuery : '') . '#status-board';
+    $submittedAction = $_POST['status_action'] ?? 'save_all';
+
+    if ($submittedAction === 'apply_bulk') {
+        $submittedAction = $_POST['bulk_action'] ?? '';
+    }
+
+    if (!in_array($submittedAction, ['save_all', 'bulk_edit', 'set_active', 'set_inactive'], true)) {
+        $_SESSION['status_message'] = 'Choose a bulk action before applying it.';
+        $_SESSION['status_message_type'] = 'warning';
+        header('Location: ' . $returnUrl);
+        exit;
+    }
+
+    if (in_array($submittedAction, ['bulk_edit', 'set_active', 'set_inactive'], true)) {
+        $selectedIds = array_values(array_unique(array_filter(
+            array_map('intval', (array)($_POST['equipment_ids'] ?? [])),
+            static fn(int $id): bool => $id > 0
+        )));
+
+        if (empty($selectedIds)) {
+            $_SESSION['status_message'] = 'Select at least one car before applying a bulk action.';
+            $_SESSION['status_message_type'] = 'warning';
+            header('Location: ' . $returnUrl);
+            exit;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($selectedIds), '?'));
+        $authorizedStmt = $pdo->prepare("
+            SELECT id
+            FROM equipment
+            WHERE railroad_id = ?
+            AND id IN ($placeholders)
+        ");
+        $authorizedStmt->execute(array_merge([$railroad['id']], $selectedIds));
+        $authorizedSet = array_fill_keys(
+            array_map('intval', $authorizedStmt->fetchAll(PDO::FETCH_COLUMN)),
+            true
+        );
+        $authorizedIds = array_values(array_filter(
+            $selectedIds,
+            static fn(int $id): bool => isset($authorizedSet[$id])
+        ));
+
+        if (empty($authorizedIds)) {
+            $_SESSION['status_message'] = 'None of the selected cars could be updated.';
+            $_SESSION['status_message_type'] = 'warning';
+            header('Location: ' . $returnUrl);
+            exit;
+        }
+
+        if ($submittedAction === 'bulk_edit') {
+            $_SESSION['equipment_edit_queue'] = $authorizedIds;
+            $_SESSION['equipment_edit_queue_return_url'] = $returnUrl;
+            $_SESSION['bulk_edit_queue'] = $authorizedIds;
+            $_SESSION['bulk_edit_queue_return_url'] = $returnUrl;
+            $_SESSION['edit_queue'] = $authorizedIds;
+            $_SESSION['edit_queue_return_url'] = $returnUrl;
+
+            header('Location: edit.php?id=' . (int)$authorizedIds[0]);
+            exit;
+        }
+
+        $active = $submittedAction === 'set_active' ? 1 : 0;
+        $authorizedPlaceholders = implode(',', array_fill(0, count($authorizedIds), '?'));
+        $bulkUpdateStmt = $pdo->prepare("
+            UPDATE equipment
+            SET active = ?
+            WHERE railroad_id = ?
+            AND id IN ($authorizedPlaceholders)
+        ");
+        $bulkUpdateStmt->execute(array_merge([$active, $railroad['id']], $authorizedIds));
+        $changedCount = $bulkUpdateStmt->rowCount();
+        $statusLabel = $active === 1 ? 'Active' : 'Inactive';
+
+        $_SESSION['status_message'] = $changedCount === 1
+            ? '1 selected car was set to ' . $statusLabel . '.'
+            : $changedCount . ' selected cars were set to ' . $statusLabel . '.';
+        $_SESSION['status_message_type'] = 'success';
+        header('Location: ' . $returnUrl);
+        exit;
+    }
+
     $carRows = $_POST['cars'] ?? [];
     $updatedCount = 0;
 
@@ -279,14 +363,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $_SESSION['status_message'] = $updatedCount === 1
         ? '1 car status updated.'
         : $updatedCount . ' car statuses updated.';
+    $_SESSION['status_message_type'] = 'success';
 
-    $returnQuery = str_replace(["\r", "\n"], '', $_POST['return_query'] ?? '');
     header('Location: status.php' . ($returnQuery !== '' ? '?' . $returnQuery : '') . '#status-board');
     exit;
 }
 
 $statusMessage = $_SESSION['status_message'] ?? '';
+$statusMessageType = $_SESSION['status_message_type'] ?? 'success';
 unset($_SESSION['status_message']);
+unset($_SESSION['status_message_type']);
 
 /*
 |--------------------------------------------------------------------------
@@ -303,6 +389,10 @@ $search = trim($_GET['search'] ?? '');
 */
 
 $statusFilters = array_values(array_filter(array_map('strval', (array)($_GET['status'] ?? []))));
+$typeFilters = array_values(array_filter(array_map(
+    static fn($value): string => trim((string)$value),
+    (array)($_GET['type'] ?? [])
+), static fn(string $value): bool => $value !== ''));
 $locationFilters = array_values(array_filter(array_map('strval', (array)($_GET['location'] ?? []))));
 $loadFilters = array_values(array_filter(array_map('strval', (array)($_GET['load_status'] ?? []))));
 
@@ -397,6 +487,16 @@ $locationStmt->execute([':railroad_id' => $railroad['id']]);
 $industryOptions = $locationStmt->fetchAll(PDO::FETCH_ASSOC);
 $locationOptions = array_column($industryOptions, 'industry_name');
 
+$typeStmt = $pdo->prepare("
+    SELECT DISTINCT equipment_type
+    FROM equipment
+    WHERE railroad_id = :railroad_id
+    AND equipment_type <> ''
+    ORDER BY equipment_type
+");
+$typeStmt->execute([':railroad_id' => $railroad['id']]);
+$typeOptions = $typeStmt->fetchAll(PDO::FETCH_COLUMN);
+
 $loadStmt = $pdo->prepare("
     SELECT DISTINCT load_status
     FROM equipment
@@ -469,6 +569,10 @@ if ($search !== '') {
 
 if (!empty($locationFilters)) {
     $where[] = buildInClause('i.industry_name', $locationFilters, 'loc', $params);
+}
+
+if (!empty($typeFilters)) {
+    $where[] = buildInClause('e.equipment_type', $typeFilters, 'type', $params);
 }
 
 if (!empty($loadFilters)) {
@@ -551,6 +655,7 @@ $sql = "
         e.road_name,
         e.equipment_class,
         e.equipment_type,
+        e.photo_filename,
         e.active,
         e.current_industry_id,
         e.current_track,
@@ -617,7 +722,7 @@ $returnQuery = $_SERVER['QUERY_STRING'] ?? '';
 <div class="container-fluid mt-4">
 
 <?php if ($statusMessage !== ''): ?>
-<div class="alert alert-success">
+<div class="alert alert-<?= $statusMessageType === 'warning' ? 'warning' : 'success' ?>">
     <?= htmlspecialchars($statusMessage) ?>
 </div>
 <?php endif; ?>
@@ -713,6 +818,12 @@ SIDEBAR
 </a>
 <?php endforeach; ?>
 
+<?php foreach ($typeFilters as $filter): ?>
+<a class="filter-chip" href="<?= filterUrl(['type' => array_values(array_diff($typeFilters, [$filter])), 'page' => 1]) ?>">
+    &times; <?= htmlspecialchars($filter) ?>
+</a>
+<?php endforeach; ?>
+
 <?php foreach ($locationFilters as $filter): ?>
 <a class="filter-chip" href="<?= filterUrl(['location' => array_values(array_diff($locationFilters, [$filter])), 'page' => 1]) ?>">
     &times; <?= htmlspecialchars($filter) ?>
@@ -736,6 +847,22 @@ SIDEBAR
         value="<?= htmlspecialchars($search) ?>"
         placeholder="Car, location, service...">
     <button type="submit" class="btn btn-sm btn-primary mt-2 w-100">Go</button>
+</div>
+</div>
+
+<!-- EQUIPMENT TYPE -->
+
+<div class="filter-section">
+<div class="section-header"><span class="arrow">▼</span> Equipment Type</div>
+<div class="section-content filter-scroll">
+<?php foreach ($typeOptions as $option): ?>
+<label class="form-check">
+    <input class="form-check-input auto-filter" type="checkbox" name="type[]"
+        value="<?= htmlspecialchars($option) ?>"
+        <?= in_array($option, $typeFilters, true) ? 'checked' : '' ?>>
+    <span class="form-check-label"><?= htmlspecialchars($option) ?></span>
+</label>
+<?php endforeach; ?>
 </div>
 </div>
 
@@ -818,9 +945,33 @@ MAIN CONTENT
 
 <div class="top-toolbar">
 <div class="toolbar-left">
-    <button type="submit" class="btn btn-success">Save All Changes</button>
+    <div class="tt-list-actions">
+        <button type="submit" name="status_action" value="save_all" class="btn btn-success">Save All Changes</button>
+        <select name="bulk_action" class="form-select bulk-action-select">
+            <option value="">Bulk Action</option>
+            <option value="bulk_edit">Bulk Edit</option>
+            <option value="set_active">Set Active</option>
+            <option value="set_inactive">Set Inactive</option>
+        </select>
+        <button type="submit" name="status_action" value="apply_bulk" class="btn btn-success">Apply Bulk Action</button>
+    </div>
 </div>
-<div class="toolbar-right ms-auto"></div>
+
+<div class="pagination-area top-pagination">
+<?php if ($perPage !== 'all' && $totalPages > 1): ?>
+    <?php if ($page > 1): ?>
+        <a class="btn btn-outline-secondary btn-sm" href="<?= filterUrl(['page' => $page - 1]) ?>">&lt;</a>
+    <?php endif; ?>
+    <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+        <a class="btn btn-sm <?= $i === $page ? 'btn-primary' : 'btn-outline-secondary' ?>"
+           href="<?= filterUrl(['page' => $i]) ?>"><?= $i ?></a>
+    <?php endfor; ?>
+    <?php if ($page < $totalPages): ?>
+        <a class="btn btn-outline-secondary btn-sm" href="<?= filterUrl(['page' => $page + 1]) ?>">&gt;</a>
+    <?php endif; ?>
+<?php endif; ?>
+</div>
+
 <div class="toolbar-right">
     <label class="small me-2">Show</label>
     <select id="perPage" class="form-select form-select-sm">
@@ -839,6 +990,10 @@ MAIN CONTENT
 
 <thead>
 <tr>
+<th width="40">
+    <input type="checkbox" id="selectAll">
+</th>
+<th>Photo</th>
 <th>
 <a class="sort-link" href="<?= filterUrl(['sort' => 'car', 'dir' => ($sort === 'car' && $dir === 'asc') ? 'desc' : 'asc']) ?>">
     Car ▲▼
@@ -899,6 +1054,20 @@ $matchedService = $currentService === ''
 $customServiceVisible = $currentService !== '' && !$matchedService;
 ?>
 <tr class="<?= (int)$car['active'] === 1 ? '' : 'table-light' ?>">
+
+<td>
+    <input type="checkbox" name="equipment_ids[]" value="<?= $equipmentId ?>" onclick="event.stopPropagation()">
+</td>
+
+<td>
+<?php if (!empty($car['photo_filename'])): ?>
+    <img src="../uploads/<?= htmlspecialchars($car['photo_filename'], ENT_QUOTES, 'UTF-8') ?>"
+         class="img-thumbnail equipment-thumb"
+         alt="<?= htmlspecialchars(trim(($car['reporting_marks'] ?? '') . ' ' . ($car['road_number'] ?? '')) . ' car', ENT_QUOTES, 'UTF-8') ?>">
+<?php else: ?>
+    <span class="text-muted">&mdash;</span>
+<?php endif; ?>
+</td>
 
 <td>
     <strong><?= htmlspecialchars($car['car']) ?></strong>
@@ -1006,7 +1175,7 @@ $customServiceVisible = $currentService !== '' && !$matchedService;
 
 <?php if (empty($cars)): ?>
 <tr>
-    <td colspan="9" class="text-center text-muted py-4">No cars match the current filters.</td>
+    <td colspan="11" class="text-center text-muted py-4">No cars match the current filters.</td>
 </tr>
 <?php endif; ?>
 
@@ -1017,7 +1186,7 @@ $customServiceVisible = $currentService !== '' && !$matchedService;
 </div>
 
 <div class="d-flex justify-content-end mt-3">
-    <button type="submit" class="btn btn-success">Save All Changes</button>
+    <button type="submit" name="status_action" value="save_all" class="btn btn-success">Save All Changes</button>
 </div>
 
 </form>
