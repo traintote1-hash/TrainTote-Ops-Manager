@@ -31,6 +31,7 @@ $skippedNoLocomotive = 0;
 $skippedCarCount = 0;
 $setoutMoveCount = 0;
 $pullMoveCount = 0;
+$generatedSessionId = $_SESSION['generated_session_id'] ?? '';
 
 $difficulty = $_POST['difficulty'] ?? 'medium';
 $carCount = (int)($_POST['car_count'] ?? 5);
@@ -627,6 +628,12 @@ if (
         }
 
         $sessionWaybills = chooseBalancedMoves($setoutMoves, $pullMoves, $carCount);
+
+        foreach ($sessionWaybills as $moveIndex => $move) {
+            $sessionWaybills[$moveIndex]['completion_key'] = 'move-' . $moveIndex;
+        }
+
+        $generatedSessionId = bin2hex(random_bytes(12));
         $setoutMoveCount = count(array_filter($sessionWaybills, fn($move) => ($move['move_type'] ?? '') === 'SETOUT'));
         $pullMoveCount = count(array_filter($sessionWaybills, fn($move) => ($move['move_type'] ?? '') === 'PULL'));
     }
@@ -637,6 +644,7 @@ if (
         + $skippedNoLocomotive;
 
     $_SESSION['generated_session'] = $sessionWaybills;
+    $_SESSION['generated_session_id'] = $generatedSessionId;
     $_SESSION['generated_difficulty'] = $difficulty;
     $_SESSION['generated_car_count'] = $carCount;
     $_SESSION['generated_operating_base_id'] = $selectedOperatingBaseId;
@@ -655,6 +663,9 @@ if (
 }
 
 $workLocationGroups = groupGeneratedMovesByLocation($sessionWaybills);
+$generatedSwitchProgressStorageKey = $generatedSessionId !== ''
+    ? 'tt_switch_progress_generated_' . $generatedSessionId
+    : '';
 $renderedLocomotiveIds = !empty($selectedLocomotiveIds)
     ? $selectedLocomotiveIds
     : [0];
@@ -933,7 +944,10 @@ include '../assets/components/sidebar.php';
 
     <?php else: ?>
 
-    <section class="tt-panel tt-generated-session-panel">
+    <section
+    class="tt-panel tt-generated-session-panel"
+    data-switch-progress
+    data-switch-storage-key="<?php echo htmlspecialchars($generatedSwitchProgressStorageKey); ?>">
         <div class="tt-panel-heading">
             <div>
                 <span class="tt-panel-kicker">Generated Switch List</span>
@@ -976,6 +990,10 @@ include '../assets/components/sidebar.php';
         <p class="tt-muted-text">Skipped <?php echo $skippedNoOperationsService; ?> car(s) missing Operations Service, <?php echo $skippedNoCompatibleDestination; ?> car(s) with no compatible move, <?php echo $skippedNoOperatingBase; ?> missing base, and <?php echo $skippedNoLocomotive; ?> missing locomotive.</p>
         <?php endif; ?>
 
+        <div class="tt-switch-progress no-print" data-switch-progress-counter>
+            0 of <?php echo count($sessionWaybills); ?> moves complete
+        </div>
+
         <div class="tt-generated-work-by-location">
             <div class="tt-panel-heading">
                 <div>
@@ -992,6 +1010,7 @@ include '../assets/components/sidebar.php';
                     <table class="table table-sm align-middle">
                         <thead>
                             <tr>
+                                <th class="tt-switch-done-column">Done</th>
                                 <th>Action</th>
                                 <th>Car</th>
                                 <th>Type</th>
@@ -1004,9 +1023,22 @@ include '../assets/components/sidebar.php';
                         </thead>
                         <tbody>
                             <?php foreach ($group['moves'] as $waybill): ?>
+                            <?php
+                            $carLabel = trim(($waybill['reporting_marks'] ?? '') . ' ' . ($waybill['road_number'] ?? ''));
+                            $moveKey = (string)($waybill['completion_key'] ?? '');
+                            ?>
                             <tr>
+                                <td class="tt-switch-done-cell">
+                                    <label>
+                                        <input
+                                        type="checkbox"
+                                        class="tt-switch-move-checkbox"
+                                        data-switch-move-key="<?php echo htmlspecialchars($moveKey); ?>"
+                                        aria-label="Mark <?php echo htmlspecialchars(strtolower(getGeneratedMoveActionLabel($waybill)) . ' ' . ($carLabel ?: 'car')); ?> complete">
+                                    </label>
+                                </td>
                                 <td><strong><?php echo htmlspecialchars(getGeneratedMoveActionLabel($waybill)); ?></strong></td>
-                                <td><?php echo htmlspecialchars(trim(($waybill['reporting_marks'] ?? '') . ' ' . ($waybill['road_number'] ?? '')) ?: '-'); ?></td>
+                                <td class="tt-switch-primary-move"><?php echo htmlspecialchars($carLabel ?: '-'); ?></td>
                                 <td><?php echo htmlspecialchars($waybill['equipment_type'] ?: '-'); ?></td>
                                 <td><?php echo htmlspecialchars($waybill['load_status'] ?: '-'); ?></td>
                                 <td><?php echo htmlspecialchars($waybill['operations_service'] ?: '-'); ?></td>
@@ -1112,6 +1144,8 @@ include '../assets/components/sidebar.php';
 
     <?php endif; ?>
 </div>
+
+<script src="../assets/js/switch_list_progress.js"></script>
 
 <script>
 (function () {

@@ -150,6 +150,7 @@ $stmt = $pdo->prepare("
 
     SELECT
 
+        jc.id AS job_car_id,
         jc.*,
 
         e.reporting_marks,
@@ -249,6 +250,10 @@ foreach ($setouts as $car) {
     $setoutGroups[$destination][] = $car;
 }
 
+$totalMoveCount = count($pickups) + count($setouts);
+$switchProgressStorageKey = 'tt_switch_progress_job_' . (int)$railroad['id'] . '_' . (int)$jobId;
+$clearSwitchProgress = isset($_GET['completed']) && $_GET['completed'] === '1';
+
 ?>
 
 <?php
@@ -258,7 +263,13 @@ include '../assets/components/sidebar.php';
 ?>
 <link rel="stylesheet" href="../assets/css/dashboard.css">
 
-<div class="tt-switch-list-page">
+<div
+class="tt-switch-list-page"
+data-switch-progress
+data-switch-storage-key="<?php echo htmlspecialchars($switchProgressStorageKey); ?>"
+<?php if ($clearSwitchProgress): ?>
+data-switch-clear-on-load="1"
+<?php endif; ?>>
     <div class="tt-session-hero tt-switch-hero">
         <div>
             <span class="tt-session-kicker">Job Switch List</span>
@@ -295,6 +306,12 @@ include '../assets/components/sidebar.php';
             <strong><?php echo count($setouts); ?></strong>
         </div>
     </div>
+
+    <?php if ($totalMoveCount > 0): ?>
+    <div class="tt-switch-progress no-print" data-switch-progress-counter>
+        0 of <?php echo $totalMoveCount; ?> moves complete
+    </div>
+    <?php endif; ?>
 
     <div class="tt-switch-two-column">
         <section class="tt-panel tt-switch-section">
@@ -364,6 +381,7 @@ include '../assets/components/sidebar.php';
                 <table class="table table-sm align-middle tt-switch-table">
                     <thead>
                         <tr>
+                            <th class="tt-switch-done-column">Done</th>
                             <th>Car</th>
                             <th>Track</th>
                             <th>Destination</th>
@@ -373,8 +391,21 @@ include '../assets/components/sidebar.php';
                     </thead>
                     <tbody>
                         <?php foreach ($group as $car): ?>
+                        <?php
+                        $carLabel = trim($car['reporting_marks'] . ' ' . $car['road_number']);
+                        $moveKey = 'job-car-' . (int)$car['job_car_id'];
+                        ?>
                         <tr>
-                            <td><strong><?php echo htmlspecialchars(trim($car['reporting_marks'] . ' ' . $car['road_number'])); ?></strong></td>
+                            <td class="tt-switch-done-cell">
+                                <label>
+                                    <input
+                                    type="checkbox"
+                                    class="tt-switch-move-checkbox"
+                                    data-switch-move-key="<?php echo htmlspecialchars($moveKey); ?>"
+                                    aria-label="Mark pickup <?php echo htmlspecialchars($carLabel ?: 'car'); ?> complete">
+                                </label>
+                            </td>
+                            <td class="tt-switch-primary-move"><strong><?php echo htmlspecialchars($carLabel); ?></strong></td>
                             <td><?php echo htmlspecialchars($car['current_track'] ?: '-'); ?></td>
                             <td><?php echo htmlspecialchars($car['destination_name'] ?: '-'); ?></td>
                             <td><?php echo htmlspecialchars($car['commodity'] ?: ''); ?></td>
@@ -407,6 +438,7 @@ include '../assets/components/sidebar.php';
                 <table class="table table-sm align-middle tt-switch-table">
                     <thead>
                         <tr>
+                            <th class="tt-switch-done-column">Done</th>
                             <th>Car</th>
                             <th>Origin</th>
                             <th>Commodity</th>
@@ -416,8 +448,21 @@ include '../assets/components/sidebar.php';
                     </thead>
                     <tbody>
                         <?php foreach ($group as $car): ?>
+                        <?php
+                        $carLabel = trim($car['reporting_marks'] . ' ' . $car['road_number']);
+                        $moveKey = 'job-car-' . (int)$car['job_car_id'];
+                        ?>
                         <tr>
-                            <td><strong><?php echo htmlspecialchars(trim($car['reporting_marks'] . ' ' . $car['road_number'])); ?></strong></td>
+                            <td class="tt-switch-done-cell">
+                                <label>
+                                    <input
+                                    type="checkbox"
+                                    class="tt-switch-move-checkbox"
+                                    data-switch-move-key="<?php echo htmlspecialchars($moveKey); ?>"
+                                    aria-label="Mark setout <?php echo htmlspecialchars($carLabel ?: 'car'); ?> complete">
+                                </label>
+                            </td>
+                            <td class="tt-switch-primary-move"><strong><?php echo htmlspecialchars($carLabel); ?></strong></td>
                             <td><?php echo htmlspecialchars($car['origin_name'] ?: 'Unknown'); ?></td>
                             <td><?php echo htmlspecialchars($car['commodity'] ?: ''); ?></td>
                             <td><?php echo htmlspecialchars($car['waybill_status'] ?: ''); ?></td>
@@ -467,5 +512,7 @@ include '../assets/components/sidebar.php';
         <a href="select_job.php" class="btn btn-secondary">Back to Jobs</a>
     </div>
 </div>
+
+<script src="../assets/js/switch_list_progress.js"></script>
 
 <?php include '../assets/components/footer.php'; ?>
