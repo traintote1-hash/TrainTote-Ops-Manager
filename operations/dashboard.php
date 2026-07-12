@@ -37,11 +37,11 @@ include '../assets/components/sidebar.php';
 
             <p>
                 <strong>Next Step:</strong>
-                Generate jobs and click <em>Start Session</em>.
+                Build a persistent session, add assignments, then start when the work is Ready.
             </p>
 
             <p>
-                <a class="tt-action tt-action-start" href="/operations/generate.php">
+                <a class="tt-action tt-action-start" href="/operations/sessions.php">
                     Start Session
                 </a>
             </p>
@@ -71,11 +71,11 @@ include '../assets/components/sidebar.php';
     </div>
 
     <div class="tt-actions">
-        <a class="tt-action" href="/operations/generate.php">
+        <a class="tt-action" href="/operations/sessions.php">
             <span class="tt-action-icon" aria-hidden="true">📋</span>
             <span class="tt-action-copy">
-                <span>Generate Jobs</span>
-                <small>Build operating work</small>
+                <span>Build Session</span>
+                <small>Add multiple saved assignments</small>
             </span>
         </a>
 
@@ -95,11 +95,11 @@ include '../assets/components/sidebar.php';
             </span>
         </a>
 
-        <a class="tt-action" href="/operations/print.php">
+        <a class="tt-action" href="/operations/switch_lists.php">
             <span class="tt-action-icon" aria-hidden="true">🖨️</span>
             <span class="tt-action-copy">
-                <span>Print Switch Lists</span>
-                <small>Prepare paper copies</small>
+                <span>Switch Lists</span>
+                <small>Resume, print, or close out saved work</small>
             </span>
         </a>
     </div>
@@ -114,9 +114,9 @@ include '../assets/components/sidebar.php';
             </div>
 
             <div class="tt-control-list">
-                <a href="/operations/generate.php">Generate operating work</a>
-                <a href="/operations/switch_list.php">View switch lists</a>
-                <a href="/operations/print.php">Print switch lists</a>
+                <a href="/operations/sessions.php">Build or resume a session</a>
+                <a href="/operations/switch_lists.php">View persistent switch lists</a>
+                <a href="/operations/prepared_cuts.php">Manage prepared trains and cuts</a>
             </div>
         </div>
 

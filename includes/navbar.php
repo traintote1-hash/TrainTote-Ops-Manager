@@ -81,13 +81,7 @@ Waybills
 </li>
 
 <li class="nav-item">
-<a class="nav-link <?php echo navActive('/jobs/'); ?>" href="/jobs/list.php">
-Jobs
-</a>
-</li>
-
-<li class="nav-item">
-<a class="nav-link <?php echo navActive('/operations/'); ?>" href="/operations/generate.php">
+<a class="nav-link <?php echo navActive('/operations/'); ?>" href="/operations/sessions.php">
 Operations
 </a>
 </li>
