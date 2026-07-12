@@ -1,0 +1,77 @@
+.tt-switch-exception-column {
+    min-width: 220px;
+}
+
+.tt-switch-not-moved-button {
+    white-space: nowrap;
+}
+
+.tt-switch-not-moved-button.is-selected {
+    border-color: #9a6700;
+    background: #fff3cd;
+    color: #6b4f00;
+}
+
+.tt-switch-exception-fields {
+    display: grid;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.tt-switch-exception-fields[hidden] {
+    display: none;
+}
+
+.tt-switch-exception-fields .form-select,
+.tt-switch-exception-fields .form-control,
+.tt-switch-destination-input {
+    min-width: 170px;
+    font-size: .82rem;
+}
+
+tr.is-switch-move-skipped {
+    background: #fff8e6;
+    color: #665c3d;
+}
+
+tr.is-switch-move-skipped .tt-switch-primary-move {
+    text-decoration: none;
+}
+
+.tt-switch-completion-panel {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    margin-top: 18px;
+    border-left: 4px solid #2e8b57;
+}
+
+.tt-switch-completion-panel h3 {
+    margin: 0 0 4px;
+    color: #1f2937;
+    font-size: 1.15rem;
+}
+
+.tt-switch-completion-panel p {
+    margin: 0;
+}
+
+@media(max-width:700px) {
+    .tt-switch-completion-panel {
+        display: grid;
+    }
+
+    .tt-switch-completion-panel .btn {
+        width: 100%;
+    }
+}
+
+@media print {
+    .tt-switch-exception-column,
+    .tt-switch-destination-column,
+    .tt-switch-completion-panel,
+    .tt-switch-completion-form .tt-switch-progress {
+        display: none !important;
+    }
+}
