@@ -5,6 +5,7 @@ include '../assets/components/sidebar.php';
 ?>
 <link rel="stylesheet" href="../assets/css/dashboard.css">
 
+<main class="tt-content">
 <div class="tt-dashboard-page">
     <div class="tt-hero">
         <div class="tt-hero-main">
@@ -159,5 +160,6 @@ include '../assets/components/sidebar.php';
         </div>
     </div>
 </div>
+</main>
 
 <?php include '../assets/components/footer.php'; ?>

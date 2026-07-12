@@ -1,0 +1,44 @@
+/* Shared Operations shell for pages that use includes/header.php. */
+.tt-operations-shell.tt-operations-shell {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
+    gap: 0;
+    max-width: none;
+    min-height: calc(100vh - 72px);
+    margin: 0;
+    padding: 0;
+    background: var(--bg, #f3f4f6);
+}
+
+.tt-operations-shell.tt-operations-shell > .tt-sidebar.tt-module-nav {
+    position: static;
+    width: 240px;
+}
+
+.tt-operations-shell.tt-operations-shell > .tt-ops-page {
+    min-width: 0;
+    padding: 24px;
+}
+
+@media (max-width: 900px) {
+    .tt-operations-shell.tt-operations-shell {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .tt-operations-shell.tt-operations-shell > .tt-sidebar.tt-module-nav {
+        display: block;
+        width: 100%;
+        border-right: 0;
+        border-bottom: 1px solid #d9dde3;
+    }
+
+    .tt-operations-shell.tt-operations-shell > .tt-ops-page {
+        padding: 20px;
+    }
+}
+
+@media (max-width: 575px) {
+    .tt-operations-shell.tt-operations-shell > .tt-ops-page {
+        padding: 16px;
+    }
+}

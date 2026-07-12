@@ -40,6 +40,18 @@ rel="stylesheet">
 href="/assets/css/traintote.css"
 rel="stylesheet">
 
+<link
+href="/assets/css/tt-shell.css"
+rel="stylesheet">
+
+<link
+href="/assets/css/tt-navigation.css"
+rel="stylesheet">
+
+<link
+href="/assets/css/operations-shell.css"
+rel="stylesheet">
+
 <script
 defer
 src="/assets/js/traintote.js"></script>

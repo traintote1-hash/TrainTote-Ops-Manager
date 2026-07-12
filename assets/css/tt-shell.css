@@ -15,7 +15,7 @@ body{margin:0;font:16px system-ui;background:var(--bg);color:var(--text)}
 .tt-panel{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px}
 @media(max-width:900px){
 .tt-shell{grid-template-columns:1fr}
-.tt-sidebar{display:none}
+.tt-sidebar{display:block}
 .tt-topnav{display:none}
 }
 
@@ -76,7 +76,8 @@ body{margin:0;font:16px system-ui;background:var(--bg);color:var(--text)}
     }
 
     .tt-sidebar {
-        display: none;
+        display: block;
+        width: 100%;
     }
 }
 
@@ -149,6 +150,16 @@ body{margin:0;font:16px system-ui;background:var(--bg);color:var(--text)}
 
 @media(max-width:900px) {
     .tt-sidebar.tt-module-nav {
-        display: none;
+        display: block;
+        width: 100%;
+        padding: 14px 18px;
+    }
+
+    .tt-module-nav-header {
+        margin-bottom: 8px;
+    }
+
+    .tt-module-nav-list a {
+        padding: 10px 4px;
     }
 }
