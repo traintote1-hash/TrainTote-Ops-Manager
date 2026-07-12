@@ -1,39 +1,48 @@
-name: PHP Composer
+name: PHP checks
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 permissions:
   contents: read
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+      - name: Check out repository
+        uses: actions/checkout@v4
 
-    - name: Validate composer.json and composer.lock
-      run: composer validate --strict
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          coverage: none
 
-    - name: Cache Composer packages
-      id: composer-cache
-      uses: actions/cache@v3
-      with:
-        path: vendor
-        key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-php-
+      - name: Lint tracked PHP files
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -d '' php_files < <(git ls-files -z -- '*.php')
+          if (( ${#php_files[@]} == 0 )); then
+            echo "No tracked PHP files found."
+            exit 1
+          fi
+          for file in "${php_files[@]}"; do
+            php -l "$file"
+          done
 
-    - name: Install dependencies
-      run: composer install --prefer-dist --no-progress
-
-    # Add a test script to composer.json, for instance: "test": "vendor/bin/phpunit"
-    # Docs: https://getcomposer.org/doc/articles/scripts.md
-
-    # - name: Run test suite
-    #   run: composer run-script test
+      - name: Run Operations generator test
+        shell: bash
+        run: |
+          set -euo pipefail
+          test_file="operations/tests/generator_test.php"
+          if [[ -f "$test_file" ]]; then
+            php "$test_file"
+          else
+            echo "$test_file is not present on this branch; it will run when introduced."
+          fi
