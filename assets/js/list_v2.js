@@ -8,13 +8,33 @@ document.querySelectorAll('.auto-filter').forEach(control => {
 
     control.addEventListener('change', () => {
 
-        // Remember Equipment Type as open
-        localStorage.setItem(
-            'filter_Equipment Type',
-            'open'
-        );
+        const section =
+            control.closest('.filter-section');
 
-        document.getElementById('filterForm').submit();
+        const header = section
+            ? section.querySelector('.section-header')
+            : null;
+
+        if (header) {
+
+            const title =
+                header.innerText.trim();
+
+            localStorage.setItem(
+                'filter_' + title,
+                'open'
+            );
+
+        }
+
+        const filterForm =
+            document.getElementById('filterForm');
+
+        if (filterForm) {
+
+            filterForm.submit();
+
+        }
 
     });
 
