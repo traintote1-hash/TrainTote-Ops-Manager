@@ -3,17 +3,41 @@ require_once __DIR__ . '/lib.php';
 
 function ttChooseOperationsMoves(array $assignment, array $cars, array $industries, array $startingIds, array $reservedIds, array $routeStops = []): array
 {
-    if (($assignment['start_method'] ?? '') === 'prepared_cut') {
-        return ttChoosePreparedCutMoves($assignment, $cars, $industries, $startingIds, $reservedIds, $routeStops);
-    }
     $selectedRoute = ($assignment['work_scope'] ?? 'entire_railroad') === 'selected_route';
     if ($selectedRoute) {
         if (!$routeStops) {
             throw new RuntimeException('This Job Title uses Selected Route / Territory but has no route stops. Add at least one stop or change the scope to Entire Railroad.');
         }
+        ttAssertUniqueRouteStops($routeStops, $industries);
+    }
+    if (($assignment['start_method'] ?? '') === 'prepared_cut') {
+        return ttChoosePreparedCutMoves($assignment, $cars, $industries, $startingIds, $reservedIds, $routeStops);
+    }
+    if ($selectedRoute) {
         return ttChooseSelectedRouteMoves($assignment, $cars, $industries, $startingIds, $reservedIds, $routeStops);
     }
     return ttChooseBroadOperationsMoves($assignment, $cars, $industries, $startingIds, $reservedIds);
+}
+
+function ttPreparedCutStatusIsAssigned(?array $cut): bool
+{
+    return $cut !== null && ($cut['status'] ?? '') === 'assigned';
+}
+
+function ttAssertUniqueRouteStops(array $routeStops, array $industries): void
+{
+    $names = [];
+    foreach ($industries as $industry) $names[(int)$industry['id']] = (string)$industry['industry_name'];
+    $seen = [];
+    foreach ($routeStops as $stop) {
+        $industryId = (int)($stop['industry_id'] ?? 0);
+        if ($industryId <= 0) continue;
+        if (isset($seen[$industryId])) {
+            $name = $names[$industryId] ?? ('location #'.$industryId);
+            throw new RuntimeException('Duplicate route location '.$name.' is configured. Remove the duplicate before generating a switch list.');
+        }
+        $seen[$industryId] = true;
+    }
 }
 
 function ttChoosePreparedCutMoves(array $assignment,array $cars,array $industries,array $startingIds,array $reservedIds,array $routeStops=[]):array
@@ -21,7 +45,7 @@ function ttChoosePreparedCutMoves(array $assignment,array $cars,array $industrie
     $selectedRoute=($assignment['work_scope']??'entire_railroad')==='selected_route';if($selectedRoute&&!$routeStops)throw new RuntimeException('This Job Title uses Selected Route / Territory but has no route stops. Add at least one stop or change the scope to Entire Railroad.');
     $industryById=[];$occupancy=[];foreach($industries as$industry){$id=(int)$industry['id'];$industryById[$id]=$industry;$occupancy[$id]=0;}foreach($cars as$car){$id=(int)$car['current_industry_id'];if($id>0)$occupancy[$id]=($occupancy[$id]??0)+1;}
     $carById=[];foreach($cars as$car)$carById[(int)$car['id']]=$car;$startingIds=array_values(array_unique(array_map('intval',$startingIds)));$startingSet=array_fill_keys($startingIds,true);$startingCars=[];$diagnostics=[];
-    foreach($startingIds as$id){$car=$carById[$id]??null;if(!$car||in_array($id,$reservedIds,true)){$diagnostics[]='Prepared-cut car '.$id.' is missing, inactive, or reserved by another assignment; no substitute was used.';continue;}if((int)($assignment['prepared_cut_industry_id']??0)>0&&(int)$car['current_industry_id']!==(int)$assignment['prepared_cut_industry_id']){$diagnostics[]='Prepared-cut car '.trim($car['reporting_marks'].' '.$car['road_number']).' is no longer at the saved cut location; no move was created.';continue;}$startingCars[]=$car;}
+    foreach($startingIds as$id){$car=$carById[$id]??null;if(!$car||in_array($id,$reservedIds,true)){$diagnostics[]='Prepared-cut car '.$id.' is missing, inactive, or reserved by another assignment; no substitute was used.';continue;}$carName=trim($car['reporting_marks'].' '.$car['road_number']);if((int)($assignment['prepared_cut_industry_id']??0)>0&&(int)$car['current_industry_id']!==(int)$assignment['prepared_cut_industry_id']){$diagnostics[]='Prepared-cut car '.$carName.' is no longer at the saved cut location; no move was created.';continue;}$savedTrack=trim((string)($assignment['prepared_cut_track']??''));if($savedTrack!==''&&trim((string)$car['current_track'])!==$savedTrack){$diagnostics[]='Prepared-cut car '.$carName.' is no longer on the saved cut track '.$savedTrack.'; no move was created.';continue;}$startingCars[]=$car;}
     $capacityDelta=[];$used=[];$groups=[];
     if($selectedRoute){
         usort($routeStops,static fn($a,$b)=>(int)$a['sequence_number']<=>(int)$b['sequence_number']);$routeIds=array_map(static fn($stop)=>(int)$stop['industry_id'],$routeStops);$supportIds=[(int)$assignment['operating_base_industry_id'],(int)$assignment['end_industry_id']];foreach($routeStops as$stop){$supportIds[]=(int)$stop['pull_destination_industry_id'];$supportIds[]=(int)$stop['replacement_source_industry_id'];}$allowedIds=array_values(array_unique(array_filter(array_merge($routeIds,$supportIds))));$pickupLimit=max(0,(int)$assignment['requested_car_count']);$pickupCount=0;
