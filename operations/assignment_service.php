@@ -81,6 +81,7 @@ function ttAssignmentNormalizeInput(PDO $pdo, int $railroadId, int $sessionId, a
         'job'=>$job,'job_id'=>$jobId,'pattern'=>$pattern,'start_method'=>$start,
         'base_id'=>$base?:null,'starting_track'=>substr(trim((string)($input['starting_track']??'')),0,120),
         'cut_id'=>$cut?:null,'requested'=>max(0,min(100,(int)($input['requested_car_count']??10))),
+        'prepared_cut_count'=>max(0,min(100,(int)($input['prepared_cut_car_count']??10))),
         'difficulty'=>in_array($input['difficulty']??'', ['easy','medium','hard'],true)?$input['difficulty']:'medium',
         'crew'=>substr(trim((string)($input['crew_name']??'')),0,120),'predecessor'=>$predecessor?:null,
         'dependency'=>$dependency,'end_plan'=>$endPlan,'end_id'=>$endId?:null,'end_track'=>$endTrack,
