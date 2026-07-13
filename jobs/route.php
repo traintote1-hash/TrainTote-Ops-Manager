@@ -25,6 +25,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $check = $pdo->prepare('SELECT id FROM industries WHERE id=? AND railroad_id=? AND active=1');
             $check->execute([$industryId, $railroadId]);
             if (!$check->fetchColumn()) throw new RuntimeException('Select a valid active route stop.');
+            $duplicate = $pdo->prepare('SELECT id FROM job_route_stops WHERE job_id=? AND railroad_id=? AND industry_id=? FOR UPDATE');
+            $duplicate->execute([$jobId, $railroadId, $industryId]);
+            if ($duplicate->fetchColumn()) throw new RuntimeException('This location is already included in the route.');
             $seq = $pdo->prepare('SELECT COALESCE(MAX(sequence_number),0)+1 FROM job_route_stops WHERE job_id=? AND railroad_id=? FOR UPDATE');
             $seq->execute([$jobId, $railroadId]);
             $pdo->prepare('INSERT INTO job_route_stops (railroad_id,job_id,industry_id,sequence_number) VALUES (?,?,?,?)')->execute([$railroadId, $jobId, $industryId, (int)$seq->fetchColumn()]);
