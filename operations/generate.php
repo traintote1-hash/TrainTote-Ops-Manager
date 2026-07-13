@@ -3,11 +3,13 @@ session_start();
 require_once '../config/database.php';
 require_once 'lib.php';
 require_once 'generator.php';
+require_once 'assignment_service.php';
 if(!isset($_SESSION['user_id'])){header('Location: ../login.php');exit;}
 $railroad=ttOperationsRailroad($pdo,(int)$_SESSION['user_id']);$railroadId=(int)$railroad['id'];$assignmentId=(int)($_GET['assignment_id']??$_POST['assignment_id']??0);
 if($assignmentId<=0){header('Location: sessions.php');exit;}
-$stmt=$pdo->prepare('SELECT a.*,s.session_number,s.session_name FROM operation_assignments a JOIN operating_sessions s ON s.id=a.session_id WHERE a.id=? AND a.railroad_id=?');$stmt->execute([$assignmentId,$railroadId]);$assignment=$stmt->fetch(PDO::FETCH_ASSOC);
+$stmt=$pdo->prepare('SELECT a.*,s.session_number,s.session_name,s.status session_status FROM operation_assignments a JOIN operating_sessions s ON s.id=a.session_id AND s.railroad_id=a.railroad_id WHERE a.id=? AND a.railroad_id=?');$stmt->execute([$assignmentId,$railroadId]);$assignment=$stmt->fetch(PDO::FETCH_ASSOC);
 if(!$assignment){http_response_code(404);die('Assignment not found.');}$error='';
+$listStatuses=ttAssignmentListStatuses($pdo,$assignmentId,$railroadId);if(!ttAssignmentCanGenerate($assignment,$listStatuses)){http_response_code(409);die('Switch-list generation is blocked because the session or assignment is frozen, inheritance is unsupported, or an approved/active/historical review revision exists.');}
 
 $routeStmt=$pdo->prepare("SELECT jrs.*,COALESCE(jop.work_scope,'entire_railroad') work_scope FROM jobs j LEFT JOIN job_operation_profiles jop ON jop.job_id=j.id AND jop.railroad_id=j.railroad_id LEFT JOIN job_route_stops jrs ON jrs.job_id=j.id AND jrs.railroad_id=j.railroad_id WHERE j.id=? AND j.railroad_id=? ORDER BY jrs.sequence_number");
 $routeStmt->execute([(int)$assignment['job_template_id'],$railroadId]);$routeRows=$routeStmt->fetchAll(PDO::FETCH_ASSOC);$routeStops=array_values(array_filter($routeRows,static fn($row)=>(int)($row['id']??0)>0));$assignment['work_scope']=$routeRows[0]['work_scope']??'entire_railroad';

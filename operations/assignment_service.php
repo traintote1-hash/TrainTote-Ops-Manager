@@ -2,18 +2,38 @@
 
 function ttAssignmentStartMethods(): array
 {
-    return ['locomotives_only','coupled_selected','prepared_cut','manual','auto_build','inherit'];
+    return ['locomotives_only','coupled_selected','prepared_cut','manual','auto_build'];
 }
 
 function ttAssignmentEndPlans(): array
 {
-    return ['return_origin','terminate_elsewhere','release_cars','release_locomotives','handoff_cars','handoff_train','continue_next','tie_down_locomotives'];
+    return ['return_origin','terminate_elsewhere'];
+}
+
+function ttOperatingSessionIsEditable(string $status): bool
+{
+    return in_array($status,['draft','ready'],true);
+}
+
+function ttAssignmentPatternOverrideValue(array $assignment): string
+{
+    return (string)$assignment['operating_pattern']===(string)$assignment['type_snapshot']?'':(string)$assignment['operating_pattern'];
 }
 
 function ttAssignmentIsEditable(array $assignment, array $listStatuses = []): bool
 {
+    if(isset($assignment['session_status'])&&!ttOperatingSessionIsEditable((string)$assignment['session_status']))return false;
     if (!in_array((string)$assignment['status'], ['draft','waiting'], true)) return false;
     return count(array_intersect($listStatuses, ['approved','in_progress','completed','needs_review'])) === 0;
+}
+
+function ttAssignmentCanGenerate(array $assignment,array $listStatuses):bool
+{
+    return ttOperatingSessionIsEditable((string)($assignment['session_status']??''))
+        &&in_array((string)($assignment['status']??''),['draft','waiting'],true)
+        &&($assignment['start_method']??'')!=='inherit'
+        &&in_array((string)($assignment['end_plan']??''),ttAssignmentEndPlans(),true)
+        &&count(array_intersect($listStatuses,['approved','in_progress','completed','needs_review']))===0;
 }
 
 function ttAssignmentNormalizeInput(PDO $pdo, int $railroadId, int $sessionId, array $input, ?int $assignmentId = null): array
@@ -21,18 +41,13 @@ function ttAssignmentNormalizeInput(PDO $pdo, int $railroadId, int $sessionId, a
     $jobId=(int)($input['job_template_id']??0);
     $stmt=$pdo->prepare('SELECT * FROM jobs WHERE id=? AND railroad_id=? AND active=1');$stmt->execute([$jobId,$railroadId]);$job=$stmt->fetch(PDO::FETCH_ASSOC);
     if(!$job)throw new RuntimeException('Choose an active Job Title.');
-    $start=(string)($input['start_method']??'locomotives_only');if(!in_array($start,ttAssignmentStartMethods(),true))throw new RuntimeException('Invalid start method.');
+    $start=(string)($input['start_method']??'locomotives_only');if($start==='inherit')throw new RuntimeException('Inheritance is not yet supported. Configure this assignment with a supported start method.');if(!in_array($start,ttAssignmentStartMethods(),true))throw new RuntimeException('Invalid start method.');
     $patterns=ttJobTypes();$pattern=trim((string)($input['operating_pattern']??''));if($pattern==='')$pattern=(string)$job['job_type'];if(!isset($patterns[$pattern]))throw new RuntimeException('Invalid operating pattern.');
-    $base=(int)($input['operating_base_industry_id']??0);if($start!=='inherit'&&$base<=0)throw new RuntimeException('Choose an operating base.');
+    $base=(int)($input['operating_base_industry_id']??0);if($base<=0)throw new RuntimeException('Choose an operating base.');
     if($base>0){$stmt=$pdo->prepare('SELECT id FROM industries WHERE id=? AND railroad_id=? AND active=1');$stmt->execute([$base,$railroadId]);if(!$stmt->fetchColumn())throw new RuntimeException('Invalid operating base.');}
-    $predecessor=(int)($input['predecessor_assignment_id']??0);$dependency=null;
-    if($start==='inherit'){
-        if($predecessor<=0)throw new RuntimeException('Inherit from previous assignment requires a previous assignment.');
-        $stmt=$pdo->prepare('SELECT id FROM operation_assignments WHERE id=? AND session_id=? AND railroad_id=?');$stmt->execute([$predecessor,$sessionId,$railroadId]);if(!$stmt->fetchColumn()||$predecessor===$assignmentId)throw new RuntimeException('Choose a valid previous assignment from this session.');
-        $dependency=(string)($input['dependency_mode']??'');if(!in_array($dependency,['locomotives','cars','entire_train','continue'],true))throw new RuntimeException('Choose what the next assignment inherits.');
-    } else {$predecessor=0;}
+    $predecessor=0;$dependency=null;
     $cut=$start==='prepared_cut'?(int)($input['prepared_cut_id']??0):0;if($start==='prepared_cut'&&$cut<=0)throw new RuntimeException('Choose an available prepared cut.');
-    $endPlan=(string)($input['end_plan']??'return_origin');if(!in_array($endPlan,ttAssignmentEndPlans(),true))throw new RuntimeException('Invalid end plan.');
+    $endPlan=(string)($input['end_plan']??'return_origin');if(!in_array($endPlan,ttAssignmentEndPlans(),true))throw new RuntimeException('This end plan is retained for legacy history but is not supported for new or edited assignments.');
     $endId=$endPlan==='return_origin'?0:(int)($input['end_industry_id']??0);$endTrack=$endPlan==='return_origin'?'':substr(trim((string)($input['end_track']??'')),0,120);
     if($endId>0){$stmt=$pdo->prepare('SELECT id FROM industries WHERE id=? AND railroad_id=? AND active=1');$stmt->execute([$endId,$railroadId]);if(!$stmt->fetchColumn())throw new RuntimeException('Invalid end location.');}
     return [
@@ -66,7 +81,7 @@ function ttAssignmentReplaceStartingCars(PDO $pdo,int $assignmentId,int $railroa
         $ins=$pdo->prepare("INSERT INTO operation_assignment_starting_cars(assignment_id,equipment_id,position,source_type,source_id) VALUES(?,?,?,'prepared_cut',?)");foreach($cars as$car){$id=(int)$car['equipment_id'];if(in_array($id,$reserved,true))throw new RuntimeException('A prepared-cut car is reserved elsewhere.');$ins->execute([$assignmentId,$id,(int)$car['position'],$newCut]);}
         $stmt=$pdo->prepare("UPDATE prepared_cuts SET status='assigned' WHERE id=? AND railroad_id=? AND (status='ready' OR (status='assigned' AND id=?))");$stmt->execute([$newCut,$railroadId,$oldCutId?:0]);
     } elseif(in_array($data['start_method'],['manual','coupled_selected'],true)){
-        $ins=$pdo->prepare("INSERT INTO operation_assignment_starting_cars(assignment_id,equipment_id,position,source_type) VALUES(?,?,?,'selected')");$position=1;foreach($data['starting_car_ids']as$id){if(in_array($id,$reserved,true))throw new RuntimeException('A selected starting car is reserved elsewhere.');$stmt=$pdo->prepare("SELECT id FROM equipment WHERE id=? AND railroad_id=? AND active=1 AND COALESCE(equipment_class,'')<>'Locomotive'");$stmt->execute([$id,$railroadId]);if(!$stmt->fetchColumn())throw new RuntimeException('Invalid starting-car selection.');$ins->execute([$assignmentId,$id,$position++]);}
+        $ins=$pdo->prepare("INSERT INTO operation_assignment_starting_cars(assignment_id,equipment_id,position,source_type) VALUES(?,?,?,'selected')");$position=1;foreach($data['starting_car_ids']as$id){if(in_array($id,$reserved,true))throw new RuntimeException('A selected starting car is reserved elsewhere.');$stmt=$pdo->prepare("SELECT id,current_industry_id,current_track FROM equipment WHERE id=? AND railroad_id=? AND active=1 AND COALESCE(equipment_class,'')<>'Locomotive'");$stmt->execute([$id,$railroadId]);$car=$stmt->fetch(PDO::FETCH_ASSOC);if(!$car)throw new RuntimeException('Invalid starting-car selection.');if((int)$car['current_industry_id']!==(int)$data['base_id'])throw new RuntimeException('Every starting car must be at the selected Operating Base.');if($data['start_method']==='coupled_selected'&&$data['starting_track']!==''&&(string)$car['current_track']!==$data['starting_track'])throw new RuntimeException('Every coupled starting car must be on the selected Starting Track.');$ins->execute([$assignmentId,$id,$position++]);}
     }
 }
 
@@ -79,6 +94,13 @@ function ttSessionStartReadiness(array $assignments): array
 {
     $active=array_values(array_filter($assignments,static fn($a)=>($a['status']??'')!=='cancelled'));
     if(!$active)return [false,'Add at least one assignment before starting the session.'];
-    foreach($active as$a){if(!in_array((string)$a['status'],['ready','waiting'],true)||($a['approved_list_count']??0)<1)return [false,'Generate and approve a switch list for every assignment before starting the session.'];}
+    $byId=[];foreach($active as$a)$byId[(int)($a['id']??0)]=$a;
+    foreach($active as$a){
+        if(($a['latest_list_status']??'')!=='approved')return [false,'Generate and approve the latest switch list for every assignment before starting the session.'];
+        if(($a['status']??'')==='ready')continue;
+        if(($a['status']??'')!=='waiting')return [false,'Generate and approve the latest switch list for every assignment before starting the session.'];
+        $predecessor=$byId[(int)($a['predecessor_assignment_id']??0)]??null;
+        if(!$predecessor||($predecessor['status']??'')!=='ready'||($predecessor['latest_list_status']??'')!=='approved')return [false,'A waiting assignment requires a ready predecessor with an approved latest switch list.'];
+    }
     return [true,''];
 }
