@@ -36,6 +36,32 @@ function ttAssignmentCanGenerate(array $assignment,array $listStatuses):bool
         &&count(array_intersect($listStatuses,['approved','in_progress','completed','needs_review']))===0;
 }
 
+function ttSwitchListRevisionState(array $rows):array
+{
+    $current=null;
+    foreach($rows as$row)if($current===null&&$row['status']!=='cancelled')$current=$row;
+    return ['rows'=>$rows,'statuses'=>array_column($rows,'status'),'latest'=>$rows[0]??null,'current'=>$current,'max_revision'=>$rows?(int)$rows[0]['revision_number']:0];
+}
+
+function ttSwitchListRevisionSummary(PDO $pdo,int $assignmentId,int $railroadId,bool $lock=false):array
+{
+    $sql='SELECT id,revision_number,status FROM operation_switch_lists WHERE assignment_id=? AND railroad_id=? ORDER BY revision_number DESC'.($lock?' FOR UPDATE':'');
+    $stmt=$pdo->prepare($sql);$stmt->execute([$assignmentId,$railroadId]);return ttSwitchListRevisionState($stmt->fetchAll(PDO::FETCH_ASSOC));
+}
+
+function ttCancelDraftSwitchLists(PDO $pdo,int $assignmentId,int $railroadId,string $note):void
+{
+    $stmt=$pdo->prepare("UPDATE operation_switch_lists SET status='cancelled',cancelled_at=NOW(),notes=CONCAT_WS(' ',NULLIF(TRIM(COALESCE(notes,'')),''),?) WHERE assignment_id=? AND railroad_id=? AND status='draft'");
+    $stmt->execute([$note,$assignmentId,$railroadId]);
+}
+
+function ttSwitchListIsApprovable(array $list,array $assignment,array $summary):bool
+{
+    return ($list['status']??'')==='draft'
+        &&(int)($summary['latest']['id']??0)===(int)($list['id']??0)
+        &&ttAssignmentCanGenerate($assignment,(array)($summary['statuses']??[]));
+}
+
 function ttAssignmentNormalizeInput(PDO $pdo, int $railroadId, int $sessionId, array $input, ?int $assignmentId = null): array
 {
     $jobId=(int)($input['job_template_id']??0);
@@ -49,6 +75,7 @@ function ttAssignmentNormalizeInput(PDO $pdo, int $railroadId, int $sessionId, a
     $cut=$start==='prepared_cut'?(int)($input['prepared_cut_id']??0):0;if($start==='prepared_cut'&&$cut<=0)throw new RuntimeException('Choose an available prepared cut.');
     $endPlan=(string)($input['end_plan']??'return_origin');if(!in_array($endPlan,ttAssignmentEndPlans(),true))throw new RuntimeException('This end plan is retained for legacy history but is not supported for new or edited assignments.');
     $endId=$endPlan==='return_origin'?0:(int)($input['end_industry_id']??0);$endTrack=$endPlan==='return_origin'?'':substr(trim((string)($input['end_track']??'')),0,120);
+    if($endPlan==='terminate_elsewhere'&&$endId<=0)throw new RuntimeException('Choose an End Location when terminating elsewhere.');
     if($endId>0){$stmt=$pdo->prepare('SELECT id FROM industries WHERE id=? AND railroad_id=? AND active=1');$stmt->execute([$endId,$railroadId]);if(!$stmt->fetchColumn())throw new RuntimeException('Invalid end location.');}
     return [
         'job'=>$job,'job_id'=>$jobId,'pattern'=>$pattern,'start_method'=>$start,
@@ -87,7 +114,7 @@ function ttAssignmentReplaceStartingCars(PDO $pdo,int $assignmentId,int $railroa
 
 function ttAssignmentListStatuses(PDO $pdo,int $assignmentId,int $railroadId):array
 {
-    $stmt=$pdo->prepare('SELECT status FROM operation_switch_lists WHERE assignment_id=? AND railroad_id=?');$stmt->execute([$assignmentId,$railroadId]);return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    return ttSwitchListRevisionSummary($pdo,$assignmentId,$railroadId)['statuses'];
 }
 
 function ttSessionStartReadiness(array $assignments): array
