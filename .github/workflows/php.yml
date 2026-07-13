@@ -36,13 +36,15 @@ jobs:
             php -l "$file"
           done
 
-      - name: Run Operations generator test
+      - name: Run Operations regression tests
         shell: bash
         run: |
           set -euo pipefail
-          test_file="operations/tests/generator_test.php"
-          if [[ -f "$test_file" ]]; then
-            php "$test_file"
-          else
-            echo "$test_file is not present on this branch; it will run when introduced."
+          mapfile -t test_files < <(find operations/tests -maxdepth 1 -name '*_test.php' -type f | sort)
+          if (( ${#test_files[@]} == 0 )); then
+            echo "No Operations regression tests found."
+            exit 1
           fi
+          for test_file in "${test_files[@]}"; do
+            php "$test_file"
+          done
