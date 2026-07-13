@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS operation_assignments (
     start_method ENUM('locomotives_only','coupled_selected','prepared_cut','manual','auto_build','inherit') NOT NULL DEFAULT 'locomotives_only',
     prepared_cut_id BIGINT UNSIGNED NULL,
     requested_car_count INT UNSIGNED NOT NULL DEFAULT 10,
+    prepared_cut_car_count INT UNSIGNED NOT NULL DEFAULT 10,
     difficulty ENUM('easy','medium','hard') NOT NULL DEFAULT 'medium',
     crew_name VARCHAR(120) NULL,
     predecessor_assignment_id BIGINT UNSIGNED NULL,
