@@ -119,8 +119,8 @@ function ttReservedEquipmentIds(PDO $pdo, int $railroadId, ?int $excludeAssignme
     $params = [$railroadId];
     $exclude = '';
     if ($excludeAssignmentId !== null) { $exclude = ' AND a.id <> ?'; $params[] = $excludeAssignmentId; }
-    $sql = "SELECT equipment_id FROM operation_assignment_locomotives al JOIN operation_assignments a ON a.id=al.assignment_id WHERE a.railroad_id=? AND a.status IN ('ready','waiting','in_progress','needs_review')$exclude
-            UNION SELECT equipment_id FROM operation_assignment_starting_cars ac JOIN operation_assignments a ON a.id=ac.assignment_id WHERE a.railroad_id=? AND a.status IN ('ready','waiting','in_progress','needs_review')";
+    $sql = "SELECT equipment_id FROM operation_assignment_locomotives al JOIN operation_assignments a ON a.id=al.assignment_id WHERE a.railroad_id=? AND a.status IN ('draft','ready','waiting','in_progress','needs_review')$exclude
+            UNION SELECT equipment_id FROM operation_assignment_starting_cars ac JOIN operation_assignments a ON a.id=ac.assignment_id WHERE a.railroad_id=? AND a.status IN ('draft','ready','waiting','in_progress','needs_review')";
     $second = [$railroadId];
     if ($excludeAssignmentId !== null) { $sql .= ' AND a.id <> ?'; $second[] = $excludeAssignmentId; }
     $stmt = $pdo->prepare($sql);
