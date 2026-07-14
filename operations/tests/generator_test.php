@@ -69,6 +69,49 @@ $capacityCars=$cars;$capacityCars[]=$car(5,2,'ZZ','coal');
 $capacityResult=ttChooseOperationsMoves($routeAssignment,$capacityCars,$fullIndustries,[],[],$exchangeStops);
 expectTrue(count($capacityResult['moves'])===0,'A paired exchange must not overfill the configured pull destination.');
 
+$destinationIndustries = [
+    ['id'=>101,'industry_name'=>'Yard','industry_type'=>'Industry','ships_services'=>'','receives_services'=>'','track_capacity'=>20],
+    ['id'=>102,'industry_name'=>'Scrap Yard','industry_type'=>'Customer','ships_services'=>'Scrap Metal','receives_services'=>'Scrap Metal','track_capacity'=>5],
+    ['id'=>103,'industry_name'=>'ABC Lumber','industry_type'=>'Customer','ships_services'=>'Lumber','receives_services'=>'Lumber','track_capacity'=>5],
+    ['id'=>104,'industry_name'=>'Full Lumber Dock','industry_type'=>'Customer','ships_services'=>'Lumber','receives_services'=>'Lumber','track_capacity'=>1],
+    ['id'=>105,'industry_name'=>'Furniture Factory','industry_type'=>'Customer','ships_services'=>'Furniture','receives_services'=>'Lumber','track_capacity'=>5],
+];
+$lumberCar = ['id'=>101,'reporting_marks'=>'DWC','road_number'=>'626426','equipment_type'=>'Centerbeam Flatcar','operations_service'=>'Lumber','load_status'=>'Loaded','current_industry_id'=>103,'current_track'=>'Track 1','origin_name'=>'ABC Lumber','photo_filename'=>null];
+$fullDockCar = ['id'=>102,'reporting_marks'=>'TT','road_number'=>'9001','equipment_type'=>'Boxcar','operations_service'=>'','load_status'=>'Empty','current_industry_id'=>104,'current_track'=>'Track 1','origin_name'=>'Full Lumber Dock','photo_filename'=>null];
+$destinationAssignment = ['requested_car_count'=>1,'operating_base_industry_id'=>101,'end_industry_id'=>101,'work_scope'=>'selected_route'];
+$routeStop = static function(int $id,int $industryId,int $sequence,string $mode,?int $destinationId=null,string $area='') : array {
+    return ['id'=>$id,'industry_id'=>$industryId,'sequence_number'=>$sequence,'operating_area'=>$area,'exchange_enabled'=>0,'outbound_load_status'=>'Any','inbound_load_status'=>'Any','pull_destination_mode'=>$mode,'pull_destination_industry_id'=>$destinationId,'replacement_source_mode'=>'selected_location','replacement_source_industry_id'=>null];
+};
+$yardRoute = [
+    $routeStop(101,102,1,'yard',null,'East'),
+    $routeStop(102,103,2,'yard',null,'North'),
+];
+$yardResult = ttChooseOperationsMoves($destinationAssignment,[$lumberCar],$destinationIndustries,[],[],$yardRoute);
+expectTrue(count($yardResult['moves'])===1&&$yardResult['moves'][0]['destination_industry_id']===101,'Default yard pulls must return a Lumber centerbeam from ABC Lumber to the assignment operating base.');
+expectTrue($yardResult['moves'][0]['destination_industry_id']!==102,'A Scrap Yard customer must never be selected as a railroad yard by name.');
+expectTrue(ttIndustrySupportRole($destinationIndustries[1])===null,'A customer containing Yard in its name must not be classified as a support yard.');
+
+$operatingBaseRoute = $yardRoute;
+$operatingBaseRoute[1]['pull_destination_mode']='operating_base';
+$operatingBaseRoute[1]['pull_destination_industry_id']=102;
+$operatingBaseResult = ttChooseOperationsMoves($destinationAssignment,[$lumberCar],$destinationIndustries,[],[],$operatingBaseRoute);
+expectTrue(count($operatingBaseResult['moves'])===1&&$operatingBaseResult['moves'][0]['destination_industry_id']===101,'Operating-base mode must ignore another configured destination and use the explicit assignment base even when its Industry Type is incomplete.');
+
+$selectedCustomerRoute = $yardRoute;
+$selectedCustomerRoute[1]['pull_destination_mode']='selected_location';
+$selectedCustomerRoute[1]['pull_destination_industry_id']=102;
+$selectedCustomerResult = ttChooseOperationsMoves($destinationAssignment,[$lumberCar],$destinationIndustries,[],[],$selectedCustomerRoute);
+expectTrue(count($selectedCustomerResult['moves'])===0,'An explicitly selected customer destination must support the pulled car service.');
+
+$compatibleRoute = [
+    $routeStop(201,103,1,'next_compatible',null,'North'),
+    $routeStop(202,102,2,'operating_base',null,'East'),
+    $routeStop(203,104,3,'operating_base',null,'South'),
+    $routeStop(204,105,4,'operating_base',null,'South'),
+];
+$compatibleResult = ttChooseOperationsMoves($destinationAssignment,[$lumberCar,$fullDockCar],$destinationIndustries,[],[],$compatibleRoute);
+expectTrue(count($compatibleResult['moves'])===1&&$compatibleResult['moves'][0]['destination_industry_id']===105,'Next-compatible pulls must skip an incompatible first industry and a full compatible industry before selecting a later compatible, capacity-safe industry.');
+
 $workOrderSource=file_get_contents(dirname(__DIR__).'/work_order.php');
 $completionSource=file_get_contents(dirname(__DIR__).'/completion.php');
 $loadReviewSource=file_get_contents(dirname(__DIR__).'/load_status.php');
