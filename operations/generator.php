@@ -55,11 +55,40 @@ function ttChoosePreparedCutMoves(array $assignment,array $cars,array $industrie
             foreach($startingCars as$car){$id=(int)$car['id'];if(isset($used[$id])||(int)$car['current_industry_id']===$stopId||!ttLoadMatches((string)$car['load_status'],(string)($stop['inbound_load_status']??'Any'))||!ttCarCompatibleWithIndustry($car,$stopIndustry)||!ttRouteCapacityAvailable($stopIndustry,$occupancy,$capacityDelta))continue;if($preparedSpotCount>=$preparedCutLimit){$limitExcluded[$id]=true;continue;}$groups[$stopId]['spots'][]=ttPlannedCarMove($car,$stopIndustry,'SPOT','Spot from prepared cut',null,$stopIndustry['industry_name']);$used[$id]=true;$preparedSpotCount++;$originId=(int)$car['current_industry_id'];$capacityDelta[$originId]=($capacityDelta[$originId]??0)-1;$capacityDelta[$stopId]=($capacityDelta[$stopId]??0)+1;}
         }
     }else{
-        $destinations=$industries;usort($destinations,static fn($a,$b)=>[strtolower((string)$a['industry_name']),(int)$a['id']]<=>[strtolower((string)$b['industry_name']),(int)$b['id']]);foreach($startingCars as$car){$id=(int)$car['id'];if($preparedSpotCount>=$preparedCutLimit){$limitExcluded[$id]=true;continue;}foreach($destinations as$destination){$destId=(int)$destination['id'];if($destId===(int)$car['current_industry_id']||!ttCarCompatibleWithIndustry($car,$destination)||!ttRouteCapacityAvailable($destination,$occupancy,$capacityDelta))continue;$groups[$destId]??=['industry'=>$destination,'pulls'=>[],'spots'=>[]];$groups[$destId]['spots'][]=ttPlannedCarMove($car,$destination,'SPOT','Spot from prepared cut',null,$destination['industry_name']);$used[$id]=true;$preparedSpotCount++;$originId=(int)$car['current_industry_id'];$capacityDelta[$originId]=($capacityDelta[$originId]??0)-1;$capacityDelta[$destId]=($capacityDelta[$destId]??0)+1;break;}}
+        $customers=array_values(array_filter($industries,static fn($industry)=>ttPreparedCutCustomerIndustry($industry,$assignment)));usort($customers,static fn($a,$b)=>[strtolower((string)$a['industry_name']),(int)$a['id']]<=>[strtolower((string)$b['industry_name']),(int)$b['id']]);$emptyCars=$cars;usort($emptyCars,'ttCarSort');
+        foreach($startingCars as$car){$id=(int)$car['id'];if($preparedSpotCount>=$preparedCutLimit){$limitExcluded[$id]=true;continue;}if(strcasecmp((string)$car['load_status'],'Loaded')!==0||trim((string)$car['operations_service'])==='')continue;
+            foreach($customers as$customer){$customerId=(int)$customer['id'];if(!ttIndustrySupports($customer,'receives_services',(string)$car['operations_service'])||!ttPreparedCutExchangeCapacitySafe($customer,$occupancy,$capacityDelta))continue;$empty=null;foreach($emptyCars as$candidate){$candidateId=(int)$candidate['id'];if(isset($startingSet[$candidateId])||isset($used[$candidateId])||in_array($candidateId,$reservedIds,true)||(int)$candidate['current_industry_id']!==$customerId||strcasecmp((string)$candidate['load_status'],'Empty')!==0||ttNormalizeService((string)$candidate['operations_service'])!==ttNormalizeService((string)$car['operations_service']))continue;$empty=$candidate;break;}if(!$empty)continue;
+                $originId=(int)$car['current_industry_id'];$projected=$capacityDelta;$projected[$originId]=($projected[$originId]??0)-1;$emptyDestination=ttPreparedCutEmptyDestination($assignment,$customer,$industries,$occupancy,$projected);if(!$emptyDestination)continue;
+                $group=bin2hex(random_bytes(12));$groups[$customerId]??=['industry'=>$customer,'pulls'=>[],'spots'=>[]];$groups[$customerId]['pulls'][]=ttPlannedCarMove($empty,$emptyDestination,'PULL','Pull empty car for '.$emptyDestination['industry_name'],$group,$customer['industry_name']);$groups[$customerId]['spots'][]=ttPlannedCarMove($car,$customer,'SPOT','Spot loaded replacement from prepared cut',$group,$customer['industry_name']);$used[(int)$empty['id']]=true;$used[$id]=true;$preparedSpotCount++;$capacityDelta[$originId]=($capacityDelta[$originId]??0)-1;$destinationId=(int)$emptyDestination['id'];$capacityDelta[$destinationId]=($capacityDelta[$destinationId]??0)+1;break;
+            }
+        }
     }
-    foreach($startingCars as$car)if(!isset($used[(int)$car['id']])&&!isset($limitExcluded[(int)$car['id']]))$diagnostics[]='No compatible capacity-safe Spot destination for prepared-cut car '.trim($car['reporting_marks'].' '.$car['road_number']).'; it remains with the train.';
+    foreach($startingCars as$car)if(!isset($used[(int)$car['id']])&&!isset($limitExcluded[(int)$car['id']]))$diagnostics[]=($selectedRoute?'No compatible capacity-safe Spot destination for prepared-cut car ':'No valid loaded-for-empty customer exchange was available for prepared-cut car ').trim($car['reporting_marks'].' '.$car['road_number']).'; it remains with the train.';
     $moves=[];foreach($groups as$group)foreach(array_merge($group['pulls'],$group['spots'])as$move)$moves[]=$move;
     return ['moves'=>$moves,'diagnostics'=>$diagnostics];
+}
+
+function ttPreparedCutCustomerIndustry(array $industry,array $assignment):bool
+{
+    $id=(int)$industry['id'];if(in_array($id,[(int)($assignment['prepared_cut_industry_id']??0),(int)($assignment['operating_base_industry_id']??0),(int)($assignment['end_industry_id']??0)],true))return false;
+    return !ttPreparedCutSupportIndustry($industry);
+}
+
+function ttPreparedCutSupportIndustry(array $industry):bool
+{
+    $label=trim((string)($industry['industry_name']??'').' '.(string)($industry['industry_type']??''));
+    return preg_match('/\b(main|yard|staging|interchange|classification|terminal)\b/i',$label)===1;
+}
+
+function ttPreparedCutExchangeCapacitySafe(array $industry,array $occupancy,array $capacityDelta):bool
+{
+    $id=(int)$industry['id'];$capacity=(int)($industry['track_capacity']??0);
+    return $capacity<=0||(($occupancy[$id]??0)+($capacityDelta[$id]??0))<=$capacity;
+}
+
+function ttPreparedCutEmptyDestination(array $assignment,array $customer,array $industries,array $occupancy,array $capacityDelta):?array
+{
+    $byId=[];foreach($industries as$industry)$byId[(int)$industry['id']]=$industry;$endId=(int)($assignment['end_industry_id']??0);$candidateIds=[];if(isset($byId[$endId])&&ttPreparedCutSupportIndustry($byId[$endId]))$candidateIds[]=$endId;$candidateIds[]=(int)($assignment['operating_base_industry_id']??0);$support=$industries;usort($support,static fn($a,$b)=>[strtolower((string)$a['industry_name']),(int)$a['id']]<=>[strtolower((string)$b['industry_name']),(int)$b['id']]);foreach($support as$industry)if(ttPreparedCutSupportIndustry($industry))$candidateIds[]=(int)$industry['id'];$seen=[];foreach($candidateIds as$id){if($id<=0||$id===(int)$customer['id']||isset($seen[$id])||!isset($byId[$id]))continue;$seen[$id]=true;if(ttRouteCapacityAvailable($byId[$id],$occupancy,$capacityDelta))return$byId[$id];}return null;
 }
 
 function ttPreparedCutPickupInstruction(array $assignment,array $cut):string
