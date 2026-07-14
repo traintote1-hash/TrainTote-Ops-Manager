@@ -15,17 +15,13 @@ $error = '';
 $message = is_string($_SESSION['job_title_message'] ?? null) ? $_SESSION['job_title_message'] : '';
 unset($_SESSION['job_title_message']);
 
-$editId = (int)($_GET['edit'] ?? $_POST['id'] ?? 0);
-$editing = null;
-if ($editId > 0) {
-    $editStmt = $pdo->prepare("SELECT j.*,COALESCE(jop.work_scope,'entire_railroad') work_scope FROM jobs j LEFT JOIN job_operation_profiles jop ON jop.job_id=j.id AND jop.railroad_id=j.railroad_id WHERE j.id=? AND j.railroad_id=?");
-    $editStmt->execute([$editId, $railroadId]);
-    $editing = $editStmt->fetch(PDO::FETCH_ASSOC);
-    if (!$editing) {
-        $error = 'Job Title not found.';
-        $editId = 0;
-    }
+if ((int)($_GET['edit'] ?? 0) > 0) {
+    header('Location: route.php?id=' . (int)$_GET['edit']);
+    exit;
 }
+
+$editId = 0;
+$editing = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
@@ -45,22 +41,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new RuntimeException('Select a valid work scope.');
         }
 
-        if ($editId > 0) {
-            $stmt = $pdo->prepare('UPDATE jobs SET job_name=?,job_type=?,custom_job_type=?,description=?,active=? WHERE id=? AND railroad_id=?');
-            $stmt->execute([$name, $type, '', $description, $active, $editId, $railroadId]);
-            if (!$stmt->rowCount() && !$editing) {
-                throw new RuntimeException('Job Title not found.');
-            }
-            $_SESSION['job_title_message'] = 'Job Title updated.';
-        } else {
-            $stmt = $pdo->prepare('INSERT INTO jobs (railroad_id,job_name,job_type,custom_job_type,home_industry_id,description,active) VALUES (?,?,?,?,NULL,?,?)');
-            $stmt->execute([$railroadId, $name, $type, '', $description, $active]);
-            $editId = (int)$pdo->lastInsertId();
-            $_SESSION['job_title_message'] = 'Job Title created.';
-        }
-        $profileStmt = $pdo->prepare('INSERT INTO job_operation_profiles (job_id,railroad_id,work_scope) VALUES (?,?,?) ON DUPLICATE KEY UPDATE railroad_id=VALUES(railroad_id),work_scope=VALUES(work_scope)');
+        $stmt = $pdo->prepare('INSERT INTO jobs (railroad_id,job_name,job_type,custom_job_type,home_industry_id,description,active) VALUES (?,?,?,?,NULL,?,?)');
+        $stmt->execute([$railroadId, $name, $type, '', $description, $active]);
+        $editId = (int)$pdo->lastInsertId();
+        $profileStmt = $pdo->prepare('INSERT INTO job_operation_profiles (job_id,railroad_id,work_scope) VALUES (?,?,?)');
         $profileStmt->execute([$editId, $railroadId, $workScope]);
-        header('Location: list.php');
+        $_SESSION['job_title_message'] = 'Job Title created. Complete its settings and default route below.';
+        header('Location: route.php?id=' . $editId);
         exit;
     } catch (Throwable $e) {
         $error = $e->getMessage();
@@ -113,22 +100,22 @@ $jobs = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <?php if ($message): ?><div class="alert alert-success"><?= ttHtml($message) ?></div><?php endif; ?>
     <?php if ($error): ?><div class="alert alert-danger"><?= ttHtml($error) ?></div><?php endif; ?>
 
-    <div class="card mb-4" id="job-title-form"><div class="card-header"><h2 class="h4 mb-0"><?= $editing ? 'Edit Job Title' : 'Create Job Title' ?></h2></div><div class="card-body">
+    <div class="card mb-4" id="job-title-form"><div class="card-header"><h2 class="h4 mb-0">Create Job Title</h2></div><div class="card-body">
         <form method="post" class="row g-3">
             <input type="hidden" name="csrf_token" value="<?= ttHtml(ttOperationsCsrfToken()) ?>">
-            <input type="hidden" name="id" value="<?= (int)($editing['id'] ?? 0) ?>">
+
             <div class="col-md-6"><label class="form-label">Job Title</label><input class="form-control" name="job_name" maxlength="120" required value="<?= ttHtml($editing['job_name'] ?? '') ?>"></div>
             <div class="col-md-6"><label class="form-label">Default Operating Pattern</label><select class="form-select" name="job_type"><?php foreach ($types as $value => $label): ?><option value="<?= ttHtml($value) ?>" <?= ($editing['job_type'] ?? '') === $value ? 'selected' : '' ?>><?= ttHtml($label) ?></option><?php endforeach; ?></select></div>
             <div class="col-md-3"><label class="form-label">Template Status</label><select class="form-select" name="active"><option value="1" <?= !isset($editing['active']) || $editing['active'] ? 'selected' : '' ?>>Active</option><option value="0" <?= isset($editing['active']) && !$editing['active'] ? 'selected' : '' ?>>Inactive</option></select></div>
             <div class="col-md-3"><label class="form-label">Work Scope</label><select class="form-select" name="work_scope"><option value="entire_railroad" <?= ($editing['work_scope'] ?? 'entire_railroad') === 'entire_railroad' ? 'selected' : '' ?>>Entire Railroad</option><option value="selected_route" <?= ($editing['work_scope'] ?? '') === 'selected_route' ? 'selected' : '' ?>>Selected Operating Areas</option></select></div>
             <div class="col-md-6"><label class="form-label">Template Description</label><textarea class="form-control" name="description" rows="3" maxlength="5000"><?= ttHtml($editing['description'] ?? '') ?></textarea></div>
-            <div><button class="btn btn-success"><?= $editing ? 'Save Job Title' : 'Create Job Title' ?></button><?php if ($editing): ?> <a class="btn btn-secondary" href="list.php#job-title-form">Cancel Edit</a><?php endif; ?></div>
+            <div><button class="btn btn-success">Create Job Title</button></div>
         </form>
     </div></div>
 
     <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3"><h2 class="h4 mb-0">Current Job Titles</h2><form class="d-flex gap-2" method="get"><input class="form-control" name="search" value="<?= ttHtml($search) ?>" placeholder="Search templates"><button class="btn btn-outline-primary">Search</button></form></div>
     <div class="card"><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th>Job Title</th><th>Operating Pattern</th><th>Scope</th><th>Operating Areas</th><th>Operating Base</th><th>Status</th><th></th></tr></thead><tbody>
-    <?php foreach ($jobs as $job): $label = $types[$job['job_type']] ?? ($job['custom_job_type'] ?: ucwords(str_replace('_', ' ', $job['job_type']))); ?><tr><td><strong><?= ttHtml($job['job_name']) ?></strong><div class="small text-muted"><?= ttHtml($job['description']) ?></div></td><td><?= ttHtml($label) ?></td><td><?= $job['work_scope'] === 'selected_route' ? 'Selected Operating Areas' : 'Entire Railroad' ?></td><td><?= (int)$job['route_stop_count'] ?></td><td><?= ttHtml($job['home_location'] ?: 'Selected per assignment') ?></td><td><span class="badge <?= $job['active'] ? 'bg-success' : 'bg-secondary' ?>"><?= $job['active'] ? 'Active' : 'Inactive' ?></span></td><td class="text-nowrap"><a class="btn btn-sm btn-outline-primary" href="list.php?edit=<?= (int)$job['id'] ?>#job-title-form">Edit</a> <a class="btn btn-sm btn-outline-secondary" href="route.php?id=<?= (int)$job['id'] ?>">Edit Route</a> <a class="btn btn-sm btn-outline-danger" href="delete.php?id=<?= (int)$job['id'] ?>">Delete</a></td></tr><?php endforeach; ?>
+    <?php foreach ($jobs as $job): $label = $types[$job['job_type']] ?? ($job['custom_job_type'] ?: ucwords(str_replace('_', ' ', $job['job_type']))); ?><tr><td><strong><?= ttHtml($job['job_name']) ?></strong><div class="small text-muted"><?= ttHtml($job['description']) ?></div></td><td><?= ttHtml($label) ?></td><td><?= $job['work_scope'] === 'selected_route' ? 'Selected Operating Areas' : 'Entire Railroad' ?></td><td><?= (int)$job['route_stop_count'] ?></td><td><?= ttHtml($job['home_location'] ?: 'Selected per assignment') ?></td><td><span class="badge <?= $job['active'] ? 'bg-success' : 'bg-secondary' ?>"><?= $job['active'] ? 'Active' : 'Inactive' ?></span></td><td class="text-nowrap"><a class="btn btn-sm btn-primary" href="route.php?id=<?= (int)$job['id'] ?>">Edit</a> <a class="btn btn-sm btn-outline-danger" href="delete.php?id=<?= (int)$job['id'] ?>">Delete</a></td></tr><?php endforeach; ?>
     <?php if (!$jobs): ?><tr><td colspan="7" class="text-center text-muted py-5">No Job Title templates found.</td></tr><?php endif; ?></tbody></table></div></div>
 </section></div>
 <?php include '../includes/footer.php'; ?>

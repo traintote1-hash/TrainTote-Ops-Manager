@@ -83,9 +83,18 @@ expectTrue(strpos($printSource,'tt-location-heading')!==false&&strpos($printSour
 expectTrue(strpos($loadReviewSource,'owner_confirm')!==false,'Post-session load updates must require owner confirmation.');
 expectTrue(strpos($loadReviewSource,'ttOperationsRequireRailroadOwner')!==false,'Post-session load updates must require actual owner authorization.');
 $routeEditorSource=file_get_contents(dirname(__DIR__,2).'/jobs/route.php');
+$jobListSource=file_get_contents(dirname(__DIR__,2).'/jobs/list.php');
 $migrationSource=file_get_contents(dirname(__DIR__,2).'/database/migrations/20260714_add_job_route_operating_areas.sql');
 expectTrue(strpos($routeEditorSource,"TRIM(location) operating_area")!==false&&strpos($routeEditorSource,'COUNT(*) industry_count')!==false,'Route editor must derive unique Operating Areas and active-industry counts from Industry Location.');
 expectTrue(strpos($routeEditorSource,'operating_areas[]')!==false&&strpos($routeEditorSource,'Move Up')!==false,'Route editor must support multi-select and ordered areas.');
+expectTrue(strpos($routeEditorSource,'Edit Job Title —')!==false&&strpos($routeEditorSource,'save_job')!==false,'The dedicated editor must save general Job Title settings on the route-management page.');
+expectTrue(strpos($routeEditorSource,'Default Operating Pattern')!==false&&strpos($routeEditorSource,'Template Status')!==false&&strpos($routeEditorSource,'Work Scope')!==false&&strpos($routeEditorSource,'Template Description')!==false,'The complete editor must contain every general Job Title field.');
+expectTrue(strpos($routeEditorSource,'id="operating-areas"')!==false&&strpos($routeEditorSource,'Selected Default Operating Areas')!==false&&strpos($routeEditorSource,'Area switching rules')!==false,'The complete editor must contain the Operating Area selector, order, and rules.');
+expectTrue(strpos($routeEditorSource,'Save Job Title')!==false&&strpos($routeEditorSource,'Back to Job Titles')!==false,'The complete editor must provide clear save and return actions.');
+expectTrue(strpos($routeEditorSource,'Job Title updated.')!==false&&strpos($routeEditorSource,"header('Location: list.php")===false,'Saving general Job Title fields must remain on the complete editor and show success.');
+expectTrue(strpos($jobListSource,"header('Location: route.php?id='")!==false,'Legacy list edit links must redirect to the complete editor.');
+expectTrue(strpos($jobListSource,'btn btn-sm btn-primary')!==false&&strpos($jobListSource,'href="route.php?id=')!==false&&strpos($jobListSource,'>Edit Route</a>')===false,'The Job Titles list must expose one complete Edit action without a separate Edit Route button.');
+expectTrue(strpos($generateSource,'#operating-areas">Edit Job Title Route</a>')!==false,'The Generate shortcut must open the complete editor at its Operating Areas section.');
 expectTrue(strpos($generateSource,'TRIM(i.location)=TRIM(jrs.operating_area)')!==false&&strpos($generateSource,'i.active=1')!==false,'Generation must expand saved Route Areas to active industries only.');
 expectTrue(strpos($migrationSource,'ROW_NUMBER() OVER')!==false&&strpos($migrationSource,'ORDER BY jrs.sequence_number, jrs.id')!==false&&strpos($migrationSource,'AND i.active = 1')!==false&&strpos($migrationSource,'uq_job_route_stop_area')!==false,'Migration must seed the earliest ordered active-industry legacy row for each Location and enforce one active area per Job Title.');
 expectTrue(strpos($migrationSource,'DELETE duplicate_stop')===false&&strpos($migrationSource,'DROP TEMPORARY TABLE job_route_area_seed')!==false,'Migration must preserve duplicate legacy route rows and their switching rules.');
