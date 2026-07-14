@@ -97,7 +97,7 @@ if ($search !== '') {
     $like = '%' . $search . '%';
     array_push($params, $like, $like, $like);
 }
-$stmt = $pdo->prepare("SELECT j.*,i.industry_name home_location,COALESCE(jop.work_scope,'entire_railroad') work_scope,(SELECT COUNT(*) FROM job_route_stops jrs WHERE jrs.job_id=j.id AND jrs.railroad_id=j.railroad_id) route_stop_count,$locationCountSql associated_location_count,$carCountSql associated_car_count FROM jobs j LEFT JOIN industries i ON i.id=j.home_industry_id AND i.railroad_id=j.railroad_id LEFT JOIN job_operation_profiles jop ON jop.job_id=j.id AND jop.railroad_id=j.railroad_id WHERE $where ORDER BY j.active DESC,j.job_name");
+$stmt = $pdo->prepare("SELECT j.*,i.industry_name home_location,COALESCE(jop.work_scope,'entire_railroad') work_scope,(SELECT COUNT(*) FROM job_route_stops jrs WHERE jrs.job_id=j.id AND jrs.railroad_id=j.railroad_id AND NULLIF(TRIM(jrs.operating_area),'') IS NOT NULL) route_stop_count,$locationCountSql associated_location_count,$carCountSql associated_car_count FROM jobs j LEFT JOIN industries i ON i.id=j.home_industry_id AND i.railroad_id=j.railroad_id LEFT JOIN job_operation_profiles jop ON jop.job_id=j.id AND jop.railroad_id=j.railroad_id WHERE $where ORDER BY j.active DESC,j.job_name");
 $stmt->execute($params);
 $jobs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>

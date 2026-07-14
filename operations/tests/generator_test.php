@@ -87,6 +87,8 @@ $migrationSource=file_get_contents(dirname(__DIR__,2).'/database/migrations/2026
 expectTrue(strpos($routeEditorSource,"TRIM(location) operating_area")!==false&&strpos($routeEditorSource,'COUNT(*) industry_count')!==false,'Route editor must derive unique Operating Areas and active-industry counts from Industry Location.');
 expectTrue(strpos($routeEditorSource,'operating_areas[]')!==false&&strpos($routeEditorSource,'Move Up')!==false,'Route editor must support multi-select and ordered areas.');
 expectTrue(strpos($generateSource,'TRIM(i.location)=TRIM(jrs.operating_area)')!==false&&strpos($generateSource,'i.active=1')!==false,'Generation must expand saved Route Areas to active industries only.');
-expectTrue(strpos($migrationSource,'SET jrs.operating_area = TRIM(i.location)')!==false&&strpos($migrationSource,'uq_job_route_stop_area')!==false,'Migration must seed existing Location values and enforce one area per Job Title.');
+expectTrue(strpos($migrationSource,'ROW_NUMBER() OVER')!==false&&strpos($migrationSource,'ORDER BY jrs.sequence_number, jrs.id')!==false&&strpos($migrationSource,'AND i.active = 1')!==false&&strpos($migrationSource,'uq_job_route_stop_area')!==false,'Migration must seed the earliest ordered active-industry legacy row for each Location and enforce one active area per Job Title.');
+expectTrue(strpos($migrationSource,'DELETE duplicate_stop')===false&&strpos($migrationSource,'DROP TEMPORARY TABLE job_route_area_seed')!==false,'Migration must preserve duplicate legacy route rows and their switching rules.');
+expectTrue(strpos($generateSource,'legacy_i.location legacy_location')!==false,'Generation must ignore preserved individual-industry rows after Operating Areas are seeded.');
 expectTrue(strpos($loadReviewSource,'ttOperationsRequireCsrf')!==false,'Post-session load updates must remain CSRF protected.');
 echo "generator_test: OK\n";
