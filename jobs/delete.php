@@ -40,7 +40,7 @@ function jobReferenceCount(PDO $pdo, string $table, string $column, int $jobId):
 $references = [
     'saved operating assignments or history' => jobReferenceCount($pdo, 'operation_assignments', 'job_template_id', $id),
     'prepared cuts' => jobReferenceCount($pdo, 'prepared_cuts', 'intended_job_template_id', $id),
-    'configured route stops' => jobReferenceCount($pdo, 'job_route_stops', 'job_id', $id),
+    'configured Operating Areas' => jobReferenceCount($pdo, 'job_route_stops', 'job_id', $id),
     'legacy associated locations' => jobReferenceCount($pdo, 'job_industries', 'job_id', $id),
     'legacy associated cars' => jobReferenceCount($pdo, 'job_cars', 'job_id', $id),
     'legacy associated locomotives' => jobReferenceCount($pdo, 'job_locomotives', 'job_id', $id)
