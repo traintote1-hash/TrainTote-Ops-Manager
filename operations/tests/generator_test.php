@@ -55,7 +55,14 @@ expectTrue(count($supportResult['moves'])===2,'Explicit support location outside
 expectTrue($supportResult['moves'][0]['destination_industry_id']===5&&$supportResult['moves'][1]['origin_industry_id']===5,'Pull destination and replacement source must use configured support location.');
 expectTrue(!in_array(3,array_column($supportResult['moves'],'equipment_id'),true),'Unrelated-location cars must remain excluded when support locations are added.');
 
-$emptyRouteRejected=false;try{ttChooseOperationsMoves($routeAssignment,$cars,$industries,[],[],[]);}catch(RuntimeException $e){$emptyRouteRejected=strpos($e->getMessage(),'has no route stops')!==false;}
+$areaStops=$routeStops;$areaStops[0]['operating_area']='North';$areaStops[]=$areaStops[0];$areaStops[1]['id']=2;$areaStops[1]['industry_id']=1;$areaStops[1]['sequence_number']=1;
+$areaResult=ttChooseOperationsMoves($routeAssignment,$cars,$industries,[],[],$areaStops);
+$areaOrigins=array_column($areaResult['moves'],'origin_industry_id');
+expectTrue(in_array(1,$areaOrigins,true)&&in_array(3,$areaOrigins,true),'Industries sharing one Operating Area must all be eligible in that area.');
+expectTrue(!in_array(4,$areaOrigins,true),'Industries outside the selected Operating Areas and operating base must remain excluded.');
+expectTrue(strpos(implode(' ',$areaResult['diagnostics']),'Selected Route Areas [North]')!==false,'No-work diagnostics must identify the selected Route Areas.');
+
+$emptyRouteRejected=false;try{ttChooseOperationsMoves($routeAssignment,$cars,$industries,[],[],[]);}catch(RuntimeException $e){$emptyRouteRejected=strpos($e->getMessage(),'selected Operating Areas')!==false;}
 expectTrue($emptyRouteRejected,'Selected Route with zero stops must be rejected instead of broadening to Entire Railroad.');
 $fullIndustries=$industries;$fullIndustries[1]['track_capacity']=1;
 $capacityCars=$cars;$capacityCars[]=$car(5,2,'ZZ','coal');
@@ -75,5 +82,13 @@ expectTrue(strpos($workOrderSource,'tt-location-heading')!==false&&strpos($workO
 expectTrue(strpos($printSource,'tt-location-heading')!==false&&strpos($printSource,'colspan="8"')!==false,'Print LOCATION rows must render as full-width headings.');
 expectTrue(strpos($loadReviewSource,'owner_confirm')!==false,'Post-session load updates must require owner confirmation.');
 expectTrue(strpos($loadReviewSource,'ttOperationsRequireRailroadOwner')!==false,'Post-session load updates must require actual owner authorization.');
+$routeEditorSource=file_get_contents(dirname(__DIR__,2).'/jobs/route.php');
+$migrationSource=file_get_contents(dirname(__DIR__,2).'/database/migrations/20260714_add_job_route_operating_areas.sql');
+expectTrue(strpos($routeEditorSource,"TRIM(location) operating_area")!==false&&strpos($routeEditorSource,'COUNT(*) industry_count')!==false,'Route editor must derive unique Operating Areas and active-industry counts from Industry Location.');
+expectTrue(strpos($routeEditorSource,'operating_areas[]')!==false&&strpos($routeEditorSource,'Move Up')!==false,'Route editor must support multi-select and ordered areas.');
+expectTrue(strpos($generateSource,'TRIM(i.location)=TRIM(jrs.operating_area)')!==false&&strpos($generateSource,'i.active=1')!==false,'Generation must expand saved Route Areas to active industries only.');
+expectTrue(strpos($migrationSource,'ROW_NUMBER() OVER')!==false&&strpos($migrationSource,'ORDER BY jrs.sequence_number, jrs.id')!==false&&strpos($migrationSource,'AND i.active = 1')!==false&&strpos($migrationSource,'uq_job_route_stop_area')!==false,'Migration must seed the earliest ordered active-industry legacy row for each Location and enforce one active area per Job Title.');
+expectTrue(strpos($migrationSource,'DELETE duplicate_stop')===false&&strpos($migrationSource,'DROP TEMPORARY TABLE job_route_area_seed')!==false,'Migration must preserve duplicate legacy route rows and their switching rules.');
+expectTrue(strpos($generateSource,'legacy_i.location legacy_location')!==false,'Generation must ignore preserved individual-industry rows after Operating Areas are seeded.');
 expectTrue(strpos($loadReviewSource,'ttOperationsRequireCsrf')!==false,'Post-session load updates must remain CSRF protected.');
 echo "generator_test: OK\n";
