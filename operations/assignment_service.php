@@ -15,6 +15,16 @@ function ttOperatingSessionIsEditable(string $status): bool
     return in_array($status,['draft','ready'],true);
 }
 
+function ttOperatingSessionIsActive(string $status): bool
+{
+    return $status === 'in_progress';
+}
+
+function ttOperatingSessionIsHistory(string $status): bool
+{
+    return in_array($status,['completed','cancelled'],true);
+}
+
 function ttAssignmentPatternOverrideValue(array $assignment): string
 {
     return (string)$assignment['operating_pattern']===(string)$assignment['type_snapshot']?'':(string)$assignment['operating_pattern'];
@@ -23,23 +33,23 @@ function ttAssignmentPatternOverrideValue(array $assignment): string
 function ttAssignmentIsEditable(array $assignment, array $listStatuses = []): bool
 {
     if(isset($assignment['session_status'])&&!ttOperatingSessionIsEditable((string)$assignment['session_status']))return false;
-    if (!in_array((string)$assignment['status'], ['draft','waiting'], true)) return false;
-    return count(array_intersect($listStatuses, ['approved','in_progress','completed','needs_review'])) === 0;
+    if (!in_array((string)$assignment['status'], ['draft','ready','waiting'], true)) return false;
+    return count(array_intersect($listStatuses, ['in_progress','completed','needs_review'])) === 0;
 }
 
 function ttAssignmentCanGenerate(array $assignment,array $listStatuses):bool
 {
     return ttOperatingSessionIsEditable((string)($assignment['session_status']??''))
-        &&in_array((string)($assignment['status']??''),['draft','waiting'],true)
+        &&in_array((string)($assignment['status']??''),['draft','ready','waiting'],true)
         &&($assignment['start_method']??'')!=='inherit'
         &&in_array((string)($assignment['end_plan']??''),ttAssignmentEndPlans(),true)
-        &&count(array_intersect($listStatuses,['approved','in_progress','completed','needs_review']))===0;
+        &&count(array_intersect($listStatuses,['in_progress','completed','needs_review']))===0;
 }
 
 function ttSwitchListRevisionState(array $rows):array
 {
     $current=null;
-    foreach($rows as$row)if($current===null&&$row['status']!=='cancelled')$current=$row;
+    foreach($rows as$row)if($current===null&&!in_array($row['status'],['cancelled','superseded'],true))$current=$row;
     return ['rows'=>$rows,'statuses'=>array_column($rows,'status'),'latest'=>$rows[0]??null,'current'=>$current,'max_revision'=>$rows?(int)$rows[0]['revision_number']:0];
 }
 
@@ -49,9 +59,9 @@ function ttSwitchListRevisionSummary(PDO $pdo,int $assignmentId,int $railroadId,
     $stmt=$pdo->prepare($sql);$stmt->execute([$assignmentId,$railroadId]);return ttSwitchListRevisionState($stmt->fetchAll(PDO::FETCH_ASSOC));
 }
 
-function ttCancelDraftSwitchLists(PDO $pdo,int $assignmentId,int $railroadId,string $note):void
+function ttSupersedeCurrentSwitchLists(PDO $pdo,int $assignmentId,int $railroadId,string $note):void
 {
-    $stmt=$pdo->prepare("UPDATE operation_switch_lists SET status='cancelled',cancelled_at=NOW(),notes=CONCAT_WS(' ',NULLIF(TRIM(COALESCE(notes,'')),''),?) WHERE assignment_id=? AND railroad_id=? AND status='draft'");
+    $stmt=$pdo->prepare("UPDATE operation_switch_lists SET status='superseded',notes=CONCAT_WS(' ',NULLIF(TRIM(COALESCE(notes,'')),''),?) WHERE assignment_id=? AND railroad_id=? AND status IN('draft','approved')");
     $stmt->execute([$note,$assignmentId,$railroadId]);
 }
 
@@ -120,15 +130,25 @@ function ttAssignmentListStatuses(PDO $pdo,int $assignmentId,int $railroadId):ar
 
 function ttSessionStartReadiness(array $assignments): array
 {
-    $active=array_values(array_filter($assignments,static fn($a)=>($a['status']??'')!=='cancelled'));
-    if(!$active)return [false,'Add at least one assignment before starting the session.'];
-    $byId=[];foreach($active as$a)$byId[(int)($a['id']??0)]=$a;
-    foreach($active as$a){
+    $current=array_values(array_filter($assignments,static fn($a)=>in_array(($a['status']??''),['draft','ready','waiting'],true)));
+    if(!$current)return [false,'Add at least one current assignment before starting the session.'];
+    $byId=[];foreach($current as$a)$byId[(int)($a['id']??0)]=$a;
+    $readyCount=0;
+    foreach($current as$a){
         if(($a['latest_list_status']??'')!=='approved')return [false,'Generate and approve the latest switch list for every assignment before starting the session.'];
-        if(($a['status']??'')==='ready')continue;
+        if(($a['status']??'')==='ready'){$readyCount++;continue;}
         if(($a['status']??'')!=='waiting')return [false,'Generate and approve the latest switch list for every assignment before starting the session.'];
         $predecessor=$byId[(int)($a['predecessor_assignment_id']??0)]??null;
         if(!$predecessor||($predecessor['status']??'')!=='ready'||($predecessor['latest_list_status']??'')!=='approved')return [false,'A waiting assignment requires a ready predecessor with an approved latest switch list.'];
+    }
+    if($readyCount===0)return [false,'At least one current assignment must be Ready before starting the session.'];
+    return [true,''];
+}
+
+function ttSessionCanComplete(array $assignments): array
+{
+    foreach($assignments as$assignment){
+        if(in_array((string)($assignment['status']??''),['draft','ready','waiting','in_progress','needs_review'],true))return [false,'Complete or abort every unfinished assignment before completing the session.'];
     }
     return [true,''];
 }
