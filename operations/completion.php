@@ -36,8 +36,8 @@ function ttPrepareWorkOrderResults(array $moves,array $equipmentById,array $post
 function ttCompleteWorkOrderLoadNeutral(PDO $pdo,array $list,int $railroadId,array $post):array
 {
     $pdo->beginTransaction();
-    $lock=$pdo->prepare("SELECT status FROM operation_switch_lists WHERE id=? AND railroad_id=? FOR UPDATE");$lock->execute([(int)$list['id'],$railroadId]);
-    if(!in_array($lock->fetchColumn(),['approved','in_progress','needs_review'],true))throw new RuntimeException('This work order cannot be completed.');
+    $lock=$pdo->prepare('SELECT sl.status list_status,a.status assignment_status,s.status session_status FROM operation_switch_lists sl JOIN operation_assignments a ON a.id=sl.assignment_id AND a.railroad_id=sl.railroad_id JOIN operating_sessions s ON s.id=sl.session_id AND s.railroad_id=sl.railroad_id WHERE sl.id=? AND sl.railroad_id=? FOR UPDATE');$lock->execute([(int)$list['id'],$railroadId]);$locked=$lock->fetch(PDO::FETCH_ASSOC);
+    if(!$locked||$locked['session_status']!=='in_progress'||!in_array($locked['assignment_status'],['ready','in_progress','needs_review'],true)||!in_array($locked['list_status'],['approved','in_progress','needs_review'],true))throw new RuntimeException('This work order can only be completed while its operating session is Active.');
     $stmt=$pdo->prepare('SELECT * FROM operation_switch_list_moves WHERE switch_list_id=? AND railroad_id=? AND equipment_id IS NOT NULL ORDER BY sequence_number FOR UPDATE');$stmt->execute([(int)$list['id'],$railroadId]);$moves=$stmt->fetchAll(PDO::FETCH_ASSOC);
     $lockEquipment=$pdo->prepare('SELECT id,current_industry_id,current_track,load_status FROM equipment WHERE id=? AND railroad_id=? FOR UPDATE');$equipmentById=[];
     foreach($moves as$move){$equipmentId=(int)$move['equipment_id'];if(isset($equipmentById[$equipmentId]))continue;$lockEquipment->execute([$equipmentId,$railroadId]);$equipment=$lockEquipment->fetch(PDO::FETCH_ASSOC);if($equipment)$equipmentById[$equipmentId]=$equipment;}
@@ -52,6 +52,5 @@ function ttCompleteWorkOrderLoadNeutral(PDO $pdo,array $list,int $railroadId,arr
     $pdo->prepare("UPDATE operation_assignments SET status='completed',completed_at=NOW() WHERE id=?")->execute([(int)$list['assignment_id']]);
     $pdo->prepare("UPDATE prepared_cuts SET status='released' WHERE id=(SELECT prepared_cut_id FROM operation_assignments WHERE id=?) AND status IN('assigned','in_use')")->execute([(int)$list['assignment_id']]);
     $dependents=$pdo->prepare("SELECT id FROM operation_assignments WHERE predecessor_assignment_id=? AND railroad_id=? AND status='waiting' FOR UPDATE");$dependents->execute([(int)$list['assignment_id'],$railroadId]);foreach($dependents->fetchAll(PDO::FETCH_ASSOC)as$dependent)$pdo->prepare('UPDATE operation_assignments SET status=? WHERE id=?')->execute([$plan['not_moved']===0?'ready':'needs_review',(int)$dependent['id']]);
-    $remaining=$pdo->prepare("SELECT COUNT(*) FROM operation_assignments WHERE session_id=? AND status NOT IN('completed','cancelled')");$remaining->execute([(int)$list['session_id']]);if((int)$remaining->fetchColumn()===0)$pdo->prepare("UPDATE operating_sessions SET status='completed',completed_at=NOW() WHERE id=? AND railroad_id=?")->execute([(int)$list['session_id'],$railroadId]);
     $pdo->commit();return$plan;
 }

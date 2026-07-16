@@ -82,6 +82,13 @@ function ttActiveAssignmentStatuses(): array
     return ['draft', 'ready', 'waiting', 'in_progress', 'needs_review'];
 }
 
+function ttOperationsStatusLabel(string $status, string $recordType = ''): string
+{
+    if ($status === 'in_progress') { return 'Active'; }
+    if ($recordType === 'switch_list' && $status === 'draft') { return 'Generated'; }
+    return ucwords(str_replace('_', ' ', $status));
+}
+
 function ttNormalizeService($value): string
 {
     return strtolower(trim(preg_replace('/\s+/', ' ', (string)$value)));
