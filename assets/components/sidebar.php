@@ -64,9 +64,13 @@ if (!function_exists('ttOperationsNavActive')) {
 
     <div class="tt-module-nav-header">
         <h3>Operations</h3>
+        <button class="tt-operations-menu-toggle" type="button" aria-expanded="false" aria-controls="ttOperationsMenu">
+            <span>Operations Menu</span>
+            <span class="tt-operations-menu-icon" aria-hidden="true"></span>
+        </button>
     </div>
 
-    <nav class="tt-module-nav-list">
+    <nav class="tt-module-nav-list" id="ttOperationsMenu">
 
         <a
         class="<?= ttOperationsNavActive('dashboard', $operationsNavItem); ?>"
@@ -150,3 +154,25 @@ if (!function_exists('ttOperationsNavActive')) {
     </nav>
 
 </aside>
+
+<script>
+(() => {
+    const toggle = document.querySelector('.tt-operations-menu-toggle');
+    const menu = document.getElementById('ttOperationsMenu');
+    if (!toggle || !menu) return;
+    const setOpen = open => {
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        menu.classList.toggle('is-open', open);
+    };
+    toggle.addEventListener('click', () => setOpen(toggle.getAttribute('aria-expanded') !== 'true'));
+    menu.addEventListener('click', event => {
+        if (event.target.closest('a') && window.matchMedia('(max-width: 900px)').matches) setOpen(false);
+    });
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && toggle.getAttribute('aria-expanded') === 'true') {
+            setOpen(false);
+            toggle.focus();
+        }
+    });
+})();
+</script>

@@ -40,13 +40,13 @@ $states = ttOperationsModuleStates($pdo, $railroadId);
 <form method="post"><input type="hidden" name="csrf_token" value="<?=ttHtml(ttOperationsCsrfToken())?>">
 <div class="card"><div class="list-group list-group-flush">
 <?php foreach ($definitions as $key => $definition): ?>
-<label class="list-group-item d-flex justify-content-between align-items-start gap-3 py-3">
-<span><strong><?=ttHtml($definition['label'])?></strong><?php if (!$definition['available']): ?> <span class="badge text-bg-secondary">Coming later</span><?php endif; ?><span class="d-block text-muted small mt-1"><?=ttHtml($definition['description'])?></span></span>
+<label class="list-group-item d-flex justify-content-between align-items-start gap-3 py-3 tt-module-setting">
+<span class="tt-module-setting-copy"><strong><?=ttHtml($definition['label'])?></strong><?php if (!$definition['available']): ?> <span class="badge text-bg-secondary">Coming later</span><?php endif; ?><span class="d-block text-muted small mt-1"><?=ttHtml($definition['description'])?></span></span>
 <input class="form-check-input flex-shrink-0" type="checkbox" name="modules[<?=ttHtml($key)?>]" value="1" <?=!empty($states[$key])?'checked':''?> <?=$definition['available']?'':'disabled'?> aria-label="Enable <?=ttHtml($definition['label'])?>">
 </label>
 <?php endforeach; ?>
 </div></div>
 <p class="small text-muted mt-3">Disabling a module hides its tools and stops its requests. Existing configuration and historical records are retained.</p>
-<button class="btn btn-primary">Save Operations Settings</button>
+<button class="btn btn-primary tt-mobile-full">Save Operations Settings</button>
 </form>
 </section></div><?php include '../includes/footer.php'; ?>

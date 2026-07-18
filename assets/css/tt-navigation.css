@@ -41,3 +41,34 @@ margin-bottom:1.5rem;
 body > nav.navbar.mb-4 {
     margin-bottom: 0 !important;
 }
+
+@media(max-width:575px) {
+    body > .navbar .container-fluid {
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    body > .navbar .navbar-brand {
+        max-width: calc(100% - 64px);
+        margin-right: 0;
+        overflow-wrap: anywhere;
+        font-size: 1rem;
+        line-height: 1.15;
+        white-space: normal;
+    }
+
+    body > .navbar .navbar-toggler {
+        min-width: 48px;
+        min-height: 44px;
+    }
+
+    body > .navbar .navbar-collapse {
+        flex-basis: 100%;
+    }
+
+    body > .navbar .nav-link {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+    }
+}
