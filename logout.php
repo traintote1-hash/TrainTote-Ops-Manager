@@ -2,10 +2,19 @@
 
 session_start();
 
-require_once 'config/database.php';
-require_once 'includes/tt_auth_cookie.php';
+require_once __DIR__ . '/config/database.php';
 
-ttAuthForgetLogin($pdo);
+$ttAuthCookieFile = __DIR__ . '/includes/tt_auth_cookie.php';
+if (is_file($ttAuthCookieFile)) {
+    require_once $ttAuthCookieFile;
+}
+
+if (function_exists('tt_auth_clear_cookie')) {
+    tt_auth_clear_cookie();
+}
+if (function_exists('ttAuthForgetLogin')) {
+    ttAuthForgetLogin($pdo);
+}
 
 $_SESSION = array();
 
@@ -24,5 +33,5 @@ if (ini_get('session.use_cookies')) {
 
 session_destroy();
 
-header('Location: /');
+header('Location: /login.php');
 exit;

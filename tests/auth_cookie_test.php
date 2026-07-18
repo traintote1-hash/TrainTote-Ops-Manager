@@ -1,5 +1,6 @@
 <?php
 
+define('TT_AUTH_SECRET', 'auth-cookie-test-secret');
 require_once dirname(__DIR__) . '/includes/tt_auth_cookie.php';
 
 function authCookieExpect($condition, $message)
@@ -26,6 +27,20 @@ foreach (array(
 ) as $invalid) {
     authCookieExpect(ttAuthParseCookie($invalid) === false, 'Malformed remember cookies must be rejected.');
 }
+
+$sharedPayload = tt_auth_base64url_encode(json_encode(array(
+    'user_id' => 42,
+    'id' => 42,
+    'email' => 'casey@example.com',
+    'first_name' => 'Casey',
+    'expires' => time() + 60
+)));
+$_COOKIE[TT_AUTH_COOKIE_NAME] = $sharedPayload . '.' . tt_auth_sign($sharedPayload);
+$sharedUser = tt_auth_current_user();
+authCookieExpect($sharedUser['user_id'] === 42, 'The shared Forum/Wiki cookie must remain readable.');
+
+$_COOKIE[TT_AUTH_COOKIE_NAME] = $sharedPayload . '.' . str_repeat('0', 64);
+authCookieExpect(tt_auth_current_user() === null, 'A tampered shared cookie must be rejected.');
 
 class AuthCookieFakeStatement
 {
@@ -112,9 +127,13 @@ $migration = file_get_contents($project . '/database/migrations/20260718_add_aut
 
 authCookieExpect(strpos($login, 'ttAuthRestoreLogin') !== false, 'Login must restore a missing PHP session.');
 authCookieExpect(strpos($login, 'ttAuthRememberLogin') !== false, 'Password login must issue a remember token.');
+authCookieExpect(strpos($login, 'tt_auth_set_cookie') !== false, 'Login must preserve the Forum/Wiki shared cookie.');
+authCookieExpect(strpos($login, 'tt_login_safe_redirect') !== false, 'Login must preserve validated bridge redirects.');
 authCookieExpect(strpos($login, 'password_verify') !== false, 'Existing password verification must remain intact.');
 authCookieExpect(strpos($logout, 'ttAuthForgetLogin') !== false, 'Logout must revoke the remember token.');
+authCookieExpect(strpos($logout, 'tt_auth_clear_cookie') !== false, 'Logout must clear the Forum/Wiki shared cookie.');
 authCookieExpect(strpos($migration, 'UNIQUE KEY uq_auth_remember_selector') !== false, 'Selectors must be unique.');
 authCookieExpect(strpos($migration, 'ON DELETE CASCADE') !== false, 'Deleting a user must delete its tokens.');
+authCookieExpect(strpos(file_get_contents($project . '/includes/tt_auth_cookie.php'), 'temporary-auth-secret') === false, 'No hardcoded shared-auth secret fallback may be committed.');
 
 echo "auth_cookie_test: OK\n";
