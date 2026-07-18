@@ -3,14 +3,15 @@ $currentOperationsPage =
     $_SERVER['PHP_SELF']
     ?? '';
 
-$isSessionHistory =
-    $currentOperationsPage === '/operations/sessions.php'
-    && ($_GET['status'] ?? '') === 'completed';
-
 $operationsNavItem = 'dashboard';
 
-if ($currentOperationsPage === '/operations/sessions.php') {
-    $operationsNavItem = $isSessionHistory ? 'history' : 'sessions';
+if (
+    strpos($currentOperationsPage, '/operations/history.php') !== false
+    || strpos($currentOperationsPage, '/operations/history_view.php') !== false
+) {
+    $operationsNavItem = 'history';
+} elseif ($currentOperationsPage === '/operations/sessions.php') {
+    $operationsNavItem = 'sessions';
 } elseif (
     strpos($currentOperationsPage, '/operations/session_edit.php') !== false
     || strpos($currentOperationsPage, '/operations/generate.php') !== false
@@ -101,7 +102,7 @@ if (!function_exists('ttOperationsNavActive')) {
         <a
         class="<?= ttOperationsNavActive('history', $operationsNavItem); ?>"
         <?= $operationsNavItem === 'history' ? 'aria-current="page"' : ''; ?>
-        href="/operations/sessions.php?status=completed">
+        href="/operations/history.php">
         Session History
         </a>
 
