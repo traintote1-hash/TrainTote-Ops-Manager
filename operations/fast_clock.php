@@ -14,6 +14,7 @@ if (!isset($_SESSION['user_id'])) {
 try {
     $railroad = ttOperationsRailroad($pdo, (int)$_SESSION['user_id']);
     $railroadId = (int)$railroad['id'];
+    ttOperationsRequireModule($pdo, $railroadId, 'fast_clock');
     $sessionId = (int)($_GET['session_id'] ?? $_POST['session_id'] ?? 0);
     $clock = ttLoadFastClock($pdo, $sessionId, $railroadId);
     if (!$clock) {

@@ -12,6 +12,8 @@ if (
     $operationsNavItem = 'history';
 } elseif (strpos($currentOperationsPage, '/operations/dispatcher.php') !== false) {
     $operationsNavItem = 'dispatcher';
+} elseif (strpos($currentOperationsPage, '/operations/settings.php') !== false) {
+    $operationsNavItem = 'settings';
 } elseif ($currentOperationsPage === '/operations/sessions.php') {
     $operationsNavItem = 'sessions';
 } elseif (
@@ -40,6 +42,15 @@ if (
 } elseif (strpos($currentOperationsPage, '/jobs/') !== false) {
     $operationsNavItem = 'job_titles';
 }
+
+$operationModules = [];
+$operationsRailroadId = isset($railroad['id']) ? (int)$railroad['id'] : 0;
+if ($operationsRailroadId && isset($pdo) && function_exists('ttOperationsModuleStates')) {
+    $operationModules = ttOperationsModuleStates($pdo, $operationsRailroadId);
+}
+$operationsOwner = $operationsRailroadId && isset($pdo, $_SESSION['user_id'])
+    && function_exists('ttOperationsIsRailroadOwner')
+    && ttOperationsIsRailroadOwner($pdo, $operationsRailroadId, (int)$_SESSION['user_id']);
 
 if (!function_exists('ttOperationsNavActive')) {
     function ttOperationsNavActive(string $item, string $currentItem): string
@@ -85,7 +96,7 @@ if (!function_exists('ttOperationsNavActive')) {
         Switch Lists / Work Orders
         </a>
 
-        <?php $showDispatcher=isset($pdo,$_SESSION['user_id'])&&function_exists('ttDispatcherNavEnabled')&&ttDispatcherNavEnabled($pdo,(int)$_SESSION['user_id']);if($showDispatcher): ?>
+        <?php $showDispatcher=!empty($operationModules['dispatcher'])&&isset($pdo,$_SESSION['user_id'])&&function_exists('ttDispatcherNavEnabled')&&ttDispatcherNavEnabled($pdo,(int)$_SESSION['user_id']);if($showDispatcher): ?>
         <a
         class="<?= ttOperationsNavActive('dispatcher', $operationsNavItem); ?>"
         <?= $operationsNavItem === 'dispatcher' ? 'aria-current="page"' : ''; ?>
@@ -94,21 +105,23 @@ if (!function_exists('ttOperationsNavActive')) {
         </a>
         <?php endif; ?>
 
-        <a
+        <?php if (!empty($operationModules['advanced_roles'])): ?><a
         class="<?= ttOperationsNavActive('load_status', $operationsNavItem); ?>"
         <?= $operationsNavItem === 'load_status' ? 'aria-current="page"' : ''; ?>
         href="/operations/load_status.php">
         Review Load Status
         </a>
+        <?php endif; ?>
 
-        <a
+        <?php if (!empty($operationModules['repair_queue'])): ?><a
         class="<?= ttOperationsNavActive('repairs', $operationsNavItem); ?>"
         <?= $operationsNavItem === 'repairs' ? 'aria-current="page"' : ''; ?>
         href="/operations/repairs.php">
         Repair Queue
         </a>
+        <?php endif; ?>
 
-        <a
+        <?php if (!empty($operationModules['advanced_roles'])): ?><a
         class="<?= ttOperationsNavActive('prepared_cuts', $operationsNavItem); ?>"
         <?= $operationsNavItem === 'prepared_cuts' ? 'aria-current="page"' : ''; ?>
         href="/operations/prepared_cuts.php">
@@ -121,6 +134,7 @@ if (!function_exists('ttOperationsNavActive')) {
         href="/jobs/list.php">
         Job Titles
         </a>
+        <?php endif; ?>
 
         <a
         class="<?= ttOperationsNavActive('history', $operationsNavItem); ?>"
@@ -128,6 +142,10 @@ if (!function_exists('ttOperationsNavActive')) {
         href="/operations/history.php">
         Session History
         </a>
+
+        <?php if ($operationsOwner): ?>
+        <a class="<?= ttOperationsNavActive('settings', $operationsNavItem); ?>" <?= $operationsNavItem === 'settings' ? 'aria-current="page"' : ''; ?> href="/operations/settings.php">Operations Settings</a>
+        <?php endif; ?>
 
     </nav>
 

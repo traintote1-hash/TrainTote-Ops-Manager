@@ -79,11 +79,12 @@ function ttDispatcherUpdateAssignment(PDO $pdo, int $assignmentId, int $sessionI
     $note = substr(trim((string)($input['dispatcher_note'] ?? '')), 0, 5000);
     $message = substr(trim((string)($input['crew_message'] ?? '')), 0, 255);
     $pdo->beginTransaction();
-    $stmt = $pdo->prepare("SELECT a.status assignment_status,s.status session_status FROM operation_assignments a JOIN operating_sessions s ON s.id=a.session_id AND s.railroad_id=a.railroad_id WHERE a.id=? AND a.session_id=? AND a.railroad_id=? FOR UPDATE");
+    $stmt = $pdo->prepare("SELECT a.status assignment_status,a.dispatcher_crew_message,s.status session_status FROM operation_assignments a JOIN operating_sessions s ON s.id=a.session_id AND s.railroad_id=a.railroad_id WHERE a.id=? AND a.session_id=? AND a.railroad_id=? FOR UPDATE");
     $stmt->execute([$assignmentId, $sessionId, $railroadId]);
     $state = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$state || $state['session_status'] !== 'in_progress') throw new RuntimeException('Dispatcher updates are allowed only during an Active session.');
     if ($state['assignment_status'] === 'completed') throw new RuntimeException('Completed assignments are lifecycle-controlled and read-only.');
+    if (!ttOperationsModuleEnabled($pdo, $railroadId, 'crew_messaging')) $message = (string)$state['dispatcher_crew_message'];
     $stmt = $pdo->prepare('UPDATE operation_assignments SET dispatcher_status=?,dispatcher_note=NULLIF(?,\'\'),dispatcher_crew_message=NULLIF(?,\'\'),dispatcher_updated_at=NOW(),dispatcher_updated_by_user_id=? WHERE id=? AND session_id=? AND railroad_id=?');
     $stmt->execute([$status, $note, $message, $userId, $assignmentId, $sessionId, $railroadId]);
     $pdo->commit();

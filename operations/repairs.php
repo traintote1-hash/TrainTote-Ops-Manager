@@ -7,6 +7,7 @@ if (!isset($_SESSION['user_id'])) { header('Location: ../login.php'); exit; }
 
 $railroad = ttOperationsRailroad($pdo, (int)$_SESSION['user_id']);
 $railroadId = (int)$railroad['id'];
+ttOperationsRequireModule($pdo, $railroadId, 'repair_queue');
 $view = ($_GET['view'] ?? '') === 'closed' ? 'closed' : 'open';
 $statusWhere = $view === 'closed' ? "r.status='closed'" : "r.status<>'closed'";
 $orderBy = $view === 'closed'

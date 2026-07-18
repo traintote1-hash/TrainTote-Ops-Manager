@@ -1,6 +1,8 @@
 <?php
 require_once __DIR__.'/fast_clock_service.php';
-$fastClock = ttLoadFastClock($pdo, (int)$fastClockSessionId, (int)$railroadId);
+$fastClock = ttOperationsModuleEnabled($pdo, (int)$railroadId, 'fast_clock')
+    ? ttLoadFastClock($pdo, (int)$fastClockSessionId, (int)$railroadId)
+    : null;
 if ($fastClock && !empty($fastClock['fast_clock_enabled'])):
     $fastClockPayload = ttFastClockPayload($fastClock);
     $fastClockCanControl = ttOperationsIsRailroadOwner($pdo, (int)$railroadId, (int)$_SESSION['user_id']);

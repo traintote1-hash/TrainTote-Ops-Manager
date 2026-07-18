@@ -14,7 +14,7 @@ $detail=file_get_contents($root.'/repair.php');
 $sidebar=file_get_contents(dirname($root).'/assets/components/sidebar.php');
 $migration=file_get_contents(dirname($root).'/database/migrations/20260718_add_operations_repair_queue.sql');
 
-repairExpect(strpos($completion,"if(\$result['reason']==='bad_order')ttEnsureBadOrderRepair")!==false,'A completed Bad Order exception must create or reuse a repair queue item.');
+repairExpect(strpos($completion,"\$repairQueueEnabled&&\$result['reason']==='bad_order'")!==false,'A completed Bad Order exception must create or reuse a repair queue item only while the module is enabled.');
 repairExpect(strpos($migration,'uq_operation_repair_open_equipment')!==false&&strpos($migration,'open_equipment_id INT GENERATED ALWAYS')!==false,'The database must enforce one open repair per railroad and equipment item.');
 repairExpect(strpos($service,"status<>'closed' FOR UPDATE")!==false&&strpos($service,"event_type,new_status,note,source_move_id")!==false,'Duplicate Bad Orders must lock and append to the existing open repair.');
 repairExpect(strpos($list,'WHERE r.railroad_id=?')!==false&&strpos($detail,'WHERE r.id=? AND r.railroad_id=?')!==false&&strpos($service,'WHERE id=? AND railroad_id=? FOR UPDATE')!==false,'List, detail, and update access must be railroad scoped.');
