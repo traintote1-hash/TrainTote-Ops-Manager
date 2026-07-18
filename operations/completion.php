@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__.'/repair_service.php';
+
 function ttPrepareWorkOrderResults(array $moves,array $equipmentById,array $post,callable $industryExists):array
 {
     $reasons=['track_blocked','car_inaccessible','no_capacity','bad_order','wrong_car','customer_not_ready','locomotive_issue','crew_issue','order_changed','other'];
@@ -33,7 +35,7 @@ function ttPrepareWorkOrderResults(array $moves,array $equipmentById,array $post
     return ['results'=>$results,'moved_as_planned'=>$movedAsPlanned,'moved_different'=>$movedDifferent,'moved'=>$movedAsPlanned+$movedDifferent,'not_moved'=>$notMoved];
 }
 
-function ttCompleteWorkOrderLoadNeutral(PDO $pdo,array $list,int $railroadId,array $post):array
+function ttCompleteWorkOrderLoadNeutral(PDO $pdo,array $list,int $railroadId,array $post,int $userId=0):array
 {
     $pdo->beginTransaction();
     $lock=$pdo->prepare('SELECT sl.status list_status,a.status assignment_status,s.status session_status FROM operation_switch_lists sl JOIN operation_assignments a ON a.id=sl.assignment_id AND a.railroad_id=sl.railroad_id JOIN operating_sessions s ON s.id=sl.session_id AND s.railroad_id=sl.railroad_id WHERE sl.id=? AND sl.railroad_id=? FOR UPDATE');$lock->execute([(int)$list['id'],$railroadId]);$locked=$lock->fetch(PDO::FETCH_ASSOC);
@@ -45,7 +47,7 @@ function ttCompleteWorkOrderLoadNeutral(PDO $pdo,array $list,int $railroadId,arr
     $plan=ttPrepareWorkOrderResults($moves,$equipmentById,$post,static function(int$industryId)use($validIndustry,$railroadId):bool{$validIndustry->execute([$industryId,$railroadId]);return(bool)$validIndustry->fetchColumn();});
     $updateMove=$pdo->prepare('UPDATE operation_switch_list_moves SET actual_outcome=?,actual_industry_id=?,actual_track=?,actual_load_status=?,exception_reason_code=?,exception_notes=?,progress_complete=1,progress_updated_at=NOW(),completed_at=NOW() WHERE id=?');
     $updateEquipment=$pdo->prepare('UPDATE equipment SET current_industry_id=?,current_track=? WHERE id=? AND railroad_id=?');
-    foreach($plan['results']as$result){if($result['update_equipment'])$updateEquipment->execute([$result['actual_industry_id'],$result['actual_track'],$result['equipment_id'],$railroadId]);$updateMove->execute([$result['outcome'],$result['actual_industry_id'],$result['actual_track'],$result['actual_load_status'],$result['reason'],$result['notes'],$result['move_id']]);}
+    foreach($plan['results']as$result){if($result['update_equipment'])$updateEquipment->execute([$result['actual_industry_id'],$result['actual_track'],$result['equipment_id'],$railroadId]);$updateMove->execute([$result['outcome'],$result['actual_industry_id'],$result['actual_track'],$result['actual_load_status'],$result['reason'],$result['notes'],$result['move_id']]);if($result['reason']==='bad_order')ttEnsureBadOrderRepair($pdo,$railroadId,$result['equipment_id'],$result['move_id'],$result['notes'],$userId);}
     $endIndustry=(int)$list['end_industry_id'];if($endIndustry<=0&&$list['end_plan']==='return_origin')$endIndustry=(int)$list['operating_base_industry_id'];
     if($endIndustry>0)$pdo->prepare('UPDATE equipment e JOIN operation_assignment_locomotives al ON al.equipment_id=e.id SET e.current_industry_id=?,e.current_track=? WHERE al.assignment_id=? AND e.railroad_id=?')->execute([$endIndustry,(string)($list['end_track']?:$list['starting_track']),(int)$list['assignment_id'],$railroadId]);
     $pdo->prepare("UPDATE operation_switch_lists SET status='completed',completed_at=NOW(),moved_count=?,not_moved_count=? WHERE id=?")->execute([$plan['moved'],$plan['not_moved'],(int)$list['id']]);
