@@ -32,12 +32,17 @@ function ttOperationsRequireRailroadOwner(PDO $pdo, int $railroadId, int $userId
 {
     // The current application has no implemented delegated management-role model.
     // Until one exists, the railroads.user_id relationship is the owner authority.
-    $stmt = $pdo->prepare('SELECT id FROM railroads WHERE id=? AND user_id=? LIMIT 1');
-    $stmt->execute([$railroadId, $userId]);
-    if (!$stmt->fetchColumn()) {
+    if (!ttOperationsIsRailroadOwner($pdo, $railroadId, $userId)) {
         http_response_code(403);
         throw new RuntimeException('Only the railroad owner may update persistent load status.');
     }
+}
+
+function ttOperationsIsRailroadOwner(PDO $pdo, int $railroadId, int $userId): bool
+{
+    $stmt = $pdo->prepare('SELECT id FROM railroads WHERE id=? AND user_id=? LIMIT 1');
+    $stmt->execute([$railroadId, $userId]);
+    return (bool)$stmt->fetchColumn();
 }
 
 function ttAssignmentSuffix(int $sequence): string
