@@ -96,6 +96,18 @@ AI Scanner
 	<ul class="navbar-nav">
 
 	<li class="nav-item">
+	<a class="nav-link" href="https://wiki.traintote.com/">
+	Wiki
+	</a>
+	</li>
+
+	<li class="nav-item">
+	<a class="nav-link" href="https://forum.traintote.com/">
+	Forum
+	</a>
+	</li>
+
+	<li class="nav-item">
 	<a class="nav-link" href="/logout.php">
 	Logout
 	</a>
