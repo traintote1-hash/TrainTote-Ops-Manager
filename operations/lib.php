@@ -11,6 +11,53 @@ function ttOperationsRailroad(PDO $pdo, int $userId): array
     return $railroad;
 }
 
+function ttOperationsModuleDefinitions(): array
+{
+    return [
+        'fast_clock' => ['label' => 'Fast Clock', 'available' => true, 'description' => 'Model-time clock and session controls.'],
+        'dispatcher' => ['label' => 'Dispatcher', 'available' => true, 'description' => 'Live assignment overview and dispatcher notes.'],
+        'repair_queue' => ['label' => 'Repair Queue', 'available' => true, 'description' => 'Bad-order workflow and repair history.'],
+        'crew_messaging' => ['label' => 'Crew Messaging', 'available' => true, 'description' => 'Dispatcher messages shown on crew work orders.'],
+        'advanced_roles' => ['label' => 'Advanced Roles', 'available' => true, 'description' => 'Railroad-scoped access for operational roles.'],
+        'track_warrants' => ['label' => 'Track Warrants', 'available' => false, 'description' => 'Coming later.'],
+        'yardmaster' => ['label' => 'Yardmaster', 'available' => false, 'description' => 'Coming later.'],
+        'interchange_management' => ['label' => 'Interchange Management', 'available' => false, 'description' => 'Coming later.'],
+        'ai_job_suggestions' => ['label' => 'AI Job Suggestions', 'available' => false, 'description' => 'Coming later.'],
+    ];
+}
+
+function ttOperationsModuleStates(PDO $pdo, int $railroadId): array
+{
+    $states = array_fill_keys(array_keys(ttOperationsModuleDefinitions()), false);
+    $stmt = $pdo->prepare('SELECT module_key,enabled FROM operation_module_settings WHERE railroad_id=?');
+    $stmt->execute([$railroadId]);
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        if (array_key_exists((string)$row['module_key'], $states)) {
+            $states[(string)$row['module_key']] = (bool)$row['enabled'];
+        }
+    }
+    return $states;
+}
+
+function ttOperationsModuleEnabled(PDO $pdo, int $railroadId, string $module): bool
+{
+    if (!array_key_exists($module, ttOperationsModuleDefinitions())) {
+        return false;
+    }
+    $stmt = $pdo->prepare('SELECT enabled FROM operation_module_settings WHERE railroad_id=? AND module_key=? LIMIT 1');
+    $stmt->execute([$railroadId, $module]);
+    return (bool)$stmt->fetchColumn();
+}
+
+function ttOperationsRequireModule(PDO $pdo, int $railroadId, string $module): void
+{
+    if (!ttOperationsModuleEnabled($pdo, $railroadId, $module)) {
+        http_response_code(404);
+        $label = ttOperationsModuleDefinitions()[$module]['label'] ?? 'This Operations module';
+        throw new RuntimeException($label . ' is disabled for this railroad.');
+    }
+}
+
 function ttOperationsCsrfToken(): string
 {
     if (!isset($_SESSION['operations_csrf']) || !is_string($_SESSION['operations_csrf'])) {
@@ -34,7 +81,7 @@ function ttOperationsRequireRailroadOwner(PDO $pdo, int $railroadId, int $userId
     // Until one exists, the railroads.user_id relationship is the owner authority.
     if (!ttOperationsIsRailroadOwner($pdo, $railroadId, $userId)) {
         http_response_code(403);
-        throw new RuntimeException('Only the railroad owner may update persistent load status.');
+        throw new RuntimeException('Only the railroad owner may manage this Operations setting.');
     }
 }
 
@@ -50,7 +97,9 @@ function ttDispatcherNavEnabled(PDO $pdo, int $userId): bool
     $stmt = $pdo->prepare("SELECT 1 FROM railroads r
         LEFT JOIN operation_railroad_roles orr ON orr.railroad_id=r.id AND orr.user_id=? AND orr.role='dispatcher'
         JOIN operating_sessions s ON s.railroad_id=r.id AND s.status='in_progress'
-        WHERE (r.user_id=? OR orr.user_id=?)
+        JOIN operation_module_settings dispatcher_module ON dispatcher_module.railroad_id=r.id AND dispatcher_module.module_key='dispatcher' AND dispatcher_module.enabled=1
+        LEFT JOIN operation_module_settings role_module ON role_module.railroad_id=r.id AND role_module.module_key='advanced_roles' AND role_module.enabled=1
+        WHERE (r.user_id=? OR (orr.user_id=? AND role_module.enabled=1))
           AND COALESCE(s.dispatcher_enabled,r.operations_dispatcher_enabled)=1 LIMIT 1");
     $stmt->execute([$userId, $userId, $userId]);
     return (bool)$stmt->fetchColumn();

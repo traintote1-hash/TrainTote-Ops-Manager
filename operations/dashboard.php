@@ -1,165 +1,37 @@
 <?php
-$pageTitle='Operations Center';
+session_start();
+require_once '../config/database.php';
+require_once 'lib.php';
+if (!isset($_SESSION['user_id'])) { header('Location: ../login.php'); exit; }
+$userId = (int)$_SESSION['user_id'];
+$railroad = ttOperationsRailroad($pdo, $userId);
+$railroadId = (int)$railroad['id'];
+$modules = ttOperationsModuleStates($pdo, $railroadId);
+$isOwner = ttOperationsIsRailroadOwner($pdo, $railroadId, $userId);
+$pageTitle = 'Operations Center';
 include '../assets/components/header.php';
-include '../assets/components/sidebar.php';
 ?>
 <link rel="stylesheet" href="../assets/css/dashboard.css">
+<?php include '../assets/components/sidebar.php'; ?>
+<main class="tt-content"><div class="tt-dashboard-page">
+<div class="tt-hero"><div class="tt-hero-main"><div><span class="tt-hero-kicker">Operations</span><h1>Operations Center</h1><p><?=ttHtml($railroad['name'])?></p></div></div><?php if ($isOwner): ?><a class="btn btn-sm btn-outline-light" href="/operations/settings.php">Operations Settings</a><?php endif; ?></div>
 
-<main class="tt-content">
-<div class="tt-dashboard-page">
-    <div class="tt-hero">
-        <div class="tt-hero-main">
-            <div class="tt-hero-icon" aria-hidden="true">🚂</div>
-            <div>
-                <span class="tt-hero-kicker">Operations Dashboard</span>
-                <h1>Operations Center</h1>
-                <p>Arkansas &amp; Missouri Railroad</p>
-            </div>
-        </div>
-
-        <div class="tt-hero-summary" aria-label="Operations areas">
-            <span>Session planning</span>
-            <span>Switch lists</span>
-            <span>Crew readiness</span>
-        </div>
-    </div>
-
-    <div class="tt-status">
-        <div class="tt-panel tt-session-panel">
-            <div class="tt-panel-heading">
-                <div>
-                    <span class="tt-panel-kicker">Current Session</span>
-                    <h2>No Active Session</h2>
-                </div>
-                <span class="tt-status-pill tt-status-ready">Ready</span>
-            </div>
-
-            <p>You're ready to begin a new operating session.</p>
-
-            <p>
-                <strong>Next Step:</strong>
-                Build a persistent session, add assignments, then start when the work is Ready.
-            </p>
-
-            <p>
-                <a class="tt-action tt-action-start" href="/operations/sessions.php">
-                    Start Session
-                </a>
-            </p>
-        </div>
-
-        <div class="tt-panel tt-attention-panel">
-            <div class="tt-panel-heading">
-                <div>
-                    <span class="tt-panel-kicker">Status Check</span>
-                    <h3>Needs Attention</h3>
-                </div>
-            </div>
-
-            <ul class="tt-list tt-check-list">
-                <li>No equipment issues.</li>
-                <li>No crew warnings.</li>
-                <li>No dispatcher alerts.</li>
-            </ul>
-        </div>
-    </div>
-
-    <div class="tt-section-header">
-        <div>
-            <span class="tt-panel-kicker">Common Workflows</span>
-            <h2>Quick Actions</h2>
-        </div>
-    </div>
-
-    <div class="tt-actions">
-        <a class="tt-action" href="/operations/sessions.php">
-            <span class="tt-action-icon" aria-hidden="true">📋</span>
-            <span class="tt-action-copy">
-                <span>Build Session</span>
-                <small>Add multiple saved assignments</small>
-            </span>
-        </a>
-
-        <a class="tt-action" href="/equipment/list.php">
-            <span class="tt-action-icon" aria-hidden="true">🚃</span>
-            <span class="tt-action-copy">
-                <span>Equipment</span>
-                <small>Review roster status</small>
-            </span>
-        </a>
-
-        <a class="tt-action" href="#">
-            <span class="tt-action-icon" aria-hidden="true">👷</span>
-            <span class="tt-action-copy">
-                <span>Crew</span>
-                <small>Plan assignments</small>
-            </span>
-        </a>
-
-        <a class="tt-action" href="/operations/switch_lists.php">
-            <span class="tt-action-icon" aria-hidden="true">🖨️</span>
-            <span class="tt-action-copy">
-                <span>Switch Lists</span>
-                <small>Resume, print, or close out saved work</small>
-            </span>
-        </a>
-    </div>
-
-    <div class="tt-dashboard-lower">
-        <div class="tt-panel">
-            <div class="tt-panel-heading">
-                <div>
-                    <span class="tt-panel-kicker">Workflow</span>
-                    <h3>Session Controls</h3>
-                </div>
-            </div>
-
-            <div class="tt-control-list">
-                <a href="/operations/sessions.php">Build or resume a session</a>
-                <a href="/operations/switch_lists.php">View persistent switch lists</a>
-                <a href="/operations/prepared_cuts.php">Manage prepared trains and cuts</a>
-            </div>
-        </div>
-
-        <div class="tt-panel">
-            <div class="tt-panel-heading">
-                <div>
-                    <span class="tt-panel-kicker">Maintenance</span>
-                    <h3>Repair Queue</h3>
-                </div>
-                <span class="tt-muted-count">0</span>
-            </div>
-
-            <p class="tt-muted-text">No bad orders or repair items waiting.</p>
-        </div>
-
-        <div class="tt-panel">
-            <div class="tt-panel-heading">
-                <div>
-                    <span class="tt-panel-kicker">People</span>
-                    <h3>Crew &amp; Dispatcher</h3>
-                </div>
-            </div>
-
-            <ul class="tt-list">
-                <li>No crews assigned.</li>
-                <li>No dispatcher messages.</li>
-                <li>No active track warrants.</li>
-            </ul>
-        </div>
-
-        <div class="tt-panel">
-            <div class="tt-panel-heading">
-                <div>
-                    <span class="tt-panel-kicker">Timeline</span>
-                    <h3>Recent Activity</h3>
-                </div>
-            </div>
-
-            <p class="tt-muted-text">Session activity will appear here once operations begin.</p>
-        </div>
-    </div>
+<div class="tt-section-header"><div><span class="tt-panel-kicker">Core workflow</span><h2>Run an Operating Session</h2></div></div>
+<div class="tt-actions">
+<a class="tt-action" href="/operations/sessions.php"><span class="tt-action-copy"><span>Sessions</span><small>Build, start, and manage operating sessions</small></span></a>
+<a class="tt-action" href="/operations/switch_lists.php"><span class="tt-action-copy"><span>Switch Lists / Work Orders</span><small>Run and complete assigned work</small></span></a>
+<a class="tt-action" href="/operations/history.php"><span class="tt-action-copy"><span>Session History</span><small>Review completed and cancelled sessions</small></span></a>
 </div>
-</main>
 
+<?php if (array_filter($modules)): ?>
+<div class="tt-section-header mt-4"><div><span class="tt-panel-kicker">Enabled modules</span><h2>Operations Tools</h2></div></div>
+<div class="tt-dashboard-lower">
+<?php if (!empty($modules['fast_clock'])): ?><a class="tt-panel text-decoration-none" href="/operations/sessions.php"><h3 class="h5">Fast Clock</h3><p class="tt-muted-text mb-0">Configure model time inside a session.</p></a><?php endif; ?>
+<?php if (!empty($modules['dispatcher'])): ?><a class="tt-panel text-decoration-none" href="/operations/dispatcher.php"><h3 class="h5">Dispatcher</h3><p class="tt-muted-text mb-0">Open the live assignment overview.</p></a><?php endif; ?>
+<?php if (!empty($modules['repair_queue'])): ?><a class="tt-panel text-decoration-none" href="/operations/repairs.php"><h3 class="h5">Repair Queue</h3><p class="tt-muted-text mb-0">Manage Bad Order equipment.</p></a><?php endif; ?>
+<?php if (!empty($modules['crew_messaging'])): ?><a class="tt-panel text-decoration-none" href="/operations/switch_lists.php"><h3 class="h5">Crew Messaging</h3><p class="tt-muted-text mb-0">Review crew-facing work-order messages.</p></a><?php endif; ?>
+<?php if (!empty($modules['advanced_roles'])): ?><a class="tt-panel text-decoration-none" href="/jobs/list.php"><h3 class="h5">Advanced Operations</h3><p class="tt-muted-text mb-0">Prepared cuts, load status, and role-based tools.</p></a><?php endif; ?>
+</div>
+<?php endif; ?>
+</div></main>
 <?php include '../assets/components/footer.php'; ?>

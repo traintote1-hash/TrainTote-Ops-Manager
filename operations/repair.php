@@ -7,6 +7,7 @@ if (!isset($_SESSION['user_id'])) { header('Location: ../login.php'); exit; }
 
 $railroad = ttOperationsRailroad($pdo, (int)$_SESSION['user_id']);
 $railroadId = (int)$railroad['id'];
+ttOperationsRequireModule($pdo, $railroadId, 'repair_queue');
 $id = (int)($_GET['id'] ?? $_POST['id'] ?? 0);
 $message = '';
 $error = '';
