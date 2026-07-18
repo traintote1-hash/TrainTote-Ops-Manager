@@ -2,7 +2,13 @@
 
 session_start();
 
-require_once 'config/database.php';
+require_once 'config/database.php';
+require_once 'includes/tt_auth_cookie.php';
+
+if (!isset($_SESSION['user_id']) && ttAuthRestoreLogin($pdo)) {
+    header('Location: dashboard.php');
+    exit;
+}
 
 $message = '';
 
@@ -32,10 +38,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         )
     ) {
 
-        $_SESSION['user_id'] = $user['id'];
+        session_regenerate_id(true);
+
+        $_SESSION['user_id'] = $user['id'];
 
         $_SESSION['first_name'] =
-            $user['first_name'];
+            $user['first_name'];
+
+        ttAuthRememberLogin($pdo, $user['id']);
 
         header(
             'Location: dashboard.php'
