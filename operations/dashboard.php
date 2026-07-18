@@ -12,6 +12,7 @@ $pageTitle = 'Operations Center';
 include '../assets/components/header.php';
 ?>
 <link rel="stylesheet" href="../assets/css/dashboard.css">
+<link rel="stylesheet" href="../assets/css/operations-shell.css">
 <?php include '../assets/components/sidebar.php'; ?>
 <main class="tt-content"><div class="tt-dashboard-page">
 <div class="tt-hero"><div class="tt-hero-main"><div><span class="tt-hero-kicker">Operations</span><h1>Operations Center</h1><p><?=ttHtml($railroad['name'])?></p></div></div><?php if ($isOwner): ?><a class="btn btn-sm btn-outline-light" href="/operations/settings.php">Operations Settings</a><?php endif; ?></div>

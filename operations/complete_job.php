@@ -249,7 +249,8 @@ No active waybills found.
 
 <?php else: ?>
 
-<table class="table table-striped align-middle">
+<div class="table-responsive" role="region" aria-label="Cars to move" tabindex="0">
+<table class="table table-striped align-middle mb-0">
 
 <thead>
 
@@ -354,6 +355,7 @@ echo htmlspecialchars(
 </tbody>
 
 </table>
+</div>
 
 <?php endif; ?>
 
