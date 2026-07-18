@@ -10,6 +10,8 @@ if (
     || strpos($currentOperationsPage, '/operations/history_view.php') !== false
 ) {
     $operationsNavItem = 'history';
+} elseif (strpos($currentOperationsPage, '/operations/dispatcher.php') !== false) {
+    $operationsNavItem = 'dispatcher';
 } elseif ($currentOperationsPage === '/operations/sessions.php') {
     $operationsNavItem = 'sessions';
 } elseif (
@@ -82,6 +84,15 @@ if (!function_exists('ttOperationsNavActive')) {
         href="/operations/switch_lists.php">
         Switch Lists / Work Orders
         </a>
+
+        <?php $showDispatcher=isset($pdo,$_SESSION['user_id'])&&function_exists('ttDispatcherNavEnabled')&&ttDispatcherNavEnabled($pdo,(int)$_SESSION['user_id']);if($showDispatcher): ?>
+        <a
+        class="<?= ttOperationsNavActive('dispatcher', $operationsNavItem); ?>"
+        <?= $operationsNavItem === 'dispatcher' ? 'aria-current="page"' : ''; ?>
+        href="/operations/dispatcher.php">
+        Dispatcher
+        </a>
+        <?php endif; ?>
 
         <a
         class="<?= ttOperationsNavActive('load_status', $operationsNavItem); ?>"

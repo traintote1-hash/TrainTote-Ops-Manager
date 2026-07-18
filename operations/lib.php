@@ -2,7 +2,7 @@
 
 function ttOperationsRailroad(PDO $pdo, int $userId): array
 {
-    $stmt = $pdo->prepare('SELECT id, name FROM railroads WHERE user_id = ? LIMIT 1');
+    $stmt = $pdo->prepare('SELECT id, name, operations_dispatcher_enabled FROM railroads WHERE user_id = ? LIMIT 1');
     $stmt->execute([$userId]);
     $railroad = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$railroad) {
@@ -42,6 +42,17 @@ function ttOperationsIsRailroadOwner(PDO $pdo, int $railroadId, int $userId): bo
 {
     $stmt = $pdo->prepare('SELECT id FROM railroads WHERE id=? AND user_id=? LIMIT 1');
     $stmt->execute([$railroadId, $userId]);
+    return (bool)$stmt->fetchColumn();
+}
+
+function ttDispatcherNavEnabled(PDO $pdo, int $userId): bool
+{
+    $stmt = $pdo->prepare("SELECT 1 FROM railroads r
+        LEFT JOIN operation_railroad_roles orr ON orr.railroad_id=r.id AND orr.user_id=? AND orr.role='dispatcher'
+        JOIN operating_sessions s ON s.railroad_id=r.id AND s.status='in_progress'
+        WHERE (r.user_id=? OR orr.user_id=?)
+          AND COALESCE(s.dispatcher_enabled,r.operations_dispatcher_enabled)=1 LIMIT 1");
+    $stmt->execute([$userId, $userId, $userId]);
     return (bool)$stmt->fetchColumn();
 }
 
