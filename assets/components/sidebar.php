@@ -26,6 +26,11 @@ if (
 } elseif (strpos($currentOperationsPage, '/operations/load_status.php') !== false) {
     $operationsNavItem = 'load_status';
 } elseif (
+    strpos($currentOperationsPage, '/operations/repairs.php') !== false
+    || strpos($currentOperationsPage, '/operations/repair.php') !== false
+) {
+    $operationsNavItem = 'repairs';
+} elseif (
     strpos($currentOperationsPage, '/operations/prepared_cuts.php') !== false
     || strpos($currentOperationsPage, '/operations/prepared_cut.php') !== false
 ) {
@@ -83,6 +88,13 @@ if (!function_exists('ttOperationsNavActive')) {
         <?= $operationsNavItem === 'load_status' ? 'aria-current="page"' : ''; ?>
         href="/operations/load_status.php">
         Review Load Status
+        </a>
+
+        <a
+        class="<?= ttOperationsNavActive('repairs', $operationsNavItem); ?>"
+        <?= $operationsNavItem === 'repairs' ? 'aria-current="page"' : ''; ?>
+        href="/operations/repairs.php">
+        Repair Queue
         </a>
 
         <a
