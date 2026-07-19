@@ -21,6 +21,7 @@ crewExpect(ttAssignmentUnitPrefix('West Yard Switcher')==='WEST'&&ttAssignmentUn
 
 $root=dirname(__DIR__);$project=dirname($root);
 $page=file_get_contents($root.'/session_edit.php');
+$editPage=file_get_contents($root.'/assignment_edit.php');
 $service=file_get_contents($root.'/crew_service.php');
 $migration=file_get_contents($project.'/database/migrations/20260719_add_session_crew_assignments.sql');
 $assignmentService=file_get_contents($root.'/assignment_service.php');
@@ -31,12 +32,14 @@ $views=['dispatcher.php','switch_lists.php','work_order.php','print_order.php'];
 
 crewExpect(strpos($migration,'yardmaster_name')!==false&&strpos($migration,'engineer_name')!==false&&strpos($migration,'conductor_name')!==false&&strpos($migration,'brakeman_names')!==false&&strpos($migration,'unit_identifier')!==false,'The migration must add a generated unit identity plus typed session and crew role fields.');
 crewExpect(strpos($migration,'user_id')===false&&strpos($migration,'email')===false,'Crew identity storage must not reference TrainTote accounts or email addresses.');
-crewExpect(strpos($page,'Crew Assignments')!==false&&strpos($page,'save_crew_assignments')!==false&&strpos($page,'ttOperationsRequireCsrf()')!==false,'Session Builder must provide a CSRF-protected crew assignment area.');
+crewExpect(strpos($page,'Crew Assignments')===false&&strpos($page,'save_crew_assignments')===false&&strpos($page,'crew_assignments[')===false,'Session Builder must not duplicate crew editing outside individual assignments.');
+crewExpect(strpos($page,'<h2 class="h4 mb-0">Assignments</h2>')<strpos($page,'<h2 class="h5 mb-0">Fast Clock</h2>'),'Assignment cards must appear before session tool settings.');
 crewExpect(strpos($page,'ttGenerateAssignmentUnitId')!==false&&strpos($page,"'Unit '.ttOperationsUnitDisplay")!==false,'Each new assignment must receive and display a generated unit ID separate from crew names.');
 crewExpect(strpos($assignmentService,'random_int(1000,9999)')!==false&&strpos($assignmentService,'railroad_id=? AND session_id=? AND unit_identifier=?')!==false,'Generated unit IDs must use a random suffix and be collision checked inside the railroad session.');
-foreach(['engineer_name','conductor_name','brakeman_names'] as$field)crewExpect(strpos($page,$field)!==false&&strpos($assignmentService,$field)!==false,'Crew field '.$field.' must be accepted by assignment creation and Session Builder.');
-crewExpect(strpos($service,'ttOperationsRequireRailroadOwner')!==false&&strpos($service,'id=? AND session_id=? AND railroad_id=?')!==false&&strpos($service,'FOR UPDATE')!==false,'Crew writes must be permission checked, session aware, locked, and railroad scoped.');
-crewExpect(strpos($service,"status IN('draft','ready','in_progress')")!==false,'Crew names may change only on current sessions.');
+foreach(['engineer_name','conductor_name','brakeman_names'] as$field)crewExpect(strpos($page,$field)!==false&&strpos($editPage,$field)!==false&&strpos($assignmentService,$field)!==false,'Crew field '.$field.' must be accepted only while creating or editing its assignment.');
+crewExpect(strpos($editPage,'ttOperationsRequireCsrf()')!==false&&strpos($editPage,'a.id=? AND a.railroad_id=? FOR UPDATE')!==false,'Crew edits must use the assignment editing permission, CSRF, lock, and railroad scope.');
+crewExpect(strpos($service,'ttOperationsRequireRailroadOwner')!==false&&strpos($service,'id=? AND railroad_id=?')!==false&&strpos($service,'FOR UPDATE')!==false,'Yardmaster writes must be owner checked, session aware, locked, and railroad scoped.');
+crewExpect(strpos($service,"status IN('draft','ready','in_progress')")!==false,'The Yardmaster name may change only on current sessions.');
 crewExpect(strpos($service,'JOIN users')===false&&strpos($service,'email')===false&&strpos($yardmasterService,'operation_session_roles')===false,'Crew and Yardmaster identity must not use account lookup.');
 crewExpect(strpos($service,'UPDATE equipment SET')===false&&strpos($migration,'current_industry_id')===false,'Crew assignment must not affect physical equipment locations.');
 crewExpect(strpos($history,"session['yardmaster_name']")!==false&&strpos($history,'ttOperationsCrewDisplay')!==false,'Typed Yardmaster and crew names must remain visible in Session History.');
