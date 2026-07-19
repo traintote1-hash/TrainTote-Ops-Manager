@@ -50,6 +50,17 @@ mobileExpect(strpos($workOrder, 'data-label="Move / Exception"') !== false
     && strpos($workOrder, 'tt-closeout-controls') !== false
     && strpos($operationsCss, 'position:sticky') !== false,
     'Work-order exceptions and final completion must remain distinct and prominent on phones.');
+mobileExpect(strpos($workOrder, 'tt-work-order-summary') !== false
+    && strpos($workOrder, 'tt-work-order-details') !== false
+    && strpos($workOrder, 'tt-move-row') !== false
+    && strpos($workOrder, 'tt-move-photo') !== false
+    && strpos($workOrder, 'tt-move-from') !== false
+    && strpos($workOrder, 'tt-move-to') !== false,
+    'The work order must expose a compact summary, compact move rows, and collapsed secondary details.');
+mobileExpect(strpos($operationsCss, 'grid-template-areas:"photo car action done"') !== false
+    && strpos($operationsCss, '@media screen and (max-width:430px)') !== false
+    && strpos($operationsCss, '.tt-work-order-summary>.tt-fast-clock') !== false,
+    'Phone work orders must keep the move identity row and Fast Clock compact through the narrowest breakpoint.');
 mobileExpect(strpos($operationsCss, 'width:1.75rem;height:1.75rem') !== false
     && strpos($operationsCss, 'min-height:52px') !== false,
     'Crew controls must provide large one-handed tap targets.');
