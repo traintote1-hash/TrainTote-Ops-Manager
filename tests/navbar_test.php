@@ -33,11 +33,11 @@ navbarExpect(
     'Logout must remain in the separate account navigation group.'
 );
 navbarExpect(
-    strpos($navbar, 'href="https://wiki.traintote.com/"') !== false,
+    strpos($navbar, "'href' => 'https://wiki.traintote.com/'") !== false,
     'The authenticated navbar must link to the Wiki SSO host.'
 );
 navbarExpect(
-    strpos($navbar, 'href="https://forum.traintote.com/"') !== false,
+    strpos($navbar, "'href' => 'https://forum.traintote.com/'") !== false,
     'The authenticated navbar must link to the Forum SSO host.'
 );
 navbarExpect(
