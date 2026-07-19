@@ -5,7 +5,8 @@ function moduleExpect($condition,string$message):void{if(!$condition)throw new R
 
 $definitions=ttOperationsModuleDefinitions();
 moduleExpect(array_keys($definitions)===['fast_clock','dispatcher','repair_queue','crew_messaging','advanced_roles','track_warrants','yardmaster','interchange_management','ai_job_suggestions'],'Settings must expose the approved Operations modules.');
-foreach(['track_warrants','yardmaster','interchange_management','ai_job_suggestions'] as$key)moduleExpect(!$definitions[$key]['available'],'Placeholder modules must remain unavailable.');
+foreach(['track_warrants','interchange_management','ai_job_suggestions'] as$key)moduleExpect(!$definitions[$key]['available'],'Placeholder modules must remain unavailable.');
+moduleExpect($definitions['yardmaster']['available'],'Yardmaster V1 must be available through unified module settings.');
 
 $root=dirname(__DIR__);$project=dirname($root);$migration=file_get_contents($project.'/database/migrations/20260718_add_operations_module_settings.sql');$settings=file_get_contents($root.'/settings.php');$sidebar=file_get_contents($project.'/assets/components/sidebar.php');$dashboard=file_get_contents($root.'/dashboard.php');$widget=file_get_contents($root.'/fast_clock_widget.php');$clockEndpoint=file_get_contents($root.'/fast_clock.php');$dispatcher=file_get_contents($root.'/dispatcher.php');$dispatcherFeed=file_get_contents($root.'/dispatcher_feed.php');$workOrder=file_get_contents($root.'/work_order.php');$completion=file_get_contents($root.'/completion.php');
 moduleExpect(strpos($migration,'DEFAULT 0')!==false&&strpos($migration,'INSERT IGNORE')!==false,'New module settings must default off while existing usage is backfilled.');

@@ -1,0 +1,57 @@
+<?php
+session_start();
+require_once '../config/database.php';
+require_once 'lib.php';
+require_once 'yardmaster_service.php';
+if (!isset($_SESSION['user_id'])) { header('Location: ../login.php'); exit; }
+
+$userId = (int)$_SESSION['user_id'];
+$error = '';
+try {
+    $railroad = ttYardmasterAccessRailroad($pdo, $userId);
+    $railroadId = (int)$railroad['id'];
+    ttOperationsRequireModule($pdo, $railroadId, 'yardmaster');
+    if (($railroad['operations_role'] ?? '') !== 'owner') ttOperationsRequireModule($pdo, $railroadId, 'advanced_roles');
+    $sessions = ttYardmasterSessions($pdo, $railroadId, $userId);
+    $sessionId = (int)($_GET['session_id'] ?? $_POST['session_id'] ?? ($sessions[0]['id'] ?? 0));
+    $session = null;
+    foreach ($sessions as $candidate) if ((int)$candidate['id'] === $sessionId) { $session = $candidate; break; }
+    if ($sessionId && !$session) { http_response_code(404); throw new RuntimeException('Active Yardmaster session not found.'); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        ttOperationsRequireCsrf();
+        ttOperationsRequireModule($pdo, $railroadId, 'yardmaster');
+        ttYardmasterRequireAccess($pdo, $railroadId, $sessionId, $userId);
+        $action = (string)($_POST['action'] ?? '');
+        if ($action === 'save_assignment') ttYardmasterSaveAssignment($pdo, $railroadId, $sessionId, $userId, $_POST);
+        elseif ($action === 'clear_assignment') ttYardmasterClearAssignment($pdo, $railroadId, $sessionId, $userId, (int)($_POST['assignment_id'] ?? 0));
+        else throw new RuntimeException('Choose a valid Yardmaster action.');
+        header('Location: yardmaster.php?session_id='.$sessionId.'&saved=1'); exit;
+    }
+    $overview = $session ? ttYardmasterOverview($pdo, $railroadId, $sessionId) : ['tracks'=>[],'track_cars'=>[],'assignments'=>[],'candidates'=>[],'inbound'=>[],'outbound'=>[]];
+} catch (Throwable $e) {
+    $error = $e->getMessage();
+    $sessions = $sessions ?? [];
+    $session = $session ?? null;
+    $overview = $overview ?? ['tracks'=>[],'track_cars'=>[],'assignments'=>[],'candidates'=>[],'inbound'=>[],'outbound'=>[]];
+}
+$outboundGroups = [];
+foreach ($overview['outbound'] as $move) $outboundGroups[$move['title_snapshot'].' / '.$move['switch_list_number']][] = $move;
+?>
+<?php include '../includes/header.php'; ?><title>Yardmaster</title><link rel="stylesheet" href="../assets/css/operations.css"></head><body><?php include '../includes/navbar.php'; ?>
+<div class="tt-operations-shell"><?php include '../assets/components/sidebar.php'; ?><section class="tt-ops-page">
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4"><div><p class="tt-eyebrow">Operations</p><h1>Yardmaster</h1><p class="text-muted mb-0">Classify cars and plan yard tracks without changing their recorded physical locations.</p></div><?php if (count($sessions)>1): ?><form method="get"><label class="form-label" for="yardSession">Active Session</label><select class="form-select" id="yardSession" name="session_id" onchange="this.form.submit()"><?php foreach($sessions as $item): ?><option value="<?=(int)$item['id']?>" <?=(int)$item['id']===$sessionId?'selected':''?>><?=ttHtml($item['session_number'].' — '.($item['session_name']?:$item['operating_date']))?></option><?php endforeach; ?></select></form><?php endif; ?></div>
+<?php if ($error): ?><div class="alert alert-danger"><?=ttHtml($error)?></div><?php elseif (!$session): ?><div class="tt-repair-empty"><h2 class="h4">No Active Yardmaster session</h2><p class="text-muted mb-0">Start an operating session, then assign its Yardmaster in Session Builder.</p></div><?php else: ?>
+<?php if (isset($_GET['saved'])): ?><div class="alert alert-success">Yard plan updated. Physical equipment locations were not changed.</div><?php endif; ?>
+<div class="alert alert-info"><strong>Planning only:</strong> these assignments organize future work. Recorded car locations change only when an established switch-list move is completed.</div>
+
+<div class="tt-section-header"><div><span class="tt-panel-kicker">Capacity</span><h2>Yard Overview</h2></div></div>
+<div class="tt-yard-track-grid mb-4"><?php foreach($overview['tracks'] as $track): ?><article class="card tt-yard-track-card <?=$track['over_capacity']?'border-danger':''?>"><div class="card-header d-flex justify-content-between gap-2"><div><h3 class="h5 mb-0"><?=ttHtml($track['industry_name'])?></h3><small class="text-muted"><?=ttHtml($track['location']?:'Yard')?></small></div><?php if($track['over_capacity']):?><span class="badge text-bg-danger">Over capacity</span><?php endif;?></div><div class="card-body"><dl class="tt-compact-dl"><dt>Capacity</dt><dd><?=(int)$track['track_capacity']>0?(int)$track['track_capacity'].' cars':'Unspecified'?></dd><dt>Cars now</dt><dd><?=(int)$track['physical_cars']?></dd><dt>Available now</dt><dd><?=$track['available']===null?'—':(int)$track['available']?></dd><dt>Incoming plans</dt><dd><?=(int)$track['incoming_plans']?></dd><dt>Forecast</dt><dd><?=(int)$track['forecast']?></dd></dl><?php $cars=$overview['track_cars'][(int)$track['id']]??[]; if($cars):?><ul class="list-unstyled small mb-0"><?php foreach($cars as $car):?><li class="d-flex justify-content-between gap-2"><span><?=ttHtml(trim($car['reporting_marks'].' '.$car['road_number']))?><?=trim((string)$car['current_track'])!==''?' / '.ttHtml($car['current_track']):''?></span><span><?php if(!$car['active']):?><span class="badge text-bg-warning">Inactive</span><?php endif;?> <?php if($car['in_repair']):?><span class="badge text-bg-danger">Repair Queue</span><?php endif;?></span></li><?php endforeach;?></ul><?php else:?><p class="text-muted small mb-0">No cars recorded on this track.</p><?php endif;?></div></article><?php endforeach; ?><?php if(!$overview['tracks']):?><div class="tt-repair-empty"><p class="mb-0">No active Yard, Classification Yard, or Terminal industries are configured.</p></div><?php endif;?></div>
+
+<div class="row g-4 mb-4"><div class="col-lg-6"><section class="card h-100"><div class="card-header"><h2 class="h5 mb-0">Inbound Cars Needing Classification</h2></div><div class="card-body p-0"><div class="table-responsive tt-mobile-cards"><table class="table table-sm align-middle mb-0"><thead><tr><th>Car</th><th>From</th><th>Yard Track</th><th>Work Order</th></tr></thead><tbody><?php foreach($overview['inbound'] as $move):?><tr><td data-label="Car"><strong><?=ttHtml(trim($move['reporting_marks'].' '.$move['road_number']))?></strong></td><td data-label="From"><?=ttHtml($move['origin_name']?:'Unknown')?></td><td data-label="Yard Track"><?=ttHtml($move['destination_name'])?></td><td data-label="Work Order"><?=ttHtml($move['switch_list_number'])?></td></tr><?php endforeach;?><?php if(!$overview['inbound']):?><tr><td colspan="4" class="text-center text-muted py-4 tt-empty-row">No inbound cars need classification.</td></tr><?php endif;?></tbody></table></div></div></section></div>
+<div class="col-lg-6"><section class="card h-100"><div class="card-header"><h2 class="h5 mb-0">Outbound Cars by Job / Switch List</h2></div><div class="card-body"><?php foreach($outboundGroups as $label=>$moves):?><h3 class="h6"><?=ttHtml($label)?></h3><ul class="small"><?php foreach($moves as $move):?><li><strong><?=ttHtml(trim($move['reporting_marks'].' '.$move['road_number']))?></strong> — <?=ttHtml($move['origin_name'])?> to <?=ttHtml($move['destination_name']?:'Unspecified')?></li><?php endforeach;?></ul><?php endforeach;?><?php if(!$outboundGroups):?><p class="text-muted mb-0">No outbound yard moves are currently planned.</p><?php endif;?></div></section></div></div>
+
+<div class="tt-section-header"><div><span class="tt-panel-kicker">Classification plan</span><h2>Planned Yard Assignments</h2></div></div>
+<div class="card mb-4"><div class="card-body"><form method="post" class="row g-3 align-items-end"><input type="hidden" name="csrf_token" value="<?=ttHtml(ttOperationsCsrfToken())?>"><input type="hidden" name="session_id" value="<?=$sessionId?>"><input type="hidden" name="action" value="save_assignment"><div class="col-lg-4"><label class="form-label">Car</label><select class="form-select" name="equipment_id" required><option value="">Choose a car</option><?php foreach($overview['candidates'] as $car):?><option value="<?=(int)$car['id']?>"><?=ttHtml(trim($car['reporting_marks'].' '.$car['road_number']).' — '.($car['current_location']?:'No location'))?><?=$car['active']?'':' [INACTIVE]'?><?=$car['in_repair']?' [REPAIR QUEUE]':''?></option><?php endforeach;?></select></div><div class="col-lg-3"><label class="form-label">Yard Track</label><select class="form-select" name="yard_industry_id" required><option value="">Choose a track</option><?php foreach($overview['tracks'] as $track):?><option value="<?=(int)$track['id']?>"><?=ttHtml($track['industry_name'])?></option><?php endforeach;?></select></div><div class="col-sm-6 col-lg-2"><label class="form-label">Track Detail</label><input class="form-control" name="planned_track" maxlength="120" placeholder="Optional"></div><div class="col-sm-6 col-lg-3"><label class="form-label">Outbound Group</label><input class="form-control" name="classification_group" maxlength="120" placeholder="Destination, job, or train"></div><div class="col-lg-10"><label class="form-label">Planning Note</label><input class="form-control" name="notes" maxlength="255"></div><div class="col-lg-2"><button class="btn btn-primary w-100">Assign / Move Plan</button></div></form></div></div>
+<div class="card"><div class="table-responsive tt-mobile-cards"><table class="table align-middle mb-0"><thead><tr><th>Car</th><th>Recorded Location</th><th>Planned Track</th><th>Outbound Group</th><th>Warnings</th><th></th></tr></thead><tbody><?php foreach($overview['assignments'] as $assignment):?><tr><td data-label="Car"><strong><?=ttHtml(trim($assignment['reporting_marks'].' '.$assignment['road_number']))?></strong></td><td data-label="Recorded Location"><?=ttHtml(($assignment['current_location']?:'No location').($assignment['current_track']?' / '.$assignment['current_track']:''))?></td><td data-label="Planned Track"><?=ttHtml($assignment['yard_name'].($assignment['planned_track']?' / '.$assignment['planned_track']:''))?></td><td data-label="Outbound Group"><?=ttHtml($assignment['classification_group']?:'—')?></td><td data-label="Warnings"><?php if(!$assignment['active']):?><span class="badge text-bg-warning">Inactive</span><?php endif;?> <?php if($assignment['in_repair']):?><span class="badge text-bg-danger">Repair Queue</span><?php endif;?> <?php if((int)$assignment['duplicate_count']>1):?><span class="badge text-bg-danger">Duplicate plan</span><?php endif;?> <?php if($assignment['active']&&!$assignment['in_repair']&&(int)$assignment['duplicate_count']===1):?>—<?php endif;?></td><td data-label="Action"><form method="post" onsubmit="return confirm('Clear this planned yard assignment?')"><input type="hidden" name="csrf_token" value="<?=ttHtml(ttOperationsCsrfToken())?>"><input type="hidden" name="session_id" value="<?=$sessionId?>"><input type="hidden" name="assignment_id" value="<?=(int)$assignment['id']?>"><button class="btn btn-sm btn-outline-danger" name="action" value="clear_assignment">Clear</button></form></td></tr><?php endforeach;?><?php if(!$overview['assignments']):?><tr><td colspan="6" class="text-center text-muted py-4 tt-empty-row">No yard classifications have been planned.</td></tr><?php endif;?></tbody></table></div></div>
+<?php endif; ?>
+</section></div><?php include '../includes/footer.php'; ?>

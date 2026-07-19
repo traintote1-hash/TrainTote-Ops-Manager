@@ -20,6 +20,7 @@ $switchLists = file_get_contents($root . '/switch_lists.php');
 $workOrder = file_get_contents($root . '/work_order.php');
 $history = file_get_contents($root . '/history.php');
 $repairs = file_get_contents($root . '/repairs.php');
+$yardmaster = file_get_contents($root . '/yardmaster.php');
 $dispatcherJs = file_get_contents($project . '/assets/js/dispatcher.js');
 $fastClockWidget = file_get_contents($root . '/fast_clock_widget.php');
 
@@ -39,7 +40,7 @@ mobileExpect(strpos($navigationCss, '.navbar-brand') !== false
 mobileExpect(strpos($settings, 'tt-module-setting') !== false
     && strpos($settings, 'tt-module-setting-copy') !== false,
     'Module toggles must stay beside their labels on phones.');
-foreach ([$sessions, $switchLists, $workOrder, $history, $repairs] as $markup) {
+foreach ([$sessions, $switchLists, $workOrder, $history, $repairs, $yardmaster] as $markup) {
     mobileExpect(strpos($markup, 'tt-mobile-cards') !== false
         && strpos($markup, 'data-label=') !== false,
         'Primary Operations tables must use labeled mobile cards.');

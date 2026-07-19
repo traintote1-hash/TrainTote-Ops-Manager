@@ -12,6 +12,8 @@ if (
     $operationsNavItem = 'history';
 } elseif (strpos($currentOperationsPage, '/operations/dispatcher.php') !== false) {
     $operationsNavItem = 'dispatcher';
+} elseif (strpos($currentOperationsPage, '/operations/yardmaster.php') !== false) {
+    $operationsNavItem = 'yardmaster';
 } elseif (strpos($currentOperationsPage, '/operations/settings.php') !== false) {
     $operationsNavItem = 'settings';
 } elseif ($currentOperationsPage === '/operations/sessions.php') {
@@ -106,6 +108,15 @@ if (!function_exists('ttOperationsNavActive')) {
         <?= $operationsNavItem === 'dispatcher' ? 'aria-current="page"' : ''; ?>
         href="/operations/dispatcher.php">
         Dispatcher
+        </a>
+        <?php endif; ?>
+
+        <?php $showYardmaster=!empty($operationModules['yardmaster'])&&isset($pdo,$_SESSION['user_id'])&&function_exists('ttYardmasterNavEnabled')&&ttYardmasterNavEnabled($pdo,(int)$_SESSION['user_id']);if($showYardmaster): ?>
+        <a
+        class="<?= ttOperationsNavActive('yardmaster', $operationsNavItem); ?>"
+        <?= $operationsNavItem === 'yardmaster' ? 'aria-current="page"' : ''; ?>
+        href="/operations/yardmaster.php">
+        Yardmaster
         </a>
         <?php endif; ?>
 
