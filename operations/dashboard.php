@@ -29,6 +29,7 @@ include '../assets/components/header.php';
 <div class="tt-dashboard-lower">
 <?php if (!empty($modules['fast_clock'])): ?><a class="tt-panel text-decoration-none" href="/operations/sessions.php"><h3 class="h5">Fast Clock</h3><p class="tt-muted-text mb-0">Configure model time inside a session.</p></a><?php endif; ?>
 <?php if (!empty($modules['dispatcher'])): ?><a class="tt-panel text-decoration-none" href="/operations/dispatcher.php"><h3 class="h5">Dispatcher</h3><p class="tt-muted-text mb-0">Open the live assignment overview.</p></a><?php endif; ?>
+<?php if (!empty($modules['yardmaster'])): ?><a class="tt-panel text-decoration-none" href="/operations/yardmaster.php"><h3 class="h5">Yardmaster</h3><p class="tt-muted-text mb-0">Plan classifications and review yard capacity.</p></a><?php endif; ?>
 <?php if (!empty($modules['repair_queue'])): ?><a class="tt-panel text-decoration-none" href="/operations/repairs.php"><h3 class="h5">Repair Queue</h3><p class="tt-muted-text mb-0">Manage Bad Order equipment.</p></a><?php endif; ?>
 <?php if (!empty($modules['crew_messaging'])): ?><a class="tt-panel text-decoration-none" href="/operations/switch_lists.php"><h3 class="h5">Crew Messaging</h3><p class="tt-muted-text mb-0">Review crew-facing work-order messages.</p></a><?php endif; ?>
 <?php if (!empty($modules['advanced_roles'])): ?><a class="tt-panel text-decoration-none" href="/jobs/list.php"><h3 class="h5">Advanced Operations</h3><p class="tt-muted-text mb-0">Prepared cuts, load status, and role-based tools.</p></a><?php endif; ?>

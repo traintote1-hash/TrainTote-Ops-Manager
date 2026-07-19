@@ -20,7 +20,7 @@ function ttOperationsModuleDefinitions(): array
         'crew_messaging' => ['label' => 'Crew Messaging', 'available' => true, 'description' => 'Dispatcher messages shown on crew work orders.'],
         'advanced_roles' => ['label' => 'Advanced Roles', 'available' => true, 'description' => 'Railroad-scoped access for operational roles.'],
         'track_warrants' => ['label' => 'Track Warrants', 'available' => false, 'description' => 'Coming later.'],
-        'yardmaster' => ['label' => 'Yardmaster', 'available' => false, 'description' => 'Coming later.'],
+        'yardmaster' => ['label' => 'Yardmaster', 'available' => true, 'description' => 'Session-scoped yard capacity, classification plans, and inbound/outbound work.'],
         'interchange_management' => ['label' => 'Interchange Management', 'available' => false, 'description' => 'Coming later.'],
         'ai_job_suggestions' => ['label' => 'AI Job Suggestions', 'available' => false, 'description' => 'Coming later.'],
     ];
@@ -101,6 +101,18 @@ function ttDispatcherNavEnabled(PDO $pdo, int $userId): bool
         LEFT JOIN operation_module_settings role_module ON role_module.railroad_id=r.id AND role_module.module_key='advanced_roles' AND role_module.enabled=1
         WHERE (r.user_id=? OR (orr.user_id=? AND role_module.enabled=1))
           AND COALESCE(s.dispatcher_enabled,r.operations_dispatcher_enabled)=1 LIMIT 1");
+    $stmt->execute([$userId, $userId, $userId]);
+    return (bool)$stmt->fetchColumn();
+}
+
+function ttYardmasterNavEnabled(PDO $pdo, int $userId): bool
+{
+    $stmt = $pdo->prepare("SELECT 1 FROM railroads r
+        JOIN operation_module_settings ym ON ym.railroad_id=r.id AND ym.module_key='yardmaster' AND ym.enabled=1
+        JOIN operating_sessions s ON s.railroad_id=r.id AND s.status='in_progress'
+        LEFT JOIN operation_session_roles osr ON osr.session_id=s.id AND osr.railroad_id=r.id AND osr.user_id=? AND osr.role='yardmaster'
+        LEFT JOIN operation_module_settings roles ON roles.railroad_id=r.id AND roles.module_key='advanced_roles' AND roles.enabled=1
+        WHERE r.user_id=? OR (osr.user_id=? AND roles.enabled=1) LIMIT 1");
     $stmt->execute([$userId, $userId, $userId]);
     return (bool)$stmt->fetchColumn();
 }

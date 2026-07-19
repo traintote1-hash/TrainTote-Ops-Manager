@@ -35,3 +35,7 @@
 }
 @media screen and (max-width:430px){.tt-ops-page .card-body{padding:.9rem}.tt-mobile-cards td,table.tt-mobile-cards td{grid-template-columns:1fr;gap:.25rem}.tt-history-stats{grid-template-columns:1fr}.tt-fast-clock-controls{grid-template-columns:1fr}}
 .tt-dispatcher-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1rem}.tt-dispatcher-card .card-header{background:#f8f9fa}.tt-dispatcher-card textarea{resize:vertical}.tt-dispatcher-message{font-size:1.05rem}.badge[class*="tt-dispatch-status-"]{padding:.45rem .6rem}.tt-dispatch-status-not_started{background:#ececef!important;color:#555!important}.tt-dispatch-status-working{background:#dcecff!important;color:#175ca3!important}.tt-dispatch-status-delayed{background:#fff1ce!important;color:#7c5800!important}.tt-dispatch-status-complete{background:#dff3e5!important;color:#176634!important}@media(max-width:576px){.tt-dispatcher-grid{grid-template-columns:1fr}}
+
+/* Yardmaster V1 follows existing Operations card and mobile-table patterns. */
+.tt-yard-track-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem}.tt-yard-track-card .card-header{background:#f8f9fa}.tt-yard-track-card ul{display:grid;gap:.35rem;padding-top:.75rem;margin-top:.75rem;border-top:1px solid #e6e9ed}
+@media(max-width:576px){.tt-yard-track-grid{grid-template-columns:1fr}.tt-yard-track-card .card-body{padding:.85rem}}
