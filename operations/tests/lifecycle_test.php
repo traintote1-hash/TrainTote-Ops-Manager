@@ -25,6 +25,7 @@ lifecycleExpect(strpos($workOrder,"action==='abort'")!==false&&strpos($workOrder
 lifecycleExpect(strpos($workOrder,"action==='cancel'")===false,'Draft work orders must not expose the legacy Cancel assignment action.');
 lifecycleExpect(strpos($session,'This session is read-only history.')!==false&&strpos($session,"ttOperatingSessionIsHistory")!==false,'Completed and Cancelled sessions must render as read-only history.');
 lifecycleExpect(strpos($progress,"session_status']!=='in_progress'")!==false&&strpos($completion,"session_status']!=='in_progress'")!==false,'Progress and closeout must reject non-Active sessions server-side.');
+lifecycleExpect(strpos($progress,"['ready','in_progress','needs_review']")!==false,'Progress must remain writable for dependency work orders awaiting review after a Not Moved exception.');
 lifecycleExpect(strpos($session,"action==='delete_draft_session'")!==false&&strpos($session,'A session cannot be deleted after it starts.')!==false,'Draft session deletion must be server-side guarded.');
 lifecycleExpect(strpos($migration,"'cancelled','aborted'")!==false&&strpos($migration,"'needs_review','superseded'")!==false,'Migration must append Aborted and Superseded while retaining existing values.');
 lifecycleExpect(strpos($migration,"notes LIKE '%Superseded by Revision %'")!==false,'Legacy conversion must be limited to revisions with unambiguous invalidation notes.');
