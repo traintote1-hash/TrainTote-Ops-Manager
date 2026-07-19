@@ -87,18 +87,42 @@ function ttAssignmentNormalizeInput(PDO $pdo, int $railroadId, int $sessionId, a
     $endId=$endPlan==='return_origin'?0:(int)($input['end_industry_id']??0);$endTrack=$endPlan==='return_origin'?'':substr(trim((string)($input['end_track']??'')),0,120);
     if($endPlan==='terminate_elsewhere'&&$endId<=0)throw new RuntimeException('Choose an End Location when terminating elsewhere.');
     if($endId>0){$stmt=$pdo->prepare('SELECT id FROM industries WHERE id=? AND railroad_id=? AND active=1');$stmt->execute([$endId,$railroadId]);if(!$stmt->fetchColumn())throw new RuntimeException('Invalid end location.');}
+    $engineer=substr(trim((string)($input['engineer_name']??'')),0,120);
+    $conductor=substr(trim((string)($input['conductor_name']??'')),0,120);
+    $brakemen=substr(trim((string)($input['brakeman_names']??'')),0,255);
+    $crewSummary=ttOperationsCrewSummary($engineer,$conductor,$brakemen);
+    if($crewSummary==='')$crewSummary=substr(trim((string)($input['crew_name']??'')),0,120);
     return [
         'job'=>$job,'job_id'=>$jobId,'pattern'=>$pattern,'start_method'=>$start,
         'base_id'=>$base?:null,'starting_track'=>substr(trim((string)($input['starting_track']??'')),0,120),
         'cut_id'=>$cut?:null,'requested'=>max(0,min(100,(int)($input['requested_car_count']??10))),
         'prepared_cut_count'=>max(0,min(100,(int)($input['prepared_cut_car_count']??10))),
         'difficulty'=>in_array($input['difficulty']??'', ['easy','medium','hard'],true)?$input['difficulty']:'medium',
-        'crew'=>substr(trim((string)($input['crew_name']??'')),0,120),'predecessor'=>$predecessor?:null,
+        'crew'=>$crewSummary,'engineer'=>$engineer,'conductor'=>$conductor,'brakemen'=>$brakemen,'predecessor'=>$predecessor?:null,
         'dependency'=>$dependency,'end_plan'=>$endPlan,'end_id'=>$endId?:null,'end_track'=>$endTrack,
         'notes'=>substr(trim((string)($input['notes']??'')),0,5000),
         'locomotive_ids'=>array_values(array_unique(array_filter(array_map('intval',(array)($input['locomotive_ids']??[]))))),
         'starting_car_ids'=>array_values(array_unique(array_filter(array_map('intval',(array)($input['starting_car_ids']??[])))))
     ];
+}
+
+function ttAssignmentUnitPrefix(string $jobName): string
+{
+    $prefix=substr((string)preg_replace('/[^A-Z0-9]/','',strtoupper($jobName)),0,4);
+    return $prefix!==''?$prefix:'JOB';
+}
+
+function ttGenerateAssignmentUnitId(PDO $pdo,int $railroadId,int $sessionId,string $jobName):string
+{
+    $prefix=ttAssignmentUnitPrefix($jobName);
+    $exists=$pdo->prepare('SELECT 1 FROM operation_assignments WHERE railroad_id=? AND session_id=? AND unit_identifier=? LIMIT 1');
+    for($attempt=0;$attempt<30;$attempt++){
+        $suffix=$attempt<20?(string)random_int(1000,9999):strtoupper(bin2hex(random_bytes(2)));
+        $candidate=$prefix.'-'.$suffix;
+        $exists->execute([$railroadId,$sessionId,$candidate]);
+        if(!$exists->fetchColumn())return$candidate;
+    }
+    throw new RuntimeException('Unable to generate a unique unit ID. Try creating the assignment again.');
 }
 
 function ttAssignmentReplaceLocomotives(PDO $pdo,int $assignmentId,int $railroadId,array $ids,array $reserved):void

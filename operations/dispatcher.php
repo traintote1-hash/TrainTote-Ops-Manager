@@ -15,6 +15,8 @@ try{
     $session=$sessionId?ttDispatcherSession($pdo,$sessionId,$railroadId):null;
     if($session&&!ttDispatcherEffectiveEnabled($railroad,$session))throw new RuntimeException('Dispatcher is disabled for this operating session.');
     $assignments=$session?ttDispatcherAssignments($pdo,$sessionId,$railroadId):[];
+    foreach($assignments as &$assignment){$assignment['crew_name']=ttOperationsCrewDisplay($assignment);$assignment['assignment_number']='Unit '.ttOperationsUnitDisplay($assignment);}
+    unset($assignment);
 }catch(Throwable$e){$error=$e->getMessage();$sessions=[];$session=null;$assignments=[];}
 ?>
 <?php include '../includes/header.php';?><title>Dispatcher</title><link rel="stylesheet" href="../assets/css/operations.css"></head><body><?php include '../includes/navbar.php';?><div class="tt-operations-shell"><?php include '../assets/components/sidebar.php';?><section class="tt-ops-page">

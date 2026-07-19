@@ -7,87 +7,23 @@ function ttYardmasterIndustrySql(string $alias = 'i'): string
 
 function ttYardmasterAccessRailroad(PDO $pdo, int $userId): array
 {
-    $stmt = $pdo->prepare("SELECT DISTINCT r.*,IF(r.user_id=?,'owner','yardmaster') operations_role
-        FROM railroads r
-        LEFT JOIN operation_session_roles osr ON osr.railroad_id=r.id AND osr.user_id=? AND osr.role='yardmaster'
-        LEFT JOIN operating_sessions assigned_session ON assigned_session.id=osr.session_id AND assigned_session.railroad_id=r.id AND assigned_session.status='in_progress'
-        WHERE r.user_id=? OR assigned_session.id IS NOT NULL
-        ORDER BY (r.user_id=?) DESC LIMIT 1");
-    $stmt->execute([$userId, $userId, $userId, $userId]);
-    $railroad = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$railroad) {
-        http_response_code(403);
-        throw new RuntimeException('Yardmaster access is not assigned for an Active session.');
-    }
+    $railroad = ttOperationsRailroad($pdo, $userId);
+    $railroad['operations_role'] = 'owner';
     return $railroad;
 }
 
 function ttYardmasterRequireAccess(PDO $pdo, int $railroadId, int $sessionId, int $userId): void
 {
-    if (ttOperationsIsRailroadOwner($pdo, $railroadId, $userId)) return;
-    if (!ttOperationsModuleEnabled($pdo, $railroadId, 'advanced_roles')) {
-        http_response_code(403);
-        throw new RuntimeException('Advanced Roles must be enabled for delegated Yardmaster access.');
-    }
-    $stmt = $pdo->prepare("SELECT 1 FROM operation_session_roles osr
-        JOIN operating_sessions s ON s.id=osr.session_id AND s.railroad_id=osr.railroad_id
-        WHERE osr.session_id=? AND osr.railroad_id=? AND osr.user_id=? AND osr.role='yardmaster' AND s.status='in_progress' LIMIT 1");
-    $stmt->execute([$sessionId, $railroadId, $userId]);
-    if (!$stmt->fetchColumn()) {
-        http_response_code(403);
-        throw new RuntimeException('Owner or assigned Yardmaster access is required for this session.');
-    }
+    ttOperationsRequireRailroadOwner($pdo, $railroadId, $userId);
 }
 
 function ttYardmasterSessions(PDO $pdo, int $railroadId, int $userId): array
 {
-    $owner = ttOperationsIsRailroadOwner($pdo, $railroadId, $userId);
-    $sql = "SELECT s.*,u.email yardmaster_email FROM operating_sessions s
-        LEFT JOIN operation_session_roles osr ON osr.session_id=s.id AND osr.railroad_id=s.railroad_id AND osr.role='yardmaster'
-        LEFT JOIN users u ON u.id=osr.user_id
-        WHERE s.railroad_id=? AND s.status='in_progress'";
-    $params = [$railroadId];
-    if (!$owner) { $sql .= ' AND osr.user_id=?'; $params[] = $userId; }
-    $sql .= ' ORDER BY s.started_at DESC,s.id DESC';
+    ttOperationsRequireRailroadOwner($pdo, $railroadId, $userId);
+    $sql = "SELECT s.* FROM operating_sessions s WHERE s.railroad_id=? AND s.status='in_progress' ORDER BY s.started_at DESC,s.id DESC";
     $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
+    $stmt->execute([$railroadId]);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
-
-function ttYardmasterAssignRole(PDO $pdo, int $sessionId, int $railroadId, int $ownerUserId, string $email): void
-{
-    ttOperationsRequireRailroadOwner($pdo, $railroadId, $ownerUserId);
-    $email = trim($email);
-    $pdo->beginTransaction();
-    try {
-        $session = $pdo->prepare("SELECT status FROM operating_sessions WHERE id=? AND railroad_id=? AND status IN('draft','ready','in_progress') FOR UPDATE");
-        $session->execute([$sessionId, $railroadId]);
-        if (!$session->fetchColumn()) throw new RuntimeException('Yardmaster roles can only be assigned to a current session.');
-        $existing = $pdo->prepare("SELECT user_id FROM operation_session_roles WHERE session_id=? AND railroad_id=? AND role='yardmaster' FOR UPDATE");
-        $existing->execute([$sessionId, $railroadId]);
-        $previousUserId = (int)$existing->fetchColumn();
-        if ($email === '') {
-            $pdo->prepare("DELETE FROM operation_session_roles WHERE session_id=? AND railroad_id=? AND role='yardmaster'")->execute([$sessionId, $railroadId]);
-            if ($previousUserId) $pdo->prepare("INSERT INTO operation_yard_history(railroad_id,session_id,event_type,detail,created_by_user_id) VALUES(?,?,'role_cleared',?,?)")
-                ->execute([$railroadId, $sessionId, 'Yardmaster assignment cleared.', $ownerUserId]);
-            $pdo->commit();
-            return;
-        }
-        $user = $pdo->prepare('SELECT id FROM users WHERE LOWER(email)=LOWER(?) LIMIT 1');
-        $user->execute([$email]);
-        $assignedUserId = (int)$user->fetchColumn();
-        if (!$assignedUserId) throw new RuntimeException('No TrainTote account matches that email address.');
-        $pdo->prepare("INSERT IGNORE INTO operation_railroad_roles(railroad_id,user_id,role) VALUES(?,?,'yardmaster')")
-            ->execute([$railroadId, $assignedUserId]);
-        $pdo->prepare("INSERT INTO operation_session_roles(session_id,railroad_id,user_id,role,assigned_by_user_id) VALUES(?,?,?,'yardmaster',?) ON DUPLICATE KEY UPDATE user_id=VALUES(user_id),assigned_by_user_id=VALUES(assigned_by_user_id),assigned_at=NOW()")
-            ->execute([$sessionId, $railroadId, $assignedUserId, $ownerUserId]);
-        if ($previousUserId !== $assignedUserId) $pdo->prepare("INSERT INTO operation_yard_history(railroad_id,session_id,event_type,detail,created_by_user_id) VALUES(?,?,'role_assigned',?,?)")
-            ->execute([$railroadId, $sessionId, 'Yardmaster assigned to '.$email.'.', $ownerUserId]);
-        $pdo->commit();
-    } catch (Throwable $e) {
-        if ($pdo->inTransaction()) $pdo->rollBack();
-        throw $e;
-    }
 }
 
 function ttYardmasterSaveAssignment(PDO $pdo, int $railroadId, int $sessionId, int $userId, array $input): void
@@ -205,9 +141,9 @@ function ttYardmasterOverview(PDO $pdo, int $railroadId, int $sessionId): array
         LEFT JOIN industries origin_i ON origin_i.id=m.origin_industry_id AND origin_i.railroad_id=m.railroad_id
         LEFT JOIN industries destination_i ON destination_i.id=m.destination_industry_id AND destination_i.railroad_id=m.railroad_id
         WHERE sl.session_id=? AND sl.railroad_id=? AND sl.status IN('approved','in_progress','needs_review') AND m.actual_outcome='pending'";
-    $inbound = $pdo->prepare("SELECT m.id,e.reporting_marks,e.road_number,origin_i.industry_name origin_name,destination_i.industry_name destination_name,a.title_snapshot,sl.switch_list_number".$moveBase." AND m.destination_industry_id IS NOT NULL AND ".ttYardmasterIndustrySql('destination_i')." AND (e.current_industry_id<>m.destination_industry_id OR e.current_industry_id IS NULL) ORDER BY destination_i.industry_name,a.sequence_number,m.sequence_number");
+    $inbound = $pdo->prepare("SELECT m.id,e.reporting_marks,e.road_number,origin_i.industry_name origin_name,destination_i.industry_name destination_name,a.assignment_number,a.unit_identifier,a.title_snapshot,sl.switch_list_number".$moveBase." AND m.destination_industry_id IS NOT NULL AND ".ttYardmasterIndustrySql('destination_i')." AND (e.current_industry_id<>m.destination_industry_id OR e.current_industry_id IS NULL) ORDER BY destination_i.industry_name,a.sequence_number,m.sequence_number");
     $inbound->execute([$sessionId, $railroadId]);
-    $outbound = $pdo->prepare("SELECT m.id,e.reporting_marks,e.road_number,origin_i.industry_name origin_name,destination_i.industry_name destination_name,a.title_snapshot,sl.switch_list_number".$moveBase." AND m.origin_industry_id IS NOT NULL AND ".ttYardmasterIndustrySql('origin_i')." AND m.destination_industry_id<>m.origin_industry_id ORDER BY a.title_snapshot,destination_i.industry_name,m.sequence_number");
+    $outbound = $pdo->prepare("SELECT m.id,e.reporting_marks,e.road_number,origin_i.industry_name origin_name,destination_i.industry_name destination_name,a.assignment_number,a.unit_identifier,a.title_snapshot,sl.switch_list_number".$moveBase." AND m.origin_industry_id IS NOT NULL AND ".ttYardmasterIndustrySql('origin_i')." AND m.destination_industry_id<>m.origin_industry_id ORDER BY a.title_snapshot,destination_i.industry_name,m.sequence_number");
     $outbound->execute([$sessionId, $railroadId]);
 
     return ['tracks'=>$tracks,'track_cars'=>$trackCars,'assignments'=>$assignments,'candidates'=>$candidateStmt->fetchAll(PDO::FETCH_ASSOC),'inbound'=>$inbound->fetchAll(PDO::FETCH_ASSOC),'outbound'=>$outbound->fetchAll(PDO::FETCH_ASSOC)];

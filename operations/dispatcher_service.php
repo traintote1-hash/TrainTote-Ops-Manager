@@ -52,7 +52,7 @@ function ttDispatcherSession(PDO $pdo, int $sessionId, int $railroadId): array
 
 function ttDispatcherAssignments(PDO $pdo, int $sessionId, int $railroadId): array
 {
-    $sql = "SELECT a.id,a.assignment_number,a.title_snapshot,a.operating_pattern,a.crew_name,
+    $sql = "SELECT a.id,a.assignment_number,a.unit_identifier,a.title_snapshot,a.operating_pattern,a.crew_name,a.engineer_name,a.conductor_name,a.brakeman_names,
         a.status assignment_status,a.dispatcher_status,a.dispatcher_note,a.dispatcher_crew_message,a.dispatcher_updated_at,
         (SELECT GROUP_CONCAT(CONCAT_WS(' ',e.reporting_marks,e.road_number) ORDER BY al.position SEPARATOR ', ')
          FROM operation_assignment_locomotives al JOIN equipment e ON e.id=al.equipment_id AND e.railroad_id=a.railroad_id WHERE al.assignment_id=a.id) locomotives,

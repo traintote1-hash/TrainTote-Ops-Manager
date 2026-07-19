@@ -110,10 +110,8 @@ function ttYardmasterNavEnabled(PDO $pdo, int $userId): bool
     $stmt = $pdo->prepare("SELECT 1 FROM railroads r
         JOIN operation_module_settings ym ON ym.railroad_id=r.id AND ym.module_key='yardmaster' AND ym.enabled=1
         JOIN operating_sessions s ON s.railroad_id=r.id AND s.status='in_progress'
-        LEFT JOIN operation_session_roles osr ON osr.session_id=s.id AND osr.railroad_id=r.id AND osr.user_id=? AND osr.role='yardmaster'
-        LEFT JOIN operation_module_settings roles ON roles.railroad_id=r.id AND roles.module_key='advanced_roles' AND roles.enabled=1
-        WHERE r.user_id=? OR (osr.user_id=? AND roles.enabled=1) LIMIT 1");
-    $stmt->execute([$userId, $userId, $userId]);
+        WHERE r.user_id=? LIMIT 1");
+    $stmt->execute([$userId]);
     return (bool)$stmt->fetchColumn();
 }
 
@@ -164,6 +162,30 @@ function ttOperationsStatusLabel(string $status, string $recordType = ''): strin
     if ($status === 'in_progress') { return 'Active'; }
     if ($recordType === 'switch_list' && $status === 'draft') { return 'Generated'; }
     return ucwords(str_replace('_', ' ', $status));
+}
+
+function ttOperationsCrewDisplay(array $assignment): string
+{
+    $roles = [];
+    if (($name=trim((string)($assignment['engineer_name']??'')))!=='') $roles[]='Engineer: '.$name;
+    if (($name=trim((string)($assignment['conductor_name']??'')))!=='') $roles[]='Conductor / Foreman: '.$name;
+    if (($name=trim((string)($assignment['brakeman_names']??'')))!=='') $roles[]='Brakeman / Switchman: '.$name;
+    if ($roles) return implode(' · ', $roles);
+    $legacy = trim((string)($assignment['crew_name'] ?? ''));
+    return $legacy !== '' ? $legacy : 'Crew not assigned';
+}
+
+function ttOperationsCrewSummary(string $engineer, string $conductor, string $brakemen): string
+{
+    return substr(implode(', ', array_filter([$engineer,$conductor,$brakemen], static fn($value)=>$value!=='')), 0, 120);
+}
+
+function ttOperationsUnitDisplay(array $assignment): string
+{
+    $unit = trim((string)($assignment['unit_identifier'] ?? ''));
+    if ($unit !== '') return $unit;
+    $legacy = trim((string)($assignment['assignment_number'] ?? ''));
+    return $legacy !== '' ? $legacy : 'Unit pending';
 }
 
 function ttNormalizeService($value): string
