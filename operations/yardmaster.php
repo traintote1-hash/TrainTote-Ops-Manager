@@ -35,13 +35,14 @@ try {
     $overview = $overview ?? ['tracks'=>[],'track_cars'=>[],'assignments'=>[],'candidates'=>[],'inbound'=>[],'outbound'=>[]];
 }
 $outboundGroups = [];
-foreach ($overview['outbound'] as $move) $outboundGroups[$move['title_snapshot'].' / '.$move['switch_list_number']][] = $move;
+foreach ($overview['outbound'] as $move) $outboundGroups['Unit '.ttOperationsUnitDisplay($move).' · '.$move['title_snapshot'].' / '.$move['switch_list_number']][] = $move;
 ?>
 <?php include '../includes/header.php'; ?><title>Yardmaster</title><link rel="stylesheet" href="../assets/css/operations.css"></head><body><?php include '../includes/navbar.php'; ?>
 <div class="tt-operations-shell"><?php include '../assets/components/sidebar.php'; ?><section class="tt-ops-page">
 <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4"><div><p class="tt-eyebrow">Operations</p><h1>Yardmaster</h1><p class="text-muted mb-0">Classify cars and plan yard tracks without changing their recorded physical locations.</p></div><?php if (count($sessions)>1): ?><form method="get"><label class="form-label" for="yardSession">Active Session</label><select class="form-select" id="yardSession" name="session_id" onchange="this.form.submit()"><?php foreach($sessions as $item): ?><option value="<?=(int)$item['id']?>" <?=(int)$item['id']===$sessionId?'selected':''?>><?=ttHtml($item['session_number'].' — '.($item['session_name']?:$item['operating_date']))?></option><?php endforeach; ?></select></form><?php endif; ?></div>
 <?php if ($error): ?><div class="alert alert-danger"><?=ttHtml($error)?></div><?php elseif (!$session): ?><div class="tt-repair-empty"><h2 class="h4">No Active Yardmaster session</h2><p class="text-muted mb-0">Start an operating session, then assign its Yardmaster in Session Builder.</p></div><?php else: ?>
 <?php if (isset($_GET['saved'])): ?><div class="alert alert-success">Yard plan updated. Physical equipment locations were not changed.</div><?php endif; ?>
+<div class="alert alert-secondary py-2"><strong>Yardmaster:</strong> <?=ttHtml(trim((string)$session['yardmaster_name'])!==''?$session['yardmaster_name']:'Not assigned')?></div>
 <div class="alert alert-info"><strong>Planning only:</strong> these assignments organize future work. Recorded car locations change only when an established switch-list move is completed.</div>
 
 <div class="tt-section-header"><div><span class="tt-panel-kicker">Capacity</span><h2>Yard Overview</h2></div></div>
