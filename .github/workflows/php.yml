@@ -48,3 +48,16 @@ jobs:
           for test_file in "${test_files[@]}"; do
             php "$test_file"
           done
+
+      - name: Run shared application regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t test_files < <(find tests -maxdepth 1 -name '*_test.php' -type f | sort)
+          if (( ${#test_files[@]} == 0 )); then
+            echo "No shared application regression tests found."
+            exit 1
+          fi
+          for test_file in "${test_files[@]}"; do
+            php "$test_file"
+          done

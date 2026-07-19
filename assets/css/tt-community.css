@@ -1,0 +1,319 @@
+/* Shared TrainTote navigation and community application theme. */
+:root {
+    --tt-sso-dark: #212529;
+    --tt-sso-red: #8B1E24;
+    --tt-sso-red-dark: #73181D;
+    --tt-sso-white: #ffffff;
+    --tt-sso-muted: rgba(255, 255, 255, 0.72);
+    --tt-sso-page: #f5f7fa;
+    --tt-sso-border: #d6dbe1;
+    --tt-sso-text: #111827;
+    --tt-sso-link: #0d6efd;
+    --tt-sso-nav-height: 60px;
+    --tt-sso-forum-width: 1500px;
+}
+html,
+body {
+    margin-top: 0 !important;
+}
+
+body.tt-sso-has-topbar {
+    padding-top: var(--tt-sso-nav-height) !important;
+    background: var(--tt-sso-page) !important;
+}
+
+.tt-sso-topbar,
+.tt-sso-topbar * {
+    box-sizing: border-box;
+}
+
+.tt-sso-topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 2147483000;
+    min-height: var(--tt-sso-nav-height);
+    margin: 0 !important;
+    border: 0 !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    background: var(--tt-sso-dark);
+    color: var(--tt-sso-white);
+    display: flex;
+    align-items: center;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+.tt-sso-topbar a {
+    text-decoration: none;
+}
+
+.tt-sso-topbar-inner {
+    width: 100%;
+    min-height: var(--tt-sso-nav-height);
+    padding: 0 12px;
+    display: flex;
+    align-items: stretch;
+    gap: 12px;
+}
+
+.tt-sso-brand {
+    color: var(--tt-sso-white) !important;
+    font-size: 1.25rem;
+    font-weight: 400;
+    line-height: 1;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+}
+
+.tt-sso-links {
+    display: flex;
+    align-items: center;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+}
+
+.tt-sso-links a,
+.tt-sso-logout a {
+    color: var(--tt-sso-muted) !important;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    margin: 8px 0;
+    padding: 0 .75rem;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.tt-sso-links a:hover,
+.tt-sso-logout a:hover {
+    color: var(--tt-sso-white) !important;
+    background: rgba(255, 255, 255, 0.07);
+}
+
+.tt-sso-links a.tt-sso-active {
+    color: var(--tt-sso-white) !important;
+    background: var(--tt-sso-red);
+}
+
+.tt-sso-logout {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+}
+
+body.tt-sso-app-forum,
+body.tt-sso-app-forum #phpbb {
+    background: var(--tt-sso-page) !important;
+}
+
+body.tt-sso-app-forum #wrap,
+body.tt-sso-app-forum .wrap {
+    box-sizing: border-box !important;
+    width: calc(100% - 48px) !important;
+    max-width: var(--tt-sso-forum-width) !important;
+    min-width: 0 !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+
+body.tt-sso-app-forum #wrap {
+    margin-top: 24px !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: 0 !important;
+}
+
+body.tt-sso-app-forum #page-header .headerbar,
+body.tt-sso-app-forum .headerbar {
+    display: block !important;
+    min-height: 104px !important;
+    margin: 0 0 10px 0 !important;
+    padding: 18px 22px !important;
+    border: 0 !important;
+    border-radius: 8px !important;
+    background: linear-gradient(135deg, var(--tt-sso-red), var(--tt-sso-red-dark)) !important;
+    color: var(--tt-sso-white) !important;
+}
+
+body.tt-sso-app-forum #site-description h1,
+body.tt-sso-app-forum .site-description h1 {
+    color: var(--tt-sso-white) !important;
+    font-size: 26px !important;
+    line-height: 1.15 !important;
+    font-weight: 700 !important;
+    margin: 0 !important;
+}
+
+body.tt-sso-app-forum #site-description p,
+body.tt-sso-app-forum .site-description p {
+    color: var(--tt-sso-white) !important;
+    font-size: 14px !important;
+    margin: 3px 0 0 0 !important;
+}
+
+body.tt-sso-app-forum .search-header,
+body.tt-sso-app-forum .search-box {
+    box-shadow: none !important;
+}
+
+body.tt-sso-app-forum .search-header input,
+body.tt-sso-app-forum .search-box input {
+    color: var(--tt-sso-text) !important;
+}
+
+body.tt-sso-app-forum,
+body.tt-sso-app-forum #wrap,
+body.tt-sso-app-forum .wrap,
+body.tt-sso-app-forum #page-body,
+body.tt-sso-app-forum p,
+body.tt-sso-app-forum li,
+body.tt-sso-app-forum dd,
+body.tt-sso-app-forum dt,
+body.tt-sso-app-forum label,
+body.tt-sso-app-forum .content,
+body.tt-sso-app-forum .postbody,
+body.tt-sso-app-forum .topiclist,
+body.tt-sso-app-forum .forum-description,
+body.tt-sso-app-forum .lastpost,
+body.tt-sso-app-forum .statistics,
+body.tt-sso-app-forum .copyright {
+    color: var(--tt-sso-text) !important;
+}
+
+body.tt-sso-app-forum #wrap a,
+body.tt-sso-app-forum .wrap a,
+body.tt-sso-app-forum #page-body a,
+body.tt-sso-app-forum a.forumtitle,
+body.tt-sso-app-forum a.topictitle,
+body.tt-sso-app-forum a.lastsubject,
+body.tt-sso-app-forum .content a,
+body.tt-sso-app-forum .postlink {
+    color: var(--tt-sso-text) !important;
+}
+
+body.tt-sso-app-forum #wrap a:hover,
+body.tt-sso-app-forum .wrap a:hover,
+body.tt-sso-app-forum #page-body a:hover {
+    color: #000000 !important;
+}
+body.tt-sso-app-forum .forabg,
+body.tt-sso-app-forum .forumbg,
+body.tt-sso-app-forum ul.topiclist li.header {
+    background: var(--tt-sso-red) !important;
+}
+
+body.tt-sso-app-forum .forabg,
+body.tt-sso-app-forum .forumbg,
+body.tt-sso-app-forum .navbar {
+    border-radius: 8px !important;
+}
+
+body.tt-sso-app-forum .forabg .header,
+body.tt-sso-app-forum .forumbg .header,
+body.tt-sso-app-forum ul.topiclist li.header,
+body.tt-sso-app-forum .forabg .header a,
+body.tt-sso-app-forum .forumbg .header a,
+body.tt-sso-app-forum .forabg .header dt,
+body.tt-sso-app-forum .forabg .header dd,
+body.tt-sso-app-forum .forumbg .header dt,
+body.tt-sso-app-forum .forumbg .header dd {
+    color: var(--tt-sso-white) !important;
+}
+
+body.tt-sso-app-forum .tt-sso-topbar a,
+body.tt-sso-app-wiki .tt-sso-topbar a {
+    color: var(--tt-sso-muted) !important;
+}
+
+body.tt-sso-app-forum .tt-sso-topbar .tt-sso-brand,
+body.tt-sso-app-wiki .tt-sso-topbar .tt-sso-brand,
+body.tt-sso-app-forum .tt-sso-topbar a.tt-sso-active,
+body.tt-sso-app-wiki .tt-sso-topbar a.tt-sso-active,
+body.tt-sso-app-forum .tt-sso-topbar a:hover,
+body.tt-sso-app-wiki .tt-sso-topbar a:hover {
+    color: var(--tt-sso-white) !important;
+}
+
+body.tt-sso-app-wiki .mw-page-container,
+body.tt-sso-app-wiki .mw-body,
+body.tt-sso-app-wiki .vector-page-titlebar,
+body.tt-sso-app-wiki .vector-header-container,
+body.tt-sso-app-wiki .vector-sticky-header {
+    background: var(--tt-sso-white) !important;
+}
+
+body.tt-sso-app-wiki .mw-body a,
+body.tt-sso-app-wiki .mw-parser-output a,
+body.tt-sso-app-wiki .vector-menu-content a {
+    color: var(--tt-sso-link) !important;
+}
+
+body.tt-sso-app-wiki .firstHeading,
+body.tt-sso-app-wiki .mw-parser-output h1,
+body.tt-sso-app-wiki .mw-parser-output h2,
+body.tt-sso-app-wiki .mw-parser-output h3 {
+    color: var(--tt-sso-text) !important;
+}
+
+@media (max-width: 1100px) {
+    .tt-sso-topbar-inner {
+        padding: 0 14px;
+        gap: 18px;
+    }
+
+    .tt-sso-brand {
+        font-size: 21px;
+    }
+
+    .tt-sso-links a,
+    .tt-sso-logout a {
+        padding: 0 9px;
+        font-size: 15px;
+    }
+
+    body.tt-sso-app-forum #wrap,
+    body.tt-sso-app-forum .wrap {
+        width: calc(100% - 24px) !important;
+    }
+}
+
+@media (max-width: 900px) {
+    :root {
+        --tt-sso-nav-height: 112px;
+    }
+
+    .tt-sso-topbar-inner {
+        padding: 10px 14px;
+        flex-wrap: wrap;
+        gap: 8px 16px;
+    }
+
+    .tt-sso-brand {
+        font-size: 20px;
+        width: 100%;
+        min-height: 38px;
+    }
+
+    .tt-sso-links {
+        width: calc(100% - 90px);
+        flex: 1 1 auto;
+    }
+
+    .tt-sso-links a,
+    .tt-sso-logout a {
+        min-height: 42px;
+        margin: 0;
+        padding: 0 10px;
+    }
+
+    .tt-sso-logout {
+        margin-left: 0;
+    }
+}
