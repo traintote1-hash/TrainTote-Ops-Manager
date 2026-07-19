@@ -29,7 +29,7 @@ yardExpect(strpos($service,"fetchColumn() !== 'in_progress'")!==false,'Classific
 yardExpect(strpos($service,'UPDATE equipment SET')===false,'Yard planning must never update persistent equipment locations.');
 yardExpect(strpos($migration,'operation_yard_assignments')!==false&&strpos($migration,'uq_yard_assignment_session_equipment')!==false,'A separate session plan with duplicate prevention is required.');
 yardExpect(strpos($crewMigration,'yardmaster_name')!==false&&strpos($crewMigration,'user_id')===false,'The session-level Yardmaster identity must be a typed name, not a TrainTote account.');
-yardExpect(strpos($session,'save_crew_assignments')!==false&&strpos($session,'name="yardmaster_name"')!==false,'Session Builder must support assigning or clearing a typed Yardmaster name.');
+yardExpect(strpos($session,'save_yardmaster_name')!==false&&strpos($session,'name="yardmaster_name"')!==false,'Session Builder must support assigning or clearing a typed Yardmaster name separately from assignment crews.');
 yardExpect(strpos($crewService,'UPDATE operating_sessions SET yardmaster_name')!==false&&strpos($crewService,'operation_yard_history')!==false,'Yardmaster name changes must be session scoped and retained in history.');
 yardExpect(strpos($service,'operation_session_roles')===false&&strpos($service,'yardmaster_email')===false&&strpos($service,'JOIN users')===false,'Yardmaster access must not resolve the acting name through a TrainTote account.');
 yardExpect(strpos($sidebar,'ttYardmasterNavEnabled')!==false&&strpos($sidebar,'/operations/yardmaster.php')!==false&&strpos($dashboard,"modules['yardmaster']")!==false,'Yardmaster navigation and dashboard UI must be conditional.');
