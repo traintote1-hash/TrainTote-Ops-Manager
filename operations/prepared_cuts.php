@@ -2,6 +2,7 @@
 session_start();
 require_once '../config/database.php';
 require_once 'lib.php';
+require_once 'prepared_cut_service.php';
 
 if (!isset($_SESSION['user_id'])) {
     header('Location: ../login.php');
@@ -10,6 +11,8 @@ if (!isset($_SESSION['user_id'])) {
 
 $railroad = ttOperationsRailroad($pdo, (int)$_SESSION['user_id']);
 $railroadId = (int)$railroad['id'];
+ttOperationsRequireRailroadOwner($pdo, $railroadId, (int)$_SESSION['user_id']);
+ttOperationsRequireModule($pdo, $railroadId, 'advanced_roles');
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -35,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $name = substr(trim((string)($_POST['name'] ?? '')), 0, 120);
         $industryId = (int)($_POST['current_industry_id'] ?? 0);
         $track = substr(trim((string)($_POST['current_track'] ?? '')), 0, 120);
-        $carIds = array_values(array_unique(array_filter(array_map('intval', (array)($_POST['car_ids'] ?? [])))));
+        $carIds = ttPreparedCutCarIds($_POST['car_ids'] ?? []);
 
         if ($name === '') {
             throw new RuntimeException('Name required.');
@@ -43,10 +46,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($industryId <= 0) {
             throw new RuntimeException('Location required.');
         }
-        if (!$carIds) {
-            throw new RuntimeException('At least one car required.');
-        }
-
         $pdo->beginTransaction();
         $industryStmt = $pdo->prepare('SELECT id FROM industries WHERE id=? AND railroad_id=?');
         $industryStmt->execute([$industryId, $railroadId]);
@@ -54,16 +53,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new RuntimeException('Location required.');
         }
 
-        $jobId = (int)($_POST['intended_job_template_id'] ?? 0);
-        if ($jobId > 0) {
-            $jobStmt = $pdo->prepare('SELECT id FROM jobs WHERE id=? AND railroad_id=?');
-            $jobStmt->execute([$jobId, $railroadId]);
-            if (!$jobStmt->fetchColumn()) {
-                throw new RuntimeException('Invalid intended Job Title.');
-            }
-        }
+        $jobId = ttPreparedCutValidateJob($pdo, (int)($_POST['intended_job_template_id'] ?? 0), $railroadId);
 
-        $reserved = ttReservedEquipmentIds($pdo, $railroadId);
         $number = ttNextScopedNumber($pdo, 'prepared_cuts', 'cut_number', $railroadId, 'CUT-', 5);
         $insertCut = $pdo->prepare('INSERT INTO prepared_cuts (railroad_id,cut_number,name,current_industry_id,current_track,intended_job_template_id,notes) VALUES (?,?,?,?,?,?,?)');
         $insertCut->execute([
@@ -72,24 +63,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $name,
             $industryId,
             $track,
-            $jobId > 0 ? $jobId : null,
+            $jobId,
             substr(trim((string)($_POST['notes'] ?? '')), 0, 5000)
         ]);
         $cutId = (int)$pdo->lastInsertId();
 
-        $verifyCar = $pdo->prepare("SELECT e.id FROM equipment e WHERE e.id=? AND e.railroad_id=? AND e.active=1 AND e.current_industry_id=? AND e.equipment_class IN ('Freight Car','Passenger Car','MOW') AND NOT EXISTS (SELECT 1 FROM prepared_cut_cars pc JOIN prepared_cuts c ON c.id=pc.prepared_cut_id WHERE pc.equipment_id=e.id AND c.status IN('ready','assigned','in_use')) FOR UPDATE");
-        $insertCar = $pdo->prepare('INSERT INTO prepared_cut_cars (prepared_cut_id,equipment_id,position) VALUES (?,?,?)');
-        $position = 1;
-        foreach ($carIds as $carId) {
-            if (in_array($carId, $reserved, true)) {
-                throw new RuntimeException('A selected car is reserved by an active assignment.');
-            }
-            $verifyCar->execute([$carId, $railroadId, $industryId]);
-            if (!$verifyCar->fetchColumn()) {
-                throw new RuntimeException('Every selected car must belong to this railroad and remain active, eligible, unreserved, and at the selected location.');
-            }
-            $insertCar->execute([$cutId, $carId, $position++]);
-        }
+        ttPreparedCutReplaceCars($pdo, $cutId, $railroadId, $industryId, $carIds);
 
         $pdo->commit();
         header('Location: prepared_cut.php?id=' . $cutId);
@@ -163,7 +142,7 @@ $cars = $carStmt->fetchAll(PDO::FETCH_ASSOC);
 
     <div class="card"><div class="card-header"><h2 class="h4 mb-0">Saved Cuts</h2></div><div class="table-responsive"><table class="table table-hover align-middle mb-0">
         <thead><tr><th>Cut</th><th>Location</th><th>Track / Spot</th><th>Cars</th><th>Intended Job Title</th><th>Status</th><th></th></tr></thead>
-        <tbody><?php foreach ($cuts as $cut): ?><tr><td><strong><?= ttHtml($cut['cut_number']) ?></strong><br><small><?= ttHtml($cut['name']) ?></small></td><td><?= ttHtml($cut['industry_name']) ?></td><td><?= ttHtml($cut['current_track'] !== '' ? $cut['current_track'] : '—') ?></td><td><?= (int)$cut['car_count'] ?></td><td><?= ttHtml($cut['job_name'] ?: '—') ?></td><td><span class="badge tt-status-<?= ttHtml($cut['status']) ?>"><?= ttHtml(ucwords($cut['status'])) ?></span></td><td class="text-nowrap"><a class="btn btn-sm btn-outline-primary" href="prepared_cut.php?id=<?= (int)$cut['id'] ?>">View / Edit</a><?php if (in_array($cut['status'], ['ready','assigned','released'], true)): ?><form method="post" class="d-inline" onsubmit="return confirm('Dissolve this grouping? No equipment will move.')"><input type="hidden" name="csrf_token" value="<?= ttHtml(ttOperationsCsrfToken()) ?>"><input type="hidden" name="action" value="dissolve"><input type="hidden" name="cut_id" value="<?= (int)$cut['id'] ?>"><button class="btn btn-sm btn-outline-danger">Dissolve</button></form><?php endif; ?></td></tr><?php endforeach; ?><?php if (!$cuts): ?><tr><td colspan="7" class="text-center text-muted py-4">No prepared cuts saved.</td></tr><?php endif; ?></tbody>
+        <tbody><?php foreach ($cuts as $cut): ?><tr><td><strong><?= ttHtml($cut['cut_number']) ?></strong><br><small><?= ttHtml($cut['name']) ?></small></td><td><?= ttHtml($cut['industry_name']) ?></td><td><?= ttHtml($cut['current_track'] !== '' ? $cut['current_track'] : '—') ?></td><td><?= (int)$cut['car_count'] ?></td><td><?= ttHtml($cut['job_name'] ?: '—') ?></td><td><span class="badge tt-status-<?= ttHtml($cut['status']) ?>"><?= ttHtml(ucwords($cut['status'])) ?></span></td><td class="text-nowrap"><a class="btn btn-sm btn-outline-primary" href="prepared_cut.php?id=<?= (int)$cut['id'] ?>">View</a><?php if ($cut['status'] === 'ready'): ?><a class="btn btn-sm btn-primary" href="prepared_cut.php?id=<?= (int)$cut['id'] ?>&amp;edit=1">Edit</a><?php endif; ?><?php if (in_array($cut['status'], ['ready','assigned','released'], true)): ?><form method="post" class="d-inline" onsubmit="return confirm('Dissolve this grouping? No equipment will move.')"><input type="hidden" name="csrf_token" value="<?= ttHtml(ttOperationsCsrfToken()) ?>"><input type="hidden" name="action" value="dissolve"><input type="hidden" name="cut_id" value="<?= (int)$cut['id'] ?>"><button class="btn btn-sm btn-outline-danger">Dissolve</button></form><?php endif; ?></td></tr><?php endforeach; ?><?php if (!$cuts): ?><tr><td colspan="7" class="text-center text-muted py-4">No prepared cuts saved.</td></tr><?php endif; ?></tbody>
     </table></div></div>
 </section></div>
 <script>

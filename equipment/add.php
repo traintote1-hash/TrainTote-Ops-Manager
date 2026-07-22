@@ -3,6 +3,7 @@
 session_start();
 
 require_once '../config/database.php';
+require_once 'photo_service.php';
 
 if (!isset($_SESSION['user_id'])) {
 
@@ -647,6 +648,12 @@ $notes =
     ?? '';
 
 $errors = [];
+$safeAiPhoto = ttEquipmentPhotoSafeFilename((string)$aiPhoto);
+$aiPhotoAvailable = $safeAiPhoto !== ''
+    && is_file(dirname(__DIR__) . '/uploads/temp/' . $safeAiPhoto);
+if ($aiPhoto !== '' && !$aiPhotoAvailable && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+    $errors[] = 'The scanned photo has expired or is no longer available. Scan it again or choose a replacement photo.';
+}
 
 /*
 |--------------------------------------------------------------------------
@@ -935,11 +942,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     }
 
+    $photoSource = null;
+    if (empty($errors)) {
+        try {
+            $photoSource = ttEquipmentPhotoSource(
+                $_FILES['photo'] ?? [],
+                (string)$aiPhoto,
+                dirname(__DIR__) . '/uploads/temp'
+            );
+        } catch (RuntimeException $e) {
+            $errors[] = $e->getMessage();
+        }
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Save Equipment
     |--------------------------------------------------------------------------
     */
+
+    if (empty($errors)) {
+
+        $storedPhoto = null;
+        if ($photoSource !== null) {
+            try {
+                $storedPhoto = ttEquipmentPersistPhoto(
+                    $photoSource,
+                    dirname(__DIR__) . '/uploads'
+                );
+            } catch (RuntimeException $e) {
+                $errors[] = $e->getMessage();
+            }
+        }
+
+    }
 
     if (empty($errors)) {
 
@@ -981,6 +1017,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             current_track,
 
+            photo_filename,
+
             notes
 
         )
@@ -989,7 +1027,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             ?,?,?,?,?,?,
             ?,?,?,?,?,?,
-            ?,?,?,?,?,?
+            ?,?,?,?,?,?,?
 
         )
 
@@ -1031,9 +1069,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $current_track,
 
+            $storedPhoto['filename'] ?? null,
+
             $notes
 
         ]);
+
+        if ($photoSource !== null && !empty($photoSource['temporary_session_photo'])) {
+            @unlink($photoSource['path']);
+        }
 
         if (
             $customOperationsServiceEntered
@@ -1276,12 +1320,12 @@ Photo
 
 <div class="card-body">
 
-<?php if (!empty($aiPhoto)): ?>
+<?php if ($aiPhotoAvailable): ?>
 
 <div class="text-center mb-4">
 
 <img
-src="../uploads/temp/<?php echo htmlspecialchars($aiPhoto); ?>"
+src="../uploads/temp/<?php echo htmlspecialchars($safeAiPhoto); ?>"
 class="img-fluid rounded border"
 style="
 max-height:300px;
@@ -1300,13 +1344,20 @@ Edit Photo
 
 </a>
 
-<a
-href="#"
+<label
+for="replacementPhoto"
 class="btn btn-secondary">
 
 Replace Photo
 
-</a>
+</label>
+
+<input
+type="file"
+name="photo"
+id="replacementPhoto"
+class="visually-hidden"
+accept=".jpg,.jpeg,.png,.webp,.gif,.bmp,.heic,.heif,.avif">
 
 <a
 href="#"

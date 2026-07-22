@@ -136,13 +136,16 @@ if (!function_exists('ttOperationsNavActive')) {
         </a>
         <?php endif; ?>
 
-        <?php if (!empty($operationModules['advanced_roles'])): ?><a
+        <?php $showPreparedCuts = !empty($operationModules['advanced_roles']) && $operationsOwner; ?>
+        <?php if ($showPreparedCuts): ?><a
         class="<?= ttOperationsNavActive('prepared_cuts', $operationsNavItem); ?>"
         <?= $operationsNavItem === 'prepared_cuts' ? 'aria-current="page"' : ''; ?>
         href="/operations/prepared_cuts.php">
         Prepared Cuts
         </a>
+        <?php endif; ?>
 
+        <?php if (!empty($operationModules['advanced_roles'])): ?>
         <a
         class="<?= ttOperationsNavActive('job_titles', $operationsNavItem); ?>"
         <?= $operationsNavItem === 'job_titles' ? 'aria-current="page"' : ''; ?>
