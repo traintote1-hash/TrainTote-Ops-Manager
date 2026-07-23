@@ -12,7 +12,6 @@ if (!isset($_SESSION['user_id'])) {
 $railroad = ttOperationsRailroad($pdo, (int)$_SESSION['user_id']);
 $railroadId = (int)$railroad['id'];
 ttOperationsRequireRailroadOwner($pdo, $railroadId, (int)$_SESSION['user_id']);
-ttOperationsRequireModule($pdo, $railroadId, 'advanced_roles');
 $id = (int)($_GET['id'] ?? $_POST['id'] ?? 0);
 $error = '';
 

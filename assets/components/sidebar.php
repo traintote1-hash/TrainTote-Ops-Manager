@@ -136,7 +136,7 @@ if (!function_exists('ttOperationsNavActive')) {
         </a>
         <?php endif; ?>
 
-        <?php $showPreparedCuts = !empty($operationModules['advanced_roles']) && $operationsOwner; ?>
+        <?php $showPreparedCuts = $operationsOwner; ?>
         <?php if ($showPreparedCuts): ?><a
         class="<?= ttOperationsNavActive('prepared_cuts', $operationsNavItem); ?>"
         <?= $operationsNavItem === 'prepared_cuts' ? 'aria-current="page"' : ''; ?>
