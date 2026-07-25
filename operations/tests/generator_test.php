@@ -12,11 +12,11 @@ $industries = [
 $car = static function($id,$location,$marks,$service,$load='Loaded') use ($industries) { foreach($industries as $i){if($i['id']===$location)$name=$i['industry_name'];}return ['id'=>$id,'reporting_marks'=>$marks,'road_number'=>(string)$id,'equipment_type'=>'Boxcar','operations_service'=>$service,'load_status'=>$load,'current_industry_id'=>$location,'current_track'=>'Track 1','origin_name'=>$name??'','photo_filename'=>null]; };
 $cars = [$car(1,1,'TT','grain'),$car(2,3,'TT','grain','Empty'),$car(3,4,'TT','goods'),$car(4,2,'TT','grain'),$car(6,5,'ARMN','grain')];
 $assignment=['requested_car_count'=>20,'operating_base_industry_id'=>1,'end_industry_id'=>2];
-$result=ttChooseOperationsMoves($assignment,$cars,$industries,[],[]);
+$result=ttChooseBroadOperationsMoves($assignment,$cars,$industries,[],[]);
 expectTrue(count($result['moves'])<20,'Maximum target must not invent work.');
 foreach($result['moves'] as $move){expectTrue($move['origin_industry_id']!==$move['destination_industry_id'],'Origin and destination must differ.');if($move['action']==='PULL'&&$move['origin_industry_id']!==1){expectTrue($move['destination_industry_id']!==1,'Operating base must not be the universal pull destination.');}}
 $ids=array_column($result['moves'],'equipment_id');expectTrue(count($ids)===count(array_unique($ids)),'A car must not receive duplicate independent work.');
-$reserved=ttChooseOperationsMoves($assignment,$cars,$industries,[],[2,3,4]);expectTrue(!in_array(2,array_column($reserved['moves'],'equipment_id'),true),'Reserved cars must be excluded.');
+$reserved=ttChooseBroadOperationsMoves($assignment,$cars,$industries,[],[2,3,4]);expectTrue(!in_array(2,array_column($reserved['moves'],'equipment_id'),true),'Reserved cars must be excluded.');
 expectTrue(ttAssignmentSuffix(1)==='A'&&ttAssignmentSuffix(26)==='Z'&&ttAssignmentSuffix(27)==='AA','Assignment numbering must continue after Z.');
 
 $localIndustries=[
@@ -24,15 +24,22 @@ $localIndustries=[
     ['id'=>21,'industry_name'=>'Local Main 1','industry_type'=>'Customer','ships_services'=>'','receives_services'=>'grain','track_capacity'=>1],
     ['id'=>22,'industry_name'=>'Local Main 2','industry_type'=>'Customer','ships_services'=>'','receives_services'=>'goods','track_capacity'=>1],
     ['id'=>23,'industry_name'=>'Cement Sam','industry_type'=>'Customer','ships_services'=>'','receives_services'=>'sand','track_capacity'=>1],
+    ['id'=>24,'industry_name'=>'Arkansas Grain','industry_type'=>'Customer','ships_services'=>'grain','receives_services'=>'','track_capacity'=>1],
+    ['id'=>25,'industry_name'=>"Fred's Frozen Foods",'industry_type'=>'Customer','ships_services'=>'goods','receives_services'=>'','track_capacity'=>1],
 ];
 $localCar=static function(int$id,int$location,string$service,string$load)use($localIndustries):array{foreach($localIndustries as$industry)if((int)$industry['id']===$location)$name=$industry['industry_name'];return ['id'=>$id,'reporting_marks'=>'LOCAL','road_number'=>(string)$id,'equipment_type'=>'Boxcar','operations_service'=>$service,'load_status'=>$load,'current_industry_id'=>$location,'current_track'=>'Track 1','origin_name'=>$name??'','photo_filename'=>null];};
-$localCars=[$localCar(201,20,'grain','Loaded'),$localCar(202,20,'goods','Loaded'),$localCar(203,21,'grain','Empty'),$localCar(204,22,'goods','Empty'),$localCar(205,23,'sand','Empty'),$localCar(206,20,'sand','Empty')];
-$localAssignment=['requested_car_count'=>10,'operating_base_industry_id'=>20,'end_industry_id'=>null,'operating_pattern'=>'local_turn','work_scope'=>'entire_railroad'];
+$localCars=[$localCar(201,20,'grain','Loaded'),$localCar(202,20,'goods','Empty'),$localCar(203,21,'grain','Empty'),$localCar(204,22,'goods','Empty'),$localCar(205,23,'sand','Empty'),$localCar(206,24,'grain','Loaded'),$localCar(207,25,'goods','Loaded')];
+$localAssignment=['requested_car_count'=>10,'operating_base_industry_id'=>20,'end_industry_id'=>20,'operating_pattern'=>'manifest','work_scope'=>'entire_railroad'];
 $localResult=ttChooseOperationsMoves($localAssignment,$localCars,$localIndustries,[],[]);
-expectTrue(count($localResult['moves'])===4,'An entire-railroad Local Turn must create one Pull and one Spot for every available opposite-load exchange pair.');
-foreach(array_chunk($localResult['moves'],2)as$exchange){expectTrue($exchange[0]['action']==='PULL'&&$exchange[1]['action']==='SPOT','Each Local Turn customer exchange must list the pickup before the replacement spot.');expectTrue($exchange[0]['destination_industry_id']===20,'Local Turn pickups must return to the operating base.');expectTrue($exchange[0]['movement_group']===$exchange[1]['movement_group'],'A Local Turn pickup and replacement must remain paired.');}
-expectTrue(!in_array(205,array_column($localResult['moves'],'equipment_id'),true),'A customer car without another compatible opposite-load replacement must remain at the customer instead of being dumped at the operating base.');
-expectTrue(!in_array(206,array_column($localResult['moves'],'equipment_id'),true),'A same-load base car must not be treated as a replacement; unmatched base cars remain in place.');
+expectTrue(count($localResult['moves'])===4,'An entire-railroad job must create one Pull and one Spot for every available loaded-for-empty customer exchange pair.');
+foreach(array_chunk($localResult['moves'],2)as$exchange){expectTrue($exchange[0]['action']==='PULL'&&$exchange[1]['action']==='SPOT','Each customer exchange must list the empty pickup before the loaded replacement.');expectTrue($exchange[0]['destination_industry_id']===$exchange[1]['origin_industry_id']&&$exchange[1]['destination_industry_id']===$exchange[0]['origin_industry_id'],'Each pair must swap its loaded and empty cars directly between the shipping and receiving industries.');expectTrue($exchange[0]['movement_group']===$exchange[1]['movement_group'],'A customer pickup and replacement must remain paired.');}
+$localIds=array_column($localResult['moves'],'equipment_id');
+expectTrue(!in_array(201,$localIds,true)&&!in_array(202,$localIds,true),'Cars at the locomotive base must not be used as universal replacement inventory.');
+expectTrue(!in_array(205,$localIds,true),'A customer car without a compatible opposite-load replacement must remain in place.');
+expectTrue(strpos(implode(' ',$localResult['diagnostics']),'base and endpoint did not restrict car matching')!==false,'Diagnostics must explain that locomotive endpoints do not constrain railroad-wide matching.');
+$limitedAssignment=$localAssignment;$limitedAssignment['requested_car_count']=3;
+$limitedResult=ttChooseOperationsMoves($limitedAssignment,$localCars,$localIndustries,[],[]);
+expectTrue(count($limitedResult['moves'])===2,'A move limit must never split a loaded-for-empty exchange pair.');
 
 $routeAssignment=['requested_car_count'=>10,'operating_base_industry_id'=>2,'end_industry_id'=>2,'work_scope'=>'selected_route'];
 $routeStops=[[

@@ -16,10 +16,7 @@ function ttChooseOperationsMoves(array $assignment, array $cars, array $industri
     if ($selectedRoute) {
         return ttChooseSelectedRouteMoves($assignment, $cars, $industries, $startingIds, $reservedIds, $routeStops);
     }
-    if (($assignment['operating_pattern'] ?? '') === 'local_turn') {
-        return ttChooseLocalTurnMoves($assignment, $cars, $industries, $startingIds, $reservedIds);
-    }
-    return ttChooseBroadOperationsMoves($assignment, $cars, $industries, $startingIds, $reservedIds);
+    return ttChooseIndustryExchangeMoves($assignment, $cars, $industries, $reservedIds);
 }
 
 function ttRouteAreaLabels(array $routeStops):array
@@ -237,20 +234,92 @@ function ttLocalTurnCarReadyForPickup(array $car, array $industry): bool
 
 function ttChooseLocalTurnMoves(array $assignment, array $cars, array $industries, array $startingIds, array $reservedIds): array
 {
-    $max=max(0,(int)$assignment['requested_car_count']);$baseId=(int)$assignment['operating_base_industry_id'];$endId=(int)($assignment['end_industry_id']??0);
-    $industryById=[];$occupancy=[];foreach($industries as$industry){$id=(int)$industry['id'];$industryById[$id]=$industry;$occupancy[$id]=0;}foreach($cars as$car){$id=(int)$car['current_industry_id'];if($id>0)$occupancy[$id]=($occupancy[$id]??0)+1;}
-    if(!isset($industryById[$baseId]))return ['moves'=>[],'diagnostics'=>['The Local Turn operating base is unavailable; no work was planned.']];
-    $returnId=$endId>0&&isset($industryById[$endId])?$endId:$baseId;$returnIndustry=$industryById[$returnId];
-    $startingSet=array_fill_keys(array_map('intval',$startingIds),true);$reservedSet=array_fill_keys(array_map('intval',$reservedIds),true);$capacityDelta=[];$used=[];$groups=[];$diagnostics=[];
-    $customers=array_values(array_filter($industries,static fn($industry)=>(int)$industry['id']!==$baseId&&ttIndustrySupportRole($industry)===null));usort($customers,static fn($a,$b)=>[strtolower((string)$a['industry_name']),(int)$a['id']]<=>[strtolower((string)$b['industry_name']),(int)$b['id']]);
-    $baseCars=array_values(array_filter($cars,static function($car)use($baseId,$startingSet,$reservedSet){$id=(int)$car['id'];return !isset($reservedSet[$id])&&((int)$car['current_industry_id']===$baseId||isset($startingSet[$id]))&&trim((string)$car['operations_service'])!=='';}));usort($baseCars,'ttCarSort');
-    $customerPulls=[];foreach($customers as$customer){$customerId=(int)$customer['id'];$groups[$customerId]=['industry'=>$customer,'pulls'=>[],'spots'=>[]];$customerPulls[$customerId]=array_values(array_filter($cars,static function($car)use($customerId,$customer,$reservedSet){$id=(int)$car['id'];return !isset($reservedSet[$id])&&(int)$car['current_industry_id']===$customerId&&trim((string)$car['operations_service'])!==''&&ttLocalTurnCarReadyForPickup($car,$customer);}));usort($customerPulls[$customerId],'ttCarSort');}
+    return ttChooseIndustryExchangeMoves($assignment, $cars, $industries, $reservedIds);
+}
 
-    foreach($customers as$customer){$customerId=(int)$customer['id'];foreach($customerPulls[$customerId]as$outCar){$outId=(int)$outCar['id'];if(isset($used[$outId])||count(ttFlattenLocalTurnGroups($groups))+2>$max)continue;$match=null;foreach($baseCars as$inCar){$inId=(int)$inCar['id'];if(isset($used[$inId])||strcasecmp((string)$inCar['load_status'],(string)$outCar['load_status'])===0||ttNormalizeService((string)$inCar['operations_service'])!==ttNormalizeService((string)$outCar['operations_service'])||!ttCarCompatibleWithIndustry($inCar,$customer))continue;$projected=$capacityDelta;$sourceId=(int)$inCar['current_industry_id'];$projected[$sourceId]=($projected[$sourceId]??0)-1;$projected[$customerId]=($projected[$customerId]??0)-1;if(!ttRouteCapacityAvailable($customer,$occupancy,$projected)||!ttRouteCapacityAvailable($returnIndustry,$occupancy,$projected))continue;$match=$inCar;break;}if(!$match)continue;
-        $group=bin2hex(random_bytes(12));$groups[$customerId]['pulls'][]=ttPlannedCarMove($outCar,$returnIndustry,'PULL','Pull '.strtolower((string)$outCar['load_status']).' car for '.$returnIndustry['industry_name'],$group,$customer['industry_name']);$groups[$customerId]['spots'][]=ttPlannedCarMove($match,$customer,'SPOT','Spot '.strtolower((string)$match['load_status']).' replacement from '.$match['origin_name'],$group,$customer['industry_name']);$used[$outId]=true;$used[(int)$match['id']]=true;$sourceId=(int)$match['current_industry_id'];$capacityDelta[$customerId]=($capacityDelta[$customerId]??0);$capacityDelta[$sourceId]=($capacityDelta[$sourceId]??0)-1;$capacityDelta[$returnId]=($capacityDelta[$returnId]??0)+1;
-    }}
+function ttChooseIndustryExchangeMoves(array $assignment, array $cars, array $industries, array $reservedIds): array
+{
+    $max = max(0, (int)$assignment['requested_car_count']);
+    $industryById = [];
+    foreach ($industries as $industry) {
+        if (ttIndustrySupportRole($industry) === null) {
+            $industryById[(int)$industry['id']] = $industry;
+        }
+    }
 
-    $moves=ttFlattenLocalTurnGroups($groups);if(count($moves)<$max)$diagnostics[]='Local Turn requested up to '.$max.' car moves across the entire railroad; '.count($moves).' valid paired exchange moves were available. Cars without a compatible opposite-load replacement at the operating base were left in place.';
+    $reservedSet = array_fill_keys(array_map('intval', $reservedIds), true);
+    $emptyCars = [];
+    $loadedCars = [];
+    foreach ($cars as $car) {
+        $carId = (int)$car['id'];
+        $origin = $industryById[(int)$car['current_industry_id']] ?? null;
+        $service = ttNormalizeService((string)$car['operations_service']);
+        if (isset($reservedSet[$carId]) || !$origin || $service === '' || !ttLocalTurnCarReadyForPickup($car, $origin)) {
+            continue;
+        }
+        if (strcasecmp((string)$car['load_status'], 'Empty') === 0) {
+            $emptyCars[] = $car;
+        } elseif (strcasecmp((string)$car['load_status'], 'Loaded') === 0) {
+            $loadedCars[] = $car;
+        }
+    }
+    usort($emptyCars, 'ttCarSort');
+    usort($loadedCars, 'ttCarSort');
+
+    $usedLoaded = [];
+    $moves = [];
+    foreach ($emptyCars as $emptyCar) {
+        if (count($moves) + 2 > $max) {
+            break;
+        }
+        $emptyOriginId = (int)$emptyCar['current_industry_id'];
+        $emptyOrigin = $industryById[$emptyOriginId];
+        $match = null;
+        foreach ($loadedCars as $loadedCar) {
+            $loadedId = (int)$loadedCar['id'];
+            $loadedOriginId = (int)$loadedCar['current_industry_id'];
+            if (
+                isset($usedLoaded[$loadedId])
+                || $loadedOriginId === $emptyOriginId
+                || ttNormalizeService((string)$loadedCar['operations_service']) !== ttNormalizeService((string)$emptyCar['operations_service'])
+                || !ttCarCompatibleWithIndustry($loadedCar, $emptyOrigin)
+                || !ttCarCompatibleWithIndustry($emptyCar, $industryById[$loadedOriginId])
+            ) {
+                continue;
+            }
+            $match = $loadedCar;
+            break;
+        }
+        if (!$match) {
+            continue;
+        }
+
+        $loadedOrigin = $industryById[(int)$match['current_industry_id']];
+        $workLocation = $emptyOrigin['industry_name'].' ↔ '.$loadedOrigin['industry_name'].' Exchange';
+        $group = bin2hex(random_bytes(12));
+        $moves[] = ttPlannedCarMove(
+            $emptyCar,
+            $loadedOrigin,
+            'PULL',
+            'Move empty car to '.$loadedOrigin['industry_name'].' for loading',
+            $group,
+            $workLocation
+        );
+        $moves[] = ttPlannedCarMove(
+            $match,
+            $emptyOrigin,
+            'SPOT',
+            'Deliver loaded replacement from '.$loadedOrigin['industry_name'],
+            $group,
+            $workLocation
+        );
+        $usedLoaded[(int)$match['id']] = true;
+    }
+
+    $diagnostics = [];
+    if (count($moves) < $max) {
+        $diagnostics[] = 'Requested up to '.$max.' car moves across the entire railroad; '.count($moves).' valid loaded-for-empty exchange moves were available across customer industries. The locomotive base and endpoint did not restrict car matching, and unmatched cars were left in place.';
+    }
     return ['moves'=>$moves,'diagnostics'=>$diagnostics];
 }
 
