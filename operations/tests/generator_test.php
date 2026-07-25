@@ -20,7 +20,7 @@ $reserved=ttChooseOperationsMoves($assignment,$cars,$industries,[],[2,3,4]);expe
 expectTrue(ttAssignmentSuffix(1)==='A'&&ttAssignmentSuffix(26)==='Z'&&ttAssignmentSuffix(27)==='AA','Assignment numbering must continue after Z.');
 
 $localIndustries=[
-    ['id'=>20,'industry_name'=>'Team Track','industry_type'=>'Yard','ships_services'=>'all','receives_services'=>'all','track_capacity'=>2],
+    ['id'=>20,'industry_name'=>'Team Track','industry_type'=>'Yard','ships_services'=>'all','receives_services'=>'all','track_capacity'=>3],
     ['id'=>21,'industry_name'=>'Local Main 1','industry_type'=>'Customer','ships_services'=>'','receives_services'=>'grain','track_capacity'=>1],
     ['id'=>22,'industry_name'=>'Local Main 2','industry_type'=>'Customer','ships_services'=>'','receives_services'=>'goods','track_capacity'=>1],
     ['id'=>23,'industry_name'=>'Cement Sam','industry_type'=>'Customer','ships_services'=>'','receives_services'=>'sand','track_capacity'=>1],
