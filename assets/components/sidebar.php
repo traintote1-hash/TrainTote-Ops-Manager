@@ -145,14 +145,12 @@ if (!function_exists('ttOperationsNavActive')) {
         </a>
         <?php endif; ?>
 
-        <?php if (!empty($operationModules['advanced_roles'])): ?>
         <a
         class="<?= ttOperationsNavActive('job_titles', $operationsNavItem); ?>"
         <?= $operationsNavItem === 'job_titles' ? 'aria-current="page"' : ''; ?>
         href="/jobs/list.php">
-        Job Titles
+        Jobs
         </a>
-        <?php endif; ?>
 
         <a
         class="<?= ttOperationsNavActive('history', $operationsNavItem); ?>"
