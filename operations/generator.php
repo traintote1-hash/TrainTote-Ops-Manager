@@ -16,6 +16,9 @@ function ttChooseOperationsMoves(array $assignment, array $cars, array $industri
     if ($selectedRoute) {
         return ttChooseSelectedRouteMoves($assignment, $cars, $industries, $startingIds, $reservedIds, $routeStops);
     }
+    if (($assignment['operating_pattern'] ?? '') === 'local_turn') {
+        return ttChooseLocalTurnMoves($assignment, $cars, $industries, $startingIds, $reservedIds);
+    }
     return ttChooseBroadOperationsMoves($assignment, $cars, $industries, $startingIds, $reservedIds);
 }
 
@@ -224,6 +227,38 @@ function ttCarCompatibleWithIndustry(array $car, array $industry): bool
 function ttCarSort(array $a, array $b): int
 {
     return [strtolower((string)$a['reporting_marks']), (string)$a['road_number'], (int)$a['id']] <=> [strtolower((string)$b['reporting_marks']), (string)$b['road_number'], (int)$b['id']];
+}
+
+function ttLocalTurnCarReadyForPickup(array $car, array $industry): bool
+{
+    $field = strcasecmp((string)$car['load_status'], 'Loaded') === 0 ? 'ships_services' : 'receives_services';
+    return ttIndustrySupports($industry, $field, (string)$car['operations_service']);
+}
+
+function ttChooseLocalTurnMoves(array $assignment, array $cars, array $industries, array $startingIds, array $reservedIds): array
+{
+    $max=max(0,(int)$assignment['requested_car_count']);$baseId=(int)$assignment['operating_base_industry_id'];$endId=(int)($assignment['end_industry_id']??0);
+    $industryById=[];$occupancy=[];foreach($industries as$industry){$id=(int)$industry['id'];$industryById[$id]=$industry;$occupancy[$id]=0;}foreach($cars as$car){$id=(int)$car['current_industry_id'];if($id>0)$occupancy[$id]=($occupancy[$id]??0)+1;}
+    if(!isset($industryById[$baseId]))return ['moves'=>[],'diagnostics'=>['The Local Turn operating base is unavailable; no work was planned.']];
+    $returnId=$endId>0&&isset($industryById[$endId])?$endId:$baseId;$returnIndustry=$industryById[$returnId];
+    $startingSet=array_fill_keys(array_map('intval',$startingIds),true);$reservedSet=array_fill_keys(array_map('intval',$reservedIds),true);$capacityDelta=[];$used=[];$groups=[];$diagnostics=[];
+    $customers=array_values(array_filter($industries,static fn($industry)=>(int)$industry['id']!==$baseId&&ttIndustrySupportRole($industry)===null));usort($customers,static fn($a,$b)=>[strtolower((string)$a['industry_name']),(int)$a['id']]<=>[strtolower((string)$b['industry_name']),(int)$b['id']]);
+    $baseCars=array_values(array_filter($cars,static function($car)use($baseId,$startingSet,$reservedSet){$id=(int)$car['id'];return !isset($reservedSet[$id])&&((int)$car['current_industry_id']===$baseId||isset($startingSet[$id]))&&trim((string)$car['operations_service'])!=='';}));usort($baseCars,'ttCarSort');
+    $customerPulls=[];foreach($customers as$customer){$customerId=(int)$customer['id'];$groups[$customerId]=['industry'=>$customer,'pulls'=>[],'spots'=>[]];$customerPulls[$customerId]=array_values(array_filter($cars,static function($car)use($customerId,$customer,$reservedSet){$id=(int)$car['id'];return !isset($reservedSet[$id])&&(int)$car['current_industry_id']===$customerId&&trim((string)$car['operations_service'])!==''&&ttLocalTurnCarReadyForPickup($car,$customer);}));usort($customerPulls[$customerId],'ttCarSort');}
+
+    foreach($customers as$customer){$customerId=(int)$customer['id'];foreach($customerPulls[$customerId]as$outCar){$outId=(int)$outCar['id'];if(isset($used[$outId])||count(ttFlattenLocalTurnGroups($groups))+2>$max)continue;$match=null;foreach($baseCars as$inCar){$inId=(int)$inCar['id'];if(isset($used[$inId])||ttNormalizeService((string)$inCar['operations_service'])!==ttNormalizeService((string)$outCar['operations_service'])||!ttCarCompatibleWithIndustry($inCar,$customer))continue;$projected=$capacityDelta;$sourceId=(int)$inCar['current_industry_id'];$projected[$sourceId]=($projected[$sourceId]??0)-1;$projected[$customerId]=($projected[$customerId]??0)-1;if(!ttRouteCapacityAvailable($customer,$occupancy,$projected)||!ttRouteCapacityAvailable($returnIndustry,$occupancy,$projected))continue;$match=$inCar;break;}if(!$match)continue;
+        $group=bin2hex(random_bytes(12));$groups[$customerId]['pulls'][]=ttPlannedCarMove($outCar,$returnIndustry,'PULL','Pull '.strtolower((string)$outCar['load_status']).' car for '.$returnIndustry['industry_name'],$group,$customer['industry_name']);$groups[$customerId]['spots'][]=ttPlannedCarMove($match,$customer,'SPOT','Spot '.strtolower((string)$match['load_status']).' replacement from '.$match['origin_name'],$group,$customer['industry_name']);$used[$outId]=true;$used[(int)$match['id']]=true;$sourceId=(int)$match['current_industry_id'];$capacityDelta[$customerId]=($capacityDelta[$customerId]??0);$capacityDelta[$sourceId]=($capacityDelta[$sourceId]??0)-1;$capacityDelta[$returnId]=($capacityDelta[$returnId]??0)+1;
+    }}
+
+    foreach($customers as$customer){$customerId=(int)$customer['id'];foreach($baseCars as$car){$carId=(int)$car['id'];if(isset($used[$carId])||count(ttFlattenLocalTurnGroups($groups))>=$max||!ttCarCompatibleWithIndustry($car,$customer)||!ttRouteCapacityAvailable($customer,$occupancy,$capacityDelta))continue;$groups[$customerId]['spots'][]=ttPlannedCarMove($car,$customer,'SPOT','Set out at '.$customer['industry_name'],null,$customer['industry_name']);$used[$carId]=true;$sourceId=(int)$car['current_industry_id'];$capacityDelta[$sourceId]=($capacityDelta[$sourceId]??0)-1;$capacityDelta[$customerId]=($capacityDelta[$customerId]??0)+1;}}
+    foreach($customers as$customer){$customerId=(int)$customer['id'];foreach($customerPulls[$customerId]as$car){$carId=(int)$car['id'];if(isset($used[$carId])||count(ttFlattenLocalTurnGroups($groups))>=$max)continue;if(!ttRouteCapacityAvailable($returnIndustry,$occupancy,$capacityDelta))continue;$groups[$customerId]['pulls'][]=ttPlannedCarMove($car,$returnIndustry,'PULL','Pull '.strtolower((string)$car['load_status']).' car for '.$returnIndustry['industry_name'],null,$customer['industry_name']);$used[$carId]=true;$capacityDelta[$customerId]=($capacityDelta[$customerId]??0)-1;$capacityDelta[$returnId]=($capacityDelta[$returnId]??0)+1;}}
+    $moves=ttFlattenLocalTurnGroups($groups);if(count($moves)<$max)$diagnostics[]='Local Turn requested up to '.$max.' car moves across the entire railroad; '.count($moves).' valid, unreserved, service-compatible moves were available. Pickups were planned before replacement spots so departing cars free customer track capacity.';
+    return ['moves'=>$moves,'diagnostics'=>$diagnostics];
+}
+
+function ttFlattenLocalTurnGroups(array $groups): array
+{
+    $moves=[];foreach($groups as$group)foreach(array_merge($group['pulls'],$group['spots'])as$move)$moves[]=$move;return$moves;
 }
 
 function ttChooseBroadOperationsMoves(array $assignment, array $cars, array $industries, array $startingIds, array $reservedIds): array
