@@ -85,7 +85,9 @@ aiEquipmentExpect($fallback['ai_confidence'] === 'medium' && strpos($fallback['a
 
 $analyzer = file_get_contents(dirname(__DIR__) . '/ai/analyze_equipment.php');
 $add = file_get_contents(dirname(__DIR__) . '/equipment/add.php');
+$scanner = file_get_contents(dirname(__DIR__) . '/ai/scan_equipment.php');
 aiEquipmentExpect(strpos($analyzer, 'ttAiWebVerificationPayload') !== false && strpos($analyzer, "'web_verified' => \$webVerified") !== false, 'The scanner must run and retain the web verification result.');
 aiEquipmentExpect(strpos($add, 'Web verification completed.') !== false && strpos($add, 'verification_sources') !== false, 'Add Equipment must show that web verification ran and expose its sources.');
+aiEquipmentExpect(strpos($scanner, 'Searching railroad and road number') !== false && strpos($scanner, '10–30 seconds') !== false, 'The scan screen must explain the exact lookup and its added processing time.');
 
 echo "ai_equipment_identification_test: OK\n";
