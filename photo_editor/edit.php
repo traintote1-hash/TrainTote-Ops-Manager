@@ -106,7 +106,12 @@ if ($type !== 'temp') {
         die('No photo found.');
     }
 
-    $returnUrl = '../' . $type . '/view.php?id=' . $id;
+    if ($type === 'equipment') {
+        $returnUrl = '../equipment/view.php?id=' . $id;
+    }
+    elseif ($type === 'industry') {
+        $returnUrl = '../industries/view.php?id=' . $id;
+    }
     $imageUrl =
         '../uploads/' .
         str_replace('%2F', '/', rawurlencode($record['photo_filename'])) .
@@ -988,6 +993,41 @@ document
     }
 });
 
+function resizeDataUrlForBackgroundRemoval(dataUrl, maxWidth, maxHeight, quality) {
+    return new Promise(function(resolve, reject) {
+        const img = new Image();
+
+        img.onload = function() {
+            let width = img.naturalWidth || img.width;
+            let height = img.naturalHeight || img.height;
+
+            if (!width || !height) {
+                reject(new Error('The editor could not read the image size before background removal.'));
+                return;
+            }
+
+            const scale = Math.min(1, maxWidth / width, maxHeight / height);
+            const targetWidth = Math.max(1, Math.round(width * scale));
+            const targetHeight = Math.max(1, Math.round(height * scale));
+            const tempCanvas = document.createElement('canvas');
+            const tempContext = tempCanvas.getContext('2d');
+
+            tempCanvas.width = targetWidth;
+            tempCanvas.height = targetHeight;
+            tempContext.fillStyle = '#ffffff';
+            tempContext.fillRect(0, 0, targetWidth, targetHeight);
+            tempContext.drawImage(img, 0, 0, targetWidth, targetHeight);
+            resolve(tempCanvas.toDataURL('image/jpeg', quality));
+        };
+
+        img.onerror = function() {
+            reject(new Error('The editor could not prepare the image before background removal.'));
+        };
+
+        img.src = dataUrl;
+    });
+}
+
 document
 .getElementById('removeBgBtn')
 .addEventListener('click', async function() {
@@ -995,9 +1035,22 @@ document
     this.disabled = true;
 
     try {
-        const imageData = await exportEditedImage(true);
-        const formData = new URLSearchParams();
+        setStatus('Preparing image for background removal...');
+        const fullImageData = await exportEditedImage(true);
 
+        if (!fullImageData || fullImageData.length < 100) {
+            throw new Error('The editor could not export the current image before background removal.');
+        }
+
+        const imageData = await resizeDataUrlForBackgroundRemoval(
+            fullImageData,
+            1800,
+            1800,
+            0.85
+        );
+
+        setStatus('Sending smaller image for background removal...');
+        const formData = new FormData();
         formData.append('image', imageData);
 
         const response = await fetch(
@@ -1009,18 +1062,32 @@ document
             }
         );
 
-        const result = await response.json();
+        const rawText = await response.text();
+        let result = null;
 
-        if (!result.success) {
-            alert(result.error || 'Background removal failed.');
-            return;
+        try {
+            result = JSON.parse(rawText);
+        }
+        catch (jsonErr) {
+            throw new Error(
+                'Background removal returned a non-JSON response. HTTP ' +
+                response.status + ': ' + rawText.substring(0, 500)
+            );
         }
 
-        await loadSource(result.image, 'Background removed. Review and save when ready.');
+        if (!response.ok || !result.success) {
+            throw new Error(result.error || 'Background removal failed. HTTP ' + response.status);
+        }
+
+        await loadSource(
+            result.image,
+            'Background removed. Review and save when ready.'
+        );
     }
     catch (err) {
         console.error(err);
-        alert('Background removal failed.');
+        alert(err.message || 'Background removal failed.');
+        setStatus(err.message || 'Background removal failed.');
     }
     finally {
         hideOverlay();
