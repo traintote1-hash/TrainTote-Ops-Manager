@@ -127,6 +127,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="card-body">
 <h3 class="mb-4">Login</h3>
 
+<?php if ($_SERVER['REQUEST_METHOD'] !== 'POST' && ($_GET['registered'] ?? '') === '1'): ?>
+<div class="alert alert-success">Your account and railroad were created. Please log in.</div>
+<?php endif; ?>
+
 <?php if ($message): ?>
 <div class="alert alert-danger">
 <?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?>
@@ -148,6 +152,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <button type="submit" class="btn btn-primary w-100">Login</button>
 </form>
+<p class="mt-3 mb-0 text-center"><a href="register.php">Create Account</a></p>
 </div>
 </div>
 </div>
