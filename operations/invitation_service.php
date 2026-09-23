@@ -218,11 +218,11 @@ function ttSessionInviteUrl(string $token): string
 function ttSendSessionInvite(string $email, string $url, array $session): bool
 {
     $from = (string)getenv('TT_OPS_MAIL_FROM');
-    if (!filter_var($from, FILTER_VALIDATE_EMAIL) || preg_match('/[\r\n]/', $from)) return false;
+    if (!filter_var($from, FILTER_VALIDATE_EMAIL) || !preg_match('/\A[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.-]+\z/', $from)) return false;
     $body = "You are invited to a TrainTote operating session.\n\n"
         . $session['railroad_name'] . ' - ' . $session['session_number'] . "\n\n"
         . "Join free, without a password:\n" . $url . "\n\n"
         . "This personal link can be used once. Do not forward it. Access ends when the session closes or the invitation expires.\n";
     return mail($email, 'TrainTote operating session invitation', $body,
-        ['From' => $from, 'Content-Type' => 'text/plain; charset=UTF-8']);
+        ['From' => $from, 'Content-Type' => 'text/plain; charset=UTF-8'], '-f' . $from);
 }
