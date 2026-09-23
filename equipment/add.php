@@ -253,6 +253,18 @@ $aiReviewNotes =
 
     trim($aiData['ai_review_notes'] ?? '');
 
+$aiWebVerified =
+
+    !empty($aiData['web_verified']);
+
+$aiVerificationSources =
+
+    is_array($aiData['verification_sources'] ?? null)
+
+    ? $aiData['verification_sources']
+
+    : [];
+
 $hasAiRead =
 
     !empty($aiData);
@@ -1214,6 +1226,14 @@ Add Equipment
 
 }
 
+.ai-verification-sources {
+
+    font-size: .9rem;
+
+    margin-top: .55rem;
+
+}
+
 </style>
 
 </head>
@@ -1276,6 +1296,35 @@ Road number confidence: <?php echo htmlspecialchars($aiRoadNumberConfidence); ?>
 Overall AI confidence: <?php echo htmlspecialchars($aiConfidence); ?>.
 <?php endif; ?>
 
+</div>
+
+<?php endif; ?>
+
+</div>
+
+<?php endif; ?>
+
+<?php if ($aiWebVerified): ?>
+
+<div class="ai-review-notice is-info">
+
+<strong>Web verification completed.</strong>
+The scanner searched the exact railroad and road number against model-train listings before filling the model and manufacturer fields.
+
+<?php if ($aiVerificationSources): ?>
+
+<div class="ai-verification-sources">
+Sources:
+<?php foreach ($aiVerificationSources as $index => $source): ?>
+<?php
+$sourceUrl = trim((string)($source['url'] ?? ''));
+$sourceTitle = trim((string)($source['title'] ?? 'Identification source'));
+if (!preg_match('#^https?://#i', $sourceUrl)) {
+    continue;
+}
+?>
+<?= $index > 0 ? ' · ' : '' ?><a href="<?= htmlspecialchars($sourceUrl, ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener noreferrer"><?= htmlspecialchars($sourceTitle !== '' ? $sourceTitle : 'Identification source', ENT_QUOTES, 'UTF-8') ?></a>
+<?php endforeach; ?>
 </div>
 
 <?php endif; ?>

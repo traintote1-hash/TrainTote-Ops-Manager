@@ -3,6 +3,7 @@
 session_start();
 
 require_once '../config/openai.php';
+require_once 'equipment_identifier.php';
 
 if (!isset($_SESSION['user_id'])) {
 
@@ -459,13 +460,17 @@ $payload = [
 
                     ';base64,' .
 
-                    $imageData
+                    $imageData,
+
+                'detail' => 'high'
 
             ]
 
         ]
 
-    ]]
+    ]],
+
+    'text' => ttAiEquipmentOutputFormat()
 
 ];
 
@@ -591,35 +596,19 @@ $result = json_decode(
 |--------------------------------------------------------------------------
 */
 
-if (
+try {
 
-    empty(
+    $jsonText = ttAiResponseOutputText(
 
-        $result['output'][0]['content'][0]['text']
-
-    )
-
-) {
-
-    echo '<h3>Unexpected OpenAI Response</h3>';
-
-    echo '<pre>';
-
-    print_r(
-
-        $result
+        is_array($result) ? $result : []
 
     );
 
-    echo '</pre>';
+} catch (Throwable $e) {
 
-    exit;
+    die('The AI scanner could not complete this identification. Please try again.');
 
 }
-
-$jsonText =
-
-    $result['output'][0]['content'][0]['text'];
 
 /*
 |--------------------------------------------------------------------------
@@ -695,6 +684,41 @@ if (
 
     exit;
 
+}
+
+/*
+|--------------------------------------------------------------------------
+| Verify Exact Model Against Live Web Results
+|--------------------------------------------------------------------------
+*/
+
+$verificationSources = [];
+$webVerified = false;
+
+if (ttAiShouldWebVerify($equipment)) {
+    try {
+        $verificationResult = ttAiPostResponse(
+            $OPENAI_API_KEY,
+            ttAiWebVerificationPayload(
+                $equipment,
+                $mimeType,
+                $imageData
+            )
+        );
+        $equipment = ttAiDecodeEquipmentResponse($verificationResult);
+        $verificationSources = ttAiResponseSources($verificationResult);
+        $webVerified = true;
+    } catch (Throwable $e) {
+        $equipment = ttAiAppendReviewNote(
+            $equipment,
+            'Exact road-number web verification was unavailable; manually verify the prototype and model manufacturer.'
+        );
+    }
+} else {
+    $equipment = ttAiAppendReviewNote(
+        $equipment,
+        'A readable railroad name or reporting marks plus road number is needed for exact web verification.'
+    );
 }
 
 /*
@@ -989,7 +1013,11 @@ $_SESSION['ai_data'] = [
 
         $equipment['ai_review_notes']
 
-        ?? ''
+        ?? '',
+
+    'web_verified' => $webVerified,
+
+    'verification_sources' => $verificationSources
 
 ];
 
