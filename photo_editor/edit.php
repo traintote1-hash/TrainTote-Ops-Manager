@@ -141,11 +141,13 @@ if ($type !== 'temp') {
 
 .photo-editor-shell{
     display:grid;
+    min-width:0;
     gap:16px;
 }
 
 .photo-editor-stage{
     display:grid;
+    min-width:0;
     place-items:center;
     width:100%;
     min-height:58vh;
@@ -157,6 +159,10 @@ if ($type !== 'temp') {
 }
 
 #photoCanvas{
+    touch-action:none;
+    user-select:none;
+    -webkit-user-select:none;
+    -webkit-touch-callout:none;
     max-width:100%;
     height:auto;
     background:#fff;
@@ -432,6 +438,9 @@ let rotationAngle = 0;
 let cropRect = null;
 let isDraggingCrop = false;
 let dragStart = null;
+let activeCropPointer = null;
+let cropBeforeDrag = null;
+let cropDragMoved = false;
 let gridEnabled = true;
 let currentDisplayScale = 1;
 
@@ -501,7 +510,8 @@ function buildRotatedCanvas() {
 }
 
 function fitCanvasToStage(rotatedCanvas) {
-    const stageWidth = Math.max(320, stage.clientWidth - 34);
+    const stageStyle = window.getComputedStyle(stage);
+    const stageWidth = Math.max(1, stage.clientWidth - parseFloat(stageStyle.paddingLeft) - parseFloat(stageStyle.paddingRight) - 2);
     const maxDisplayHeight = Math.max(360, Math.floor(window.innerHeight * 0.68));
 
     return Math.min(
@@ -583,6 +593,8 @@ function renderEditor(resetCrop) {
     }
 
     const rotatedCanvas = buildRotatedCanvas();
+    const oldWidth = canvas.width;
+    const oldHeight = canvas.height;
     currentDisplayScale = fitCanvasToStage(rotatedCanvas);
     canvas.width = Math.max(1, Math.round(rotatedCanvas.width * currentDisplayScale));
     canvas.height = Math.max(1, Math.round(rotatedCanvas.height * currentDisplayScale));
@@ -592,6 +604,14 @@ function renderEditor(resetCrop) {
 
     if (resetCrop || !cropRect) {
         resetCropToFullImage();
+    }
+    else if (oldWidth > 0 && oldHeight > 0) {
+        cropRect = {
+            x: cropRect.x * canvas.width / oldWidth,
+            y: cropRect.y * canvas.height / oldHeight,
+            width: cropRect.width * canvas.width / oldWidth,
+            height: cropRect.height * canvas.height / oldHeight
+        };
     }
 
     drawCropOverlay();
@@ -625,8 +645,8 @@ function updateCropFromDrag(point) {
     cropRect = {
         x: x,
         y: y,
-        width: Math.max(12, width),
-        height: Math.max(12, height)
+        width: width,
+        height: height
     };
 
     renderEditor(false);
@@ -834,42 +854,102 @@ document.getElementById('restoreOriginalBtn').addEventListener('click', function
     loadSource(originalImage, 'Original photo restored in the editor. Save to make it permanent.');
 });
 
-canvas.addEventListener('mousedown', function(event) {
+function startCropDrag(event, pointerId) {
+    if (!sourceImage || isDraggingCrop) return;
     if (rotationAngle !== 0) {
         setStatus('Lock rotation before cropping a rotated image.');
         return;
     }
 
     isDraggingCrop = true;
+    activeCropPointer = pointerId;
+    cropBeforeDrag = cropRect ? { ...cropRect } : null;
+    cropDragMoved = false;
     dragStart = getCanvasPoint(event);
-    cropRect = {
-        x: dragStart.x,
-        y: dragStart.y,
-        width: 12,
-        height: 12
-    };
-    renderEditor(false);
-});
+}
 
-canvas.addEventListener('mousemove', function(event) {
-    if (!isDraggingCrop) {
-        return;
+function moveCropDrag(event, pointerId) {
+    if (!isDraggingCrop || pointerId !== activeCropPointer) return;
+    const point = getCanvasPoint(event);
+    const bounds = canvas.getBoundingClientRect();
+    // Require a meaningful rectangle in screen pixels before changing the crop.
+    if (Math.abs(point.x - dragStart.x) * bounds.width / canvas.width >= 6 &&
+        Math.abs(point.y - dragStart.y) * bounds.height / canvas.height >= 6) {
+        cropDragMoved = true;
+        updateCropFromDrag(point);
     }
+}
 
-    updateCropFromDrag(getCanvasPoint(event));
-});
-
-window.addEventListener('mouseup', function() {
-    if (!isDraggingCrop) {
-        return;
-    }
-
+function finishCropDrag(pointerId, cancelled) {
+    if (!isDraggingCrop || pointerId !== activeCropPointer) return;
+    const changed = cropDragMoved && !cancelled;
+    if (!changed) cropRect = cropBeforeDrag;
     isDraggingCrop = false;
-    setStatus('Crop area updated.');
-});
+    activeCropPointer = null;
+    dragStart = null;
+    cropBeforeDrag = null;
+    renderEditor(false);
+    if (changed) setStatus('Crop area updated. Save Changes to keep it.');
+}
+
+if (window.PointerEvent) {
+    canvas.addEventListener('pointerdown', function(event) {
+        if (!event.isPrimary || event.button !== 0) return;
+        startCropDrag(event, event.pointerId);
+        if (activeCropPointer === event.pointerId) {
+            event.preventDefault();
+            canvas.setPointerCapture(event.pointerId);
+        }
+    });
+    canvas.addEventListener('pointermove', function(event) {
+        moveCropDrag(event, event.pointerId);
+    });
+    canvas.addEventListener('pointerup', function(event) {
+        moveCropDrag(event, event.pointerId);
+        finishCropDrag(event.pointerId, false);
+    });
+    canvas.addEventListener('pointercancel', function(event) {
+        finishCropDrag(event.pointerId, true);
+    });
+    canvas.addEventListener('lostpointercapture', function(event) {
+        finishCropDrag(event.pointerId, true);
+    });
+}
+else {
+    // Older iOS versions do not expose Pointer Events.
+    canvas.addEventListener('touchstart', function(event) {
+        if (event.touches.length !== 1) return;
+        const touch = event.changedTouches[0];
+        startCropDrag(touch, touch.identifier);
+        if (isDraggingCrop) event.preventDefault();
+    }, { passive: false });
+    canvas.addEventListener('touchmove', function(event) {
+        if (!isDraggingCrop) return;
+        event.preventDefault();
+        for (const touch of event.changedTouches) moveCropDrag(touch, touch.identifier);
+    }, { passive: false });
+    canvas.addEventListener('touchend', function(event) {
+        for (const touch of event.changedTouches) {
+            moveCropDrag(touch, touch.identifier);
+            finishCropDrag(touch.identifier, false);
+        }
+    });
+    canvas.addEventListener('touchcancel', function(event) {
+        for (const touch of event.changedTouches) finishCropDrag(touch.identifier, true);
+    });
+    canvas.addEventListener('mousedown', function(event) {
+        if (event.button === 0) startCropDrag(event, 'mouse');
+    });
+    window.addEventListener('mousemove', function(event) { moveCropDrag(event, 'mouse'); });
+    window.addEventListener('mouseup', function(event) {
+        moveCropDrag(event, 'mouse');
+        finishCropDrag('mouse', false);
+    });
+}
 
 window.addEventListener('resize', function() {
-    renderEditor(true);
+    finishCropDrag(activeCropPointer, true);
+    renderEditor(false);
 });
 
 document

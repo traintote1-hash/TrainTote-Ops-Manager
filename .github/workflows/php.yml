@@ -61,3 +61,6 @@ jobs:
           for test_file in "${test_files[@]}"; do
             php "$test_file"
           done
+
+      - name: Run photo crop interaction tests
+        run: node tests/photo_crop_test.js
