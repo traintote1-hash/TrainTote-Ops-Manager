@@ -69,8 +69,20 @@ ROW COLORS
 }
 
 :root[data-theme="dark"] .tt-status-page .equipment-table.table-hover > tbody > tr:hover > *{
+    --bs-table-bg:#172c47;
     --bs-table-accent-bg:#172c47;
-    color:var(--tt-text);
+    --bs-table-hover-bg:#172c47;
+    --bs-table-hover-color:var(--tt-text);
+    background-color:#172c47 !important;
+    box-shadow:inset 0 0 0 9999px #172c47 !important;
+    color:var(--tt-text) !important;
+}
+
+:root[data-theme="dark"] .tt-status-page .equipment-table.table-hover > tbody > tr:hover > * a,
+:root[data-theme="dark"] .tt-status-page .equipment-table.table-hover > tbody > tr:hover > * small,
+:root[data-theme="dark"] .tt-status-page .equipment-table.table-hover > tbody > tr:hover > * span:not(.badge),
+:root[data-theme="dark"] .tt-status-page .equipment-table.table-hover > tbody > tr:hover > * .text-muted{
+    color:var(--tt-text) !important;
 }
 
 /****************************************
