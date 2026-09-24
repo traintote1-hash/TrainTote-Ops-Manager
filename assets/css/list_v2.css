@@ -364,7 +364,7 @@ THUMBNAILS / ROWS
 .tt-equipment-list-page[data-equipment-view="card"] .equipment-list-view { display: none; }
 .tt-equipment-list-page[data-equipment-view="card"] .equipment-card-view { display: grid; }
 .equipment-card {
-    display: grid; grid-template-rows: 158px auto; overflow: hidden; cursor: pointer;
+    display: grid; grid-template-rows: 118px auto; overflow: hidden; cursor: pointer;
     background: var(--tt-surface, #fff); border: 1px solid var(--tt-border, #d8dee6);
     border-radius: 12px; box-shadow: var(--tt-shadow-sm); transition: transform .15s, box-shadow .15s, border-color .15s;
 }
