@@ -131,6 +131,23 @@ document.querySelectorAll('.clickable-row').forEach(row => {
     }));
 })();
 
+(() => {
+    document.querySelectorAll('[data-view-key]').forEach((page) => {
+        const key = page.dataset.viewKey;
+        const buttons = page.querySelectorAll('[data-list-view-toggle]');
+        if (!key || !buttons.length) return;
+        const setView = (view) => {
+            page.dataset.displayView = view;
+            buttons.forEach((button) => button.classList.toggle('active', button.dataset.listViewToggle === view));
+        };
+        setView(localStorage.getItem(key) || 'list');
+        buttons.forEach((button) => button.addEventListener('click', () => {
+            localStorage.setItem(key, button.dataset.listViewToggle);
+            setView(button.dataset.listViewToggle);
+        }));
+    });
+})();
+
 /*
 =========================================================
 SELECT ALL
