@@ -68,8 +68,8 @@ ROW COLORS
     background:#dbeeff !important;
 }
 
-:root[data-theme="dark"] .car-row:hover{
-    background:#172c47 !important;
+:root[data-theme="dark"] .tt-status-page .equipment-table.table-hover > tbody > tr:hover > *{
+    --bs-table-accent-bg:#172c47;
     color:var(--tt-text);
 }
 
