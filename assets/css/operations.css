@@ -40,6 +40,27 @@
 .tt-yard-track-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem}.tt-yard-track-card .card-header{background:#f8f9fa}.tt-yard-track-card ul{display:grid;gap:.35rem;padding-top:.75rem;margin-top:.75rem;border-top:1px solid #e6e9ed}
 @media(max-width:576px){.tt-yard-track-grid{grid-template-columns:1fr}.tt-yard-track-card .card-body{padding:.85rem}}
 
+/* Operations subpages: keep light-only panels from breaking the dark palette. */
+:root[data-theme="dark"] .tt-ops-page .card-header { background: var(--tt-surface-alt); color: var(--tt-text); border-color: var(--tt-border); }
+:root[data-theme="dark"] .tt-ops-page .card-header h1,
+:root[data-theme="dark"] .tt-ops-page .card-header h2,
+:root[data-theme="dark"] .tt-ops-page .card-header h3,
+:root[data-theme="dark"] .tt-ops-page .card-body h1,
+:root[data-theme="dark"] .tt-ops-page .card-body h2,
+:root[data-theme="dark"] .tt-ops-page .card-body h3 { color: var(--tt-text); }
+:root[data-theme="dark"] .tt-ops-page .tt-assignment-card,
+:root[data-theme="dark"] .tt-ops-page .tt-repair-empty,
+:root[data-theme="dark"] .tt-ops-page .tt-work-order-details { background: var(--tt-surface); color: var(--tt-text); border-color: var(--tt-border); }
+:root[data-theme="dark"] .tt-ops-page .tt-assignment-card h3,
+:root[data-theme="dark"] .tt-ops-page .tt-repair-empty h2 { color: var(--tt-text); }
+:root[data-theme="dark"] .tt-ops-page .tt-compact-dl dt,
+:root[data-theme="dark"] .tt-ops-page .tt-car-choice small,
+:root[data-theme="dark"] .tt-ops-page .tt-repair-table small { color: var(--tt-text-muted); }
+:root[data-theme="dark"] .tt-ops-page .tt-yard-track-card .card-header,
+:root[data-theme="dark"] .tt-ops-page .tt-dispatcher-card .card-header,
+:root[data-theme="dark"] .tt-ops-page .tt-history-work-order .card-header { background: var(--tt-surface-alt); }
+:root[data-theme="dark"] .tt-ops-page .tt-yard-track-card ul { border-color: var(--tt-border); }
+
 /* Compact crew-facing work order. Print uses the dedicated print-order view. */
 @media screen{
 .tt-work-order-summary{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:.75rem 1rem;margin:0 0 .6rem;padding:.7rem .85rem;border:1px solid #d9dee5;border-radius:.65rem;background:#fff;box-shadow:0 1px 4px rgba(19,33,52,.05)}
