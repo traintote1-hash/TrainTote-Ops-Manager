@@ -1498,3 +1498,19 @@ tr.is-switch-move-complete .tt-switch-primary-move {
         width: 100%;
     }
 }
+
+/* Dashboard home dark mode */
+:root[data-theme="dark"] .tt-dashboard-home-page .tt-dashboard-summary-card::before,
+:root[data-theme="dark"] .tt-dashboard-home-page .tt-recent-panel::before { background: #d7e7fb; }
+:root[data-theme="dark"] .tt-dashboard-home-page .tt-dashboard-summary-card h2,
+:root[data-theme="dark"] .tt-dashboard-home-page .tt-recent-item a,
+:root[data-theme="dark"] .tt-dashboard-home-page .tt-recent-waybill a { color: var(--tt-text); }
+:root[data-theme="dark"] .tt-dashboard-home-page .tt-recent-item span,
+:root[data-theme="dark"] .tt-dashboard-home-page .tt-recent-waybill span { color: var(--tt-text-muted); }
+:root[data-theme="dark"] .tt-dashboard-home-page .tt-recent-thumb { background: var(--tt-surface-alt); border-color: var(--tt-border); }
+:root[data-theme="dark"] .tt-dashboard-home-page .tt-recent-waybill { border-color: var(--tt-border); }
+:root[data-theme="dark"] .tt-dashboard-home-page .tt-readiness-section { background: var(--tt-surface-alt); border-color: var(--tt-border); }
+:root[data-theme="dark"] .tt-dashboard-home-page .tt-readiness-card { background: var(--tt-surface); border-color: var(--tt-border); color: var(--tt-text); }
+:root[data-theme="dark"] .tt-dashboard-home-page .tt-readiness-card span,
+:root[data-theme="dark"] .tt-dashboard-home-page .tt-readiness-card small { color: var(--tt-text-muted); }
+:root[data-theme="dark"] .tt-dashboard-home-page .tt-readiness-warning { background: #2c2113; border-color: #8b662b; }
