@@ -592,6 +592,10 @@ MAIN CONTENT
 
 </div>
 <div class="toolbar-right">
+    <div class="btn-group btn-group-sm" role="group" aria-label="Equipment display">
+        <button type="button" class="btn btn-outline-secondary equipment-view-toggle" data-view="list">List</button>
+        <button type="button" class="btn btn-outline-secondary equipment-view-toggle" data-view="card">Cards</button>
+    </div>
     <label class="small me-2">Show</label>
     <select id="perPage" class="form-select form-select-sm">
         <option value="10"  <?= $perPage == 10    ? 'selected' : '' ?>>10</option>
@@ -603,7 +607,7 @@ MAIN CONTENT
 </div>
 </div>
 
-<div class="table-responsive">
+<div class="table-responsive equipment-list-view">
 
 <table class="table table-hover align-middle equipment-table">
 
@@ -737,6 +741,26 @@ MAIN CONTENT
 
 </table>
 
+</div>
+
+<div class="equipment-card-view" aria-live="polite">
+<?php foreach ($equipment as $item): ?>
+    <article class="equipment-card" data-href="view.php?id=<?= (int)$item['id'] ?>">
+        <div class="equipment-card-photo">
+        <?php if (!empty($item['photo_filename'])): ?>
+            <img src="../uploads/<?= htmlspecialchars($item['photo_filename']) ?>" alt="<?= htmlspecialchars($item['reporting_marks'] . ' ' . $item['road_number']) ?>">
+        <?php else: ?><span>No photo</span><?php endif; ?>
+        </div>
+        <div class="equipment-card-body">
+            <div class="equipment-card-topline"><label><input type="checkbox" name="equipment_ids[]" value="<?= (int)$item['id'] ?>"> Select</label><span class="badge <?= $item['active'] ? 'bg-success' : 'bg-secondary' ?>"><?= $item['active'] ? 'Active' : 'Inactive' ?></span></div>
+            <h2><?= htmlspecialchars($item['reporting_marks'] . ' ' . $item['road_number']) ?></h2>
+            <p class="equipment-card-road"><?= htmlspecialchars($item['road_name']) ?></p>
+            <div class="equipment-card-badges"><span><?= htmlspecialchars($item['equipment_class']) ?></span><span><?= htmlspecialchars($item['equipment_type']) ?></span><?php if ($item['equipment_class'] === 'Locomotive' && !empty($item['dcc_address'])): ?><span>DCC <?= htmlspecialchars($item['dcc_address']) ?></span><?php endif; ?></div>
+            <dl><div><dt>Location</dt><dd><?= htmlspecialchars($item['current_location'] ?: 'Not assigned') ?></dd></div><div><dt>Service</dt><dd><?= htmlspecialchars($item['operations_service'] ?: '—') ?></dd></div></dl>
+            <a href="edit.php?id=<?= (int)$item['id'] ?>" class="btn btn-sm btn-outline-primary">Edit</a>
+        </div>
+    </article>
+<?php endforeach; ?>
 </div>
 
 

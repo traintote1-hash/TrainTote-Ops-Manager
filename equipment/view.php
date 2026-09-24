@@ -218,6 +218,12 @@ No Photo Uploaded
 
 </p>
 
+<?php if ($equipment['equipment_class'] === 'Locomotive' && (!empty($equipment['dcc_address']) || !empty($equipment['dcc_decoder']))): ?>
+<hr>
+<p><strong>DCC Address:</strong> <?php echo htmlspecialchars($equipment['dcc_address'] ?: 'Not set'); ?></p>
+<p><strong>DCC Decoder:</strong> <?php echo htmlspecialchars($equipment['dcc_decoder'] ?: 'Not set'); ?></p>
+<?php endif; ?>
+
 <p>
 
 <strong>Load Status:</strong>

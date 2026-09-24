@@ -48,6 +48,14 @@ $primaryNavItems = array(
             </ul>
 
             <ul class="navbar-nav">
+                <li class="nav-item d-flex align-items-center px-lg-2">
+                    <label class="visually-hidden" for="tt-theme-select">Appearance</label>
+                    <select id="tt-theme-select" class="form-select form-select-sm tt-theme-select" aria-label="Appearance">
+                        <option value="system">System</option>
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
+                    </select>
+                </li>
                 <li class="nav-item">
                     <a class="nav-link" href="<?= htmlspecialchars(tt_nav_ops_href('/logout.php', $currentNavHost), ENT_QUOTES, 'UTF-8') ?>">Logout</a>
                 </li>

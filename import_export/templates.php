@@ -26,7 +26,7 @@ if ($isCars) {
     fputcsv($output, ['12345', 'TTX', 'Boxcar', '50', '263000', 'Yellow', 'TrainTote', '1978', 'Yard', '-', 'Track 1']);
 }
 else {
-    fputcsv($output, ['Locomotive Number', 'Locomotive Road Name', 'Locomotive Model', 'Locomotive Length', 'Owner Name', 'Date Built', 'Location', '-', 'Track Name']);
+    fputcsv($output, ['Locomotive Number', 'Locomotive Road Name', 'Locomotive Model', 'Locomotive Length', 'Owner Name', 'Date Built', 'Location', '-', 'Track Name', 'DCC Address', 'DCC Decoder']);
     fputcsv($output, ['2900', 'KCS', 'GP40-2', '59', 'TrainTote', '1978', 'Yard', '-', 'Engine Track']);
 }
 

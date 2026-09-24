@@ -89,6 +89,7 @@ else {
                         <th>Type / Model</th>
                         <th>Length</th>
                         <?php if ($importType === 'cars'): ?><th>Color</th><?php endif; ?>
+                        <?php if ($importType === 'locomotives'): ?><th>DCC</th><?php endif; ?>
                         <th>Location</th>
                         <th>Track</th>
                         <th>Status</th>
@@ -110,6 +111,7 @@ else {
                         <td><?php echo htmlspecialchars($row['equipment_class'] === 'Locomotive' ? $row['prototype'] : $row['equipment_type']); ?></td>
                         <td><?php echo htmlspecialchars($row['length_ft']); ?></td>
                         <?php if ($importType === 'cars'): ?><td><?php echo htmlspecialchars($row['color']); ?></td><?php endif; ?>
+                        <?php if ($importType === 'locomotives'): ?><td><?php echo htmlspecialchars($row['dcc_address'] ?: '—'); ?><?php if (!empty($row['dcc_decoder'])): ?><br><small><?php echo htmlspecialchars($row['dcc_decoder']); ?></small><?php endif; ?></td><?php endif; ?>
                         <td><?php echo htmlspecialchars($row['location']); ?></td>
                         <td><?php echo htmlspecialchars($row['current_track']); ?></td>
                         <td class="tt-status-<?php echo htmlspecialchars($row['status']); ?>"><?php echo htmlspecialchars(ucfirst($row['status'])); ?></td>

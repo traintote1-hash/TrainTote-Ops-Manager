@@ -57,7 +57,9 @@ foreach ($rows as $row) {
             '',
             $row['current_location'] ?? '',
             '-',
-            $row['current_track'] ?? ''
+            $row['current_track'] ?? '',
+            $row['dcc_address'] ?? '',
+            $row['dcc_decoder'] ?? ''
         ]);
     }
 }
