@@ -68,6 +68,11 @@ ROW COLORS
     background:#dbeeff !important;
 }
 
+:root[data-theme="dark"] .car-row:hover{
+    background:#172c47 !important;
+    color:var(--tt-text);
+}
+
 /****************************************
 FAVORITES
 ****************************************/
