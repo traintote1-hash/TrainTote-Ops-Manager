@@ -719,7 +719,7 @@ $returnQuery = $_SERVER['QUERY_STRING'] ?? '';
 
 <?php include '../includes/navbar.php'; ?>
 
-<div class="container-fluid mt-4">
+<div class="container-fluid mt-4 tt-status-page" data-view-key="traintote-car-status-view">
 
 <?php if ($statusMessage !== ''): ?>
 <div class="alert alert-<?= $statusMessageType === 'warning' ? 'warning' : 'success' ?>">
@@ -973,6 +973,10 @@ MAIN CONTENT
 </div>
 
 <div class="toolbar-right">
+    <div class="btn-group btn-group-sm me-2" role="group" aria-label="Car Status display">
+        <button type="button" class="btn btn-outline-secondary" data-list-view-toggle="list">List</button>
+        <button type="button" class="btn btn-outline-secondary" data-list-view-toggle="cards">Cards</button>
+    </div>
     <label class="small me-2">Show</label>
     <select id="perPage" class="form-select form-select-sm">
         <option value="10"  <?= $perPage == 10 ? 'selected' : '' ?>>10</option>
@@ -984,7 +988,7 @@ MAIN CONTENT
 </div>
 </div>
 
-<div class="table-responsive">
+<div class="table-responsive status-list-view">
 
 <table class="table table-hover align-middle equipment-table">
 
@@ -1183,6 +1187,31 @@ $customServiceVisible = $currentService !== '' && !$matchedService;
 
 </table>
 
+</div>
+
+<div class="status-card-view" aria-live="polite">
+<?php foreach ($cars as $car): ?>
+<?php
+$isReady = (int)$car['active'] === 1 && !empty($car['current_industry_id']) && trim($car['operations_service'] ?? '') !== '';
+$statusLabel = $isReady ? 'Ready' : ((int)$car['active'] === 1 ? 'On layout' : 'Inactive');
+$statusClass = $isReady ? 'bg-success' : 'bg-secondary';
+?>
+    <article class="equipment-card">
+        <div class="equipment-card-photo">
+        <?php if (!empty($car['photo_filename'])): ?>
+            <img src="../uploads/<?= htmlspecialchars($car['photo_filename'], ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars($car['car'] . ' car', ENT_QUOTES, 'UTF-8') ?>">
+        <?php else: ?><span>No photo</span><?php endif; ?>
+        </div>
+        <div class="equipment-card-body">
+            <div class="equipment-card-topline"><span><?= htmlspecialchars($car['equipment_type'] ?: 'Equipment') ?></span><span class="badge <?= $statusClass ?>"><?= $statusLabel ?></span></div>
+            <h2><?= htmlspecialchars($car['car']) ?></h2>
+            <p class="equipment-card-road"><?= htmlspecialchars($car['road_name'] ?: 'No road name') ?></p>
+            <div class="equipment-card-badges"><span><?= htmlspecialchars($car['load_status'] ?: 'Load not set') ?></span><span><?= htmlspecialchars($car['operations_service'] ?: 'Service not set') ?></span></div>
+            <dl><div><dt>Location</dt><dd><?= htmlspecialchars($car['industry_name'] ?: 'Not assigned') ?></dd></div><div><dt>Track</dt><dd><?= htmlspecialchars($car['current_track'] ?: 'Not set') ?></dd></div></dl>
+            <a href="view.php?id=<?= (int)$car['id'] ?>" class="btn btn-sm btn-outline-primary">View</a>
+        </div>
+    </article>
+<?php endforeach; ?>
 </div>
 
 <div class="d-flex justify-content-end mt-3">

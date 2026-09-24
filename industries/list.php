@@ -266,7 +266,7 @@ $returnUrl = 'list.php' . (!empty($_SERVER['QUERY_STRING']) ? '?' . $_SERVER['QU
 
 <?php include '../includes/navbar.php'; ?>
 
-<div class="container-fluid tt-list-page">
+<div class="container-fluid tt-list-page tt-industries-page" data-view-key="traintote-industries-view">
 
 <?php if ($bulkMessage !== ''): ?>
 <div class="alert alert-<?= htmlspecialchars($bulkMessageType) ?>">
@@ -426,6 +426,10 @@ MAIN CONTENT
 </div>
 <div class="toolbar-right ms-auto"></div>
 <div class="toolbar-right">
+    <div class="btn-group btn-group-sm me-2" role="group" aria-label="Industry display">
+        <button type="button" class="btn btn-outline-secondary" data-list-view-toggle="list">List</button>
+        <button type="button" class="btn btn-outline-secondary" data-list-view-toggle="cards">Cards</button>
+    </div>
     <label class="small me-2">Show</label>
     <select id="perPage" class="form-select form-select-sm">
         <option value="10"  <?= $perPage == 10    ? 'selected' : '' ?>>10</option>
@@ -437,7 +441,7 @@ MAIN CONTENT
 </div>
 </div>
 
-<div class="table-responsive">
+<div class="table-responsive industry-list-view">
 
 <table class="table table-hover align-middle equipment-table">
 
@@ -536,6 +540,25 @@ MAIN CONTENT
 
 </table>
 
+</div>
+
+<div class="industry-card-view" aria-live="polite">
+<?php foreach ($industries as $industry): ?>
+    <article class="equipment-card" data-href="view.php?id=<?= (int)$industry['id'] ?>">
+        <div class="equipment-card-photo">
+        <?php if (!empty($industry['photo_filename'])): ?>
+            <img src="../uploads/<?= htmlspecialchars($industry['photo_filename']) ?>" alt="<?= htmlspecialchars($industry['industry_name']) ?>">
+        <?php else: ?><span>No photo</span><?php endif; ?>
+        </div>
+        <div class="equipment-card-body">
+            <div class="equipment-card-topline"><span><?= htmlspecialchars($industry['industry_type'] ?: 'Industry') ?></span><span class="badge <?= (int)($industry['active'] ?? 1) === 1 ? 'bg-success' : 'bg-secondary' ?>"><?= (int)($industry['active'] ?? 1) === 1 ? 'Active' : 'Inactive' ?></span></div>
+            <h2><?= htmlspecialchars($industry['industry_name']) ?></h2>
+            <p class="equipment-card-note"><?= htmlspecialchars($industry['location'] ?: 'Location not set') ?></p>
+            <dl><div><dt>Type</dt><dd><?= htmlspecialchars($industry['industry_type'] ?: 'Not set') ?></dd></div><div><dt>Capacity</dt><dd><?= htmlspecialchars($industry['track_capacity']) ?> cars</dd></div></dl>
+            <a href="edit.php?id=<?= (int)$industry['id'] ?>" class="btn btn-sm btn-outline-primary">Edit</a>
+        </div>
+    </article>
+<?php endforeach; ?>
 </div>
 
 </form>

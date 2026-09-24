@@ -383,6 +383,14 @@ THUMBNAILS / ROWS
 .equipment-card dt { color: var(--tt-text-muted); font-size: .7rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
 .equipment-card dd { overflow: hidden; margin: 2px 0 0; color: var(--tt-text); font-size: .85rem; text-overflow: ellipsis; white-space: nowrap; }
 
+.status-card-view,
+.industry-card-view { display: none; grid-template-columns: repeat(auto-fill, minmax(255px, 1fr)); gap: 16px; }
+.tt-status-page[data-display-view="cards"] .status-list-view,
+.tt-industries-page[data-display-view="cards"] .industry-list-view { display: none; }
+.tt-status-page[data-display-view="cards"] .status-card-view,
+.tt-industries-page[data-display-view="cards"] .industry-card-view { display: grid; }
+.equipment-card .equipment-card-note { margin: 0 0 10px; color: var(--tt-text-muted); font-size: .82rem; }
+
 :root[data-theme="dark"] .sidebar-card,
 :root[data-theme="dark"] .content-card,
 :root[data-theme="dark"] .table-responsive { background: var(--tt-surface); border-color: var(--tt-border); }
@@ -394,6 +402,7 @@ THUMBNAILS / ROWS
 :root[data-theme="dark"] .form-check:hover,
 :root[data-theme="dark"] .clickable-row:hover { background: #172c47 !important; }
 :root[data-theme="dark"] .filter-chip { background: #0d192a; border-color: var(--tt-border); color: var(--tt-text); }
+:root[data-theme="dark"] .equipment-table .table-light > * { --bs-table-bg: var(--tt-surface); --bs-table-color: var(--tt-text); color: var(--tt-text); }
 
 .equipment-table tbody tr:last-child td {
     border-bottom: 0;
