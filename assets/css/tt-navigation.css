@@ -57,6 +57,23 @@ body > nav.navbar .nav-link[aria-current="page"]:focus {
     background-color: var(--tt-engine-red-hover, #73181D);
 }
 
+:root[data-theme="dark"] .tt-sidebar.tt-module-nav {
+    background: var(--tt-surface);
+    color: var(--tt-text);
+    border-color: var(--tt-border);
+}
+
+:root[data-theme="dark"] .tt-module-nav-header h3,
+:root[data-theme="dark"] .tt-module-nav-list a {
+    color: var(--tt-text);
+    border-color: var(--tt-border);
+}
+
+:root[data-theme="dark"] .tt-module-nav-list a:hover {
+    background: #172c47;
+    color: #a9d1ff;
+}
+
 @media(min-width:992px) {
     body > nav.navbar .nav-link {
         border-radius: var(--tt-radius-sm, 6px);

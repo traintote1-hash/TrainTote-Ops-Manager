@@ -358,6 +358,43 @@ THUMBNAILS / ROWS
     font-size: .95rem;
 }
 
+/* Photo-forward roster cards. The list remains the default, with the user's
+   preferred view retained locally by list_v2.js. */
+.equipment-card-view { display: none; grid-template-columns: repeat(auto-fill, minmax(255px, 1fr)); gap: 16px; }
+.tt-equipment-list-page[data-equipment-view="card"] .equipment-list-view { display: none; }
+.tt-equipment-list-page[data-equipment-view="card"] .equipment-card-view { display: grid; }
+.equipment-card {
+    display: grid; grid-template-rows: 158px auto; overflow: hidden; cursor: pointer;
+    background: var(--tt-surface, #fff); border: 1px solid var(--tt-border, #d8dee6);
+    border-radius: 12px; box-shadow: var(--tt-shadow-sm); transition: transform .15s, box-shadow .15s, border-color .15s;
+}
+.equipment-card:hover { transform: translateY(-2px); border-color: #7da3cc; box-shadow: var(--tt-shadow); }
+.equipment-card-photo { display: grid; place-items: center; overflow: hidden; background: var(--tt-surface-alt, #f8fafc); color: var(--tt-text-muted); font-size: .85rem; }
+.equipment-card-photo img { width: 100%; height: 100%; object-fit: cover; }
+.equipment-card-body { padding: 14px; }
+.equipment-card-topline { display: flex; justify-content: space-between; align-items: center; font-size: .78rem; color: var(--tt-text-muted); }
+.equipment-card-topline input { margin-right: 4px; }
+.equipment-card h2 { margin: 12px 0 2px; color: var(--tt-text); font-size: 1.2rem; }
+.equipment-card-road { margin: 0 0 10px; color: var(--tt-text-muted); font-size: .9rem; }
+.equipment-card-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.equipment-card-badges span { padding: 3px 8px; border: 1px solid var(--tt-border); border-radius: 999px; color: var(--tt-text-muted); font-size: .75rem; font-weight: 700; }
+.equipment-card dl { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 0 14px; }
+.equipment-card dl div { min-width: 0; }
+.equipment-card dt { color: var(--tt-text-muted); font-size: .7rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.equipment-card dd { overflow: hidden; margin: 2px 0 0; color: var(--tt-text); font-size: .85rem; text-overflow: ellipsis; white-space: nowrap; }
+
+:root[data-theme="dark"] .sidebar-card,
+:root[data-theme="dark"] .content-card,
+:root[data-theme="dark"] .table-responsive { background: var(--tt-surface); border-color: var(--tt-border); }
+:root[data-theme="dark"] .active-filters,
+:root[data-theme="dark"] .equipment-table thead th { background: var(--tt-surface-alt); border-color: var(--tt-border); }
+:root[data-theme="dark"] .equipment-table td,
+:root[data-theme="dark"] .equipment-table thead th,
+:root[data-theme="dark"] .sort-link { color: var(--tt-text); }
+:root[data-theme="dark"] .form-check:hover,
+:root[data-theme="dark"] .clickable-row:hover { background: #172c47 !important; }
+:root[data-theme="dark"] .filter-chip { background: #0d192a; border-color: var(--tt-border); color: var(--tt-text); }
+
 .equipment-table tbody tr:last-child td {
     border-bottom: 0;
 }

@@ -112,6 +112,25 @@ document.querySelectorAll('.clickable-row').forEach(row => {
 
 });
 
+(() => {
+    const key = 'traintote-equipment-view';
+    const page = document.querySelector('.tt-equipment-list-page');
+    const buttons = document.querySelectorAll('.equipment-view-toggle');
+    if (!page || !buttons.length) return;
+    const setView = (view) => {
+        page.dataset.equipmentView = view;
+        buttons.forEach((button) => button.classList.toggle('active', button.dataset.view === view));
+    };
+    setView(localStorage.getItem(key) || 'list');
+    buttons.forEach((button) => button.addEventListener('click', () => {
+        localStorage.setItem(key, button.dataset.view);
+        setView(button.dataset.view);
+    }));
+    document.querySelectorAll('.equipment-card[data-href]').forEach((card) => card.addEventListener('click', (event) => {
+        if (!event.target.closest('a,button,input,label')) window.location = card.dataset.href;
+    }));
+})();
+
 /*
 =========================================================
 SELECT ALL

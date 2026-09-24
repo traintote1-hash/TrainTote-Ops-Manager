@@ -357,6 +357,9 @@ $road_name = $_POST['road_name']
     ?? $equipment['road_name']
     ?? '';
 
+$dcc_address = $_POST['dcc_address'] ?? $equipment['dcc_address'] ?? '';
+$dcc_decoder = $_POST['dcc_decoder'] ?? $equipment['dcc_decoder'] ?? '';
+
 $equipment_class = $_POST['equipment_class']
     ?? $equipment['equipment_class']
     ?? '';
@@ -481,6 +484,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $current_track = trim($current_track);
 
+    $dcc_address = substr(trim($dcc_address), 0, 10);
+    $dcc_decoder = substr(trim($dcc_decoder), 0, 100);
+    if ($equipment_class !== 'Locomotive') {
+        $dcc_address = '';
+        $dcc_decoder = '';
+    } elseif ($dcc_address !== '' && !preg_match('/^[0-9]{1,4}$/', $dcc_address)) {
+        $errors[] = 'DCC address must be a number from 0 to 9999.';
+    }
+
     $notes = trim($notes);
 
     if ($reporting_marks === '') {
@@ -547,6 +559,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             current_track = ?,
 
+            dcc_address = ?,
+
+            dcc_decoder = ?,
+
             notes = ?
 
         WHERE id = ?
@@ -586,6 +602,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $current_industry_id,
 
             $current_track,
+
+            $dcc_address !== '' ? $dcc_address : null,
+
+            $dcc_decoder !== '' ? $dcc_decoder : null,
 
             $notes,
 
@@ -1058,6 +1078,14 @@ value="<?php echo htmlspecialchars($prototype); ?>">
 </div>
 
 <!-- ====================================================== -->
+<div class="card section-card locomotive-only-fields" hidden>
+<div class="card-header bg-dark text-white">DCC</div>
+<div class="card-body"><div class="row">
+<div class="col-md-3 mb-3"><label class="form-label" for="dcc_address">DCC Address</label><input type="text" inputmode="numeric" pattern="[0-9]{1,4}" name="dcc_address" id="dcc_address" maxlength="4" class="form-control" value="<?php echo htmlspecialchars($dcc_address); ?>" placeholder="Optional"></div>
+<div class="col-md-6 mb-3"><label class="form-label" for="dcc_decoder">DCC Decoder</label><input type="text" name="dcc_decoder" id="dcc_decoder" maxlength="100" class="form-control" value="<?php echo htmlspecialchars($dcc_decoder); ?>" placeholder="Optional, e.g. ESU LokSound 5"></div>
+</div></div>
+</div>
+
 <!-- PHYSICAL CHARACTERISTICS -->
 <!-- ====================================================== -->
 
@@ -1715,6 +1743,9 @@ classField.addEventListener(
 'change',
 function(){
     populateTypes();
+    document.querySelectorAll('.locomotive-only-fields').forEach(function(field) {
+        field.hidden = classField.value !== 'Locomotive';
+    });
 }
 );
 
@@ -1732,6 +1763,9 @@ toggleOperationsServiceCustom
 );
 
 populateTypes(true);
+document.querySelectorAll('.locomotive-only-fields').forEach(function(field) {
+    field.hidden = classField.value !== 'Locomotive';
+});
 
 </script>
 

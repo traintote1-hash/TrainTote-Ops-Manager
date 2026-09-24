@@ -227,6 +227,8 @@ function ttJmriMapRow(array $rawRow, string $importType, int $rowNumber, array $
     $color = '';
     $location = '';
     $track = '';
+    $dccAddress = '';
+    $dccDecoder = '';
 
     if ($isCars) {
         $weight = ttJmriCleanValue($rawRow[4] ?? '', 50);
@@ -245,6 +247,12 @@ function ttJmriMapRow(array $rawRow, string $importType, int $rowNumber, array $
         $track = (($rawRow[7] ?? '') === '-')
             ? ttJmriCleanValue($rawRow[8] ?? '', 50)
             : ttJmriCleanValue($rawRow[7] ?? '', 50);
+        $dccAddress = ttJmriCleanValue($rawRow[9] ?? '', 10);
+        $dccDecoder = ttJmriCleanValue($rawRow[10] ?? '', 100);
+        if ($dccAddress !== '' && preg_match('/^[0-9]{1,4}$/', $dccAddress) !== 1) {
+            $warnings[] = 'DCC address ignored because it is not between 0 and 9999.';
+            $dccAddress = '';
+        }
     }
 
     $currentIndustryId = ttJmriFindIndustryId($industryLookup, $location);
@@ -295,6 +303,8 @@ function ttJmriMapRow(array $rawRow, string $importType, int $rowNumber, array $
         'load_status' => $isCars ? 'Empty' : '',
         'current_industry_id' => $currentIndustryId,
         'current_track' => $track,
+        'dcc_address' => $dccAddress,
+        'dcc_decoder' => $dccDecoder,
         'notes' => $notes,
         'owner' => $owner,
         'date_built' => $dateBuilt,
@@ -326,6 +336,8 @@ function ttJmriInsertEquipment(PDO $pdo, int $railroadId, array $row): void
             load_status,
             current_industry_id,
             current_track,
+            dcc_address,
+            dcc_decoder,
             notes
         )
         VALUES (
@@ -345,6 +357,8 @@ function ttJmriInsertEquipment(PDO $pdo, int $railroadId, array $row): void
             :load_status,
             :current_industry_id,
             :current_track,
+            :dcc_address,
+            :dcc_decoder,
             :notes
         )
     ");
@@ -366,6 +380,8 @@ function ttJmriInsertEquipment(PDO $pdo, int $railroadId, array $row): void
         'load_status' => $row['load_status'],
         'current_industry_id' => $row['current_industry_id'],
         'current_track' => $row['current_track'],
+        'dcc_address' => $row['dcc_address'] ?: null,
+        'dcc_decoder' => $row['dcc_decoder'] ?: null,
         'notes' => $row['notes']
     ]);
 }
@@ -386,6 +402,8 @@ function ttJmriUpdateEquipment(PDO $pdo, int $equipmentId, array $row): void
             load_status = :load_status,
             current_industry_id = :current_industry_id,
             current_track = :current_track,
+            dcc_address = :dcc_address,
+            dcc_decoder = :dcc_decoder,
             notes = :notes
         WHERE id = :id
     ");
@@ -402,6 +420,8 @@ function ttJmriUpdateEquipment(PDO $pdo, int $equipmentId, array $row): void
         'load_status' => $row['load_status'],
         'current_industry_id' => $row['current_industry_id'],
         'current_track' => $row['current_track'],
+        'dcc_address' => $row['dcc_address'] ?: null,
+        'dcc_decoder' => $row['dcc_decoder'] ?: null,
         'notes' => $row['notes'],
         'id' => $equipmentId
     ]);

@@ -45,3 +45,22 @@
 --tt-header-height:64px;
 --tt-sidebar-width:280px;
 }
+
+/* The light palette remains the default.  Theme.js sets data-theme from a
+   persisted Light/Dark/System preference before the page becomes interactive. */
+:root[data-theme="dark"] {
+--tt-bg:#08111f;
+--tt-surface:#101d30;
+--tt-surface-alt:#15263d;
+--tt-border:#29405d;
+--tt-text:#edf4ff;
+--tt-text-muted:#a9bbd1;
+--tt-engine-red:#dd6770;
+--tt-engine-red-hover:#ee8087;
+--tt-signal-green:#53c58a;
+--tt-signal-yellow:#f6b44b;
+--tt-danger:#ff7b7f;
+--tt-shadow-sm:0 1px 3px rgba(0,0,0,.28);
+--tt-shadow:0 10px 28px rgba(0,0,0,.34);
+color-scheme:dark;
+}
