@@ -37,6 +37,7 @@ function tt_login_safe_redirect($redirect)
     if (isset($parts['scheme']) || isset($parts['host'])) {
         $allowedHosts = array(
             'ops.traintote.com',
+            'demo.traintote.com',
             'wiki.traintote.com',
             'forum.traintote.com',
             'traintote.com'
