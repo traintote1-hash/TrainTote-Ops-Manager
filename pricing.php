@@ -1,0 +1,13 @@
+<?php include __DIR__ . '/includes/header.php'; ?>
+<title>Plans & Rewards · TrainTote Ops Manager</title>
+</head><body>
+<main class="container py-5">
+  <section class="text-center mb-5"><h1 class="display-5 fw-bold">TrainTote Ops, your way</h1><p class="lead text-muted">Start free. Unlock Pro by buying the TrainTote packs you already use.</p></section>
+  <div class="row row-cols-1 row-cols-lg-3 g-4 justify-content-center">
+    <div class="col"><div class="card h-100"><div class="card-body p-4"><h2 class="h3">Free</h2><p class="fs-2 fw-bold">$0</p><p>Organize your railroad and try TrainTote Ops.</p><ul><li>Equipment roster</li><li>Industries and waybills</li><li>Basic operating sessions</li></ul><a class="btn btn-outline-primary w-100" href="register.php">Create free account</a></div></div></div>
+    <div class="col"><div class="card h-100 border-primary shadow"><div class="card-body p-4"><span class="badge text-bg-primary mb-2">Earned with packs</span><h2 class="h3">Pro</h2><p class="fs-2 fw-bold">Included with qualifying purchases</p><p>Unlock more room for your railroad and operations.</p><ul><li>Expanded equipment and operations access</li><li>Photo tools, imports, and exports</li><li>Advanced session tools</li></ul><a class="btn btn-primary w-100" href="https://traintote.com/product-category/packs/">Shop TrainTote packs</a></div></div></div>
+    <div class="col"><div class="card h-100"><div class="card-body p-4"><h2 class="h3">Club</h2><p class="fs-2 fw-bold">Coming soon</p><p>For shared railroads, crews, and clubs.</p><ul><li>Multiple operators</li><li>Shared session management</li><li>Priority support</li></ul><a class="btn btn-outline-secondary w-100" href="mailto:info@traintote.com?subject=TrainTote%20Club">Ask about Club</a></div></div></div>
+  </div>
+  <section class="card mt-5"><div class="card-body p-4"><h2 class="h3">How to earn Pro</h2><div class="row"><div class="col-md-6"><h3 class="h5">Buy any qualifying 5-pack</h3><p class="mb-0">Receive <strong>90 days of Pro</strong>.</p></div><div class="col-md-6"><h3 class="h5">Spend $100 or more in one order</h3><p class="mb-0">Receive <strong>one full year of Pro</strong>. This includes the Large Tall 5-pack.</p></div></div><p class="small text-muted mt-3 mb-0">Rewards are based on completed qualifying orders, before shipping and tax. One reward—the best available reward—applies per order. Match your WooCommerce checkout email to your TrainTote Ops account email.</p></div></section>
+  <p class="text-center mt-4"><a href="login.php">Already have an account? Log in</a></p>
+</main><?php include __DIR__ . '/includes/footer.php'; ?>
