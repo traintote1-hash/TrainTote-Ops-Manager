@@ -17,6 +17,12 @@ $primaryNavItems = array(
     array('key' => 'forum', 'label' => 'Forum', 'href' => tt_nav_community_href('https://forum.traintote.com/', $currentNavHost)),
 );
 
+if ($currentNavHost === 'demo.traintote.com') {
+    $primaryNavItems = array_values(array_filter($primaryNavItems, function ($navItem) {
+        return isset($navItem['key']) && $navItem['key'] !== 'forum';
+    }));
+}
+
 ?>
 
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4" aria-label="Main navigation">
