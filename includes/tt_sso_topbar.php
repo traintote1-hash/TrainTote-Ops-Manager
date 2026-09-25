@@ -88,10 +88,48 @@ if (!function_exists('tt_sso_is_forum_admin_request')) {
     }
 }
 
+if (!function_exists('tt_sso_ops_base_url')) {
+    function tt_sso_ops_base_url()
+    {
+        $source =
+            isset($_GET['tt_ops_host'])
+            ? strtolower(trim((string)$_GET['tt_ops_host']))
+            : '';
+
+        if ($source === 'demo' && !headers_sent()) {
+            setcookie('TT_OPS_HOST', 'demo', [
+                'expires' => time() + 60 * 60 * 24 * 14,
+                'path' => '/',
+                'domain' => '.traintote.com',
+                'secure' => true,
+                'httponly' => true,
+                'samesite' => 'Lax',
+            ]);
+            $_COOKIE['TT_OPS_HOST'] = 'demo';
+        }
+
+        if ($source === 'ops' && !headers_sent()) {
+            setcookie('TT_OPS_HOST', '', [
+                'expires' => time() - 3600,
+                'path' => '/',
+                'domain' => '.traintote.com',
+                'secure' => true,
+                'httponly' => true,
+                'samesite' => 'Lax',
+            ]);
+            unset($_COOKIE['TT_OPS_HOST']);
+        }
+
+        return isset($_COOKIE['TT_OPS_HOST']) && $_COOKIE['TT_OPS_HOST'] === 'demo'
+            ? 'https://demo.traintote.com'
+            : 'https://ops.traintote.com';
+    }
+}
+
 if (!function_exists('tt_sso_topbar_css')) {
     function tt_sso_topbar_css()
     {
-        return '<link id="tt-sso-topbar-css" rel="stylesheet" href="https://ops.traintote.com/assets/css/tt-community.css?v=4">';
+        return '<link id="tt-sso-topbar-css" rel="stylesheet" href="' . tt_sso_ops_base_url() . '/assets/css/tt-community.css?v=4">';
     }
 }
 
@@ -105,14 +143,15 @@ if (!function_exists('tt_sso_topbar_html')) {
                 )
             );
 
+        $opsBaseUrl = tt_sso_ops_base_url();
         $items = [
-            'dashboard' => ['Dashboard', 'https://ops.traintote.com/dashboard.php'],
-            'equipment' => ['Equipment', 'https://ops.traintote.com/equipment/list.php'],
-            'status' => ['Car Status', 'https://ops.traintote.com/equipment/status.php'],
-            'industries' => ['Industries', 'https://ops.traintote.com/industries/list.php'],
-            'waybills' => ['Waybills', 'https://ops.traintote.com/waybills/list.php'],
-            'operations' => ['Operations', 'https://ops.traintote.com/operations/dashboard.php'],
-            'ai' => ['AI Scanner', 'https://ops.traintote.com/ai/scan_equipment.php'],
+            'dashboard' => ['Dashboard', $opsBaseUrl . '/dashboard.php'],
+            'equipment' => ['Equipment', $opsBaseUrl . '/equipment/list.php'],
+            'status' => ['Car Status', $opsBaseUrl . '/equipment/status.php'],
+            'industries' => ['Industries', $opsBaseUrl . '/industries/list.php'],
+            'waybills' => ['Waybills', $opsBaseUrl . '/waybills/list.php'],
+            'operations' => ['Operations', $opsBaseUrl . '/operations/dashboard.php'],
+            'ai' => ['AI Scanner', $opsBaseUrl . '/ai/scan_equipment.php'],
             'wiki' => ['Wiki', 'https://wiki.traintote.com/'],
             'forum' => ['Forum', 'https://forum.traintote.com/tt_ops_login.php'],
         ];
@@ -120,7 +159,7 @@ if (!function_exists('tt_sso_topbar_html')) {
         $html =
             '<nav class="tt-sso-topbar" aria-label="TrainTote global navigation">'
             . '<div class="tt-sso-topbar-inner">'
-            . '<a class="tt-sso-brand" href="https://ops.traintote.com/dashboard.php">TrainTote Ops Manager</a>'
+            . '<a class="tt-sso-brand" href="' . $opsBaseUrl . '/dashboard.php">TrainTote Ops Manager</a>'
             . '<div class="tt-sso-links">';
 
         foreach ($items as $key => $item) {
@@ -141,7 +180,7 @@ if (!function_exists('tt_sso_topbar_html')) {
 
         $html .=
             '</div>'
-            . '<div class="tt-sso-logout"><a href="https://ops.traintote.com/logout.php">Logout</a></div>'
+            . '<div class="tt-sso-logout"><a href="' . $opsBaseUrl . '/logout.php">Logout</a></div>'
             . '</div>'
             . '</nav>';
 

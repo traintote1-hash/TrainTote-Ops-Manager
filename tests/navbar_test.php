@@ -33,12 +33,12 @@ navbarExpect(
     'Logout must remain in the separate account navigation group.'
 );
 navbarExpect(
-    strpos($navbar, "'href' => 'https://wiki.traintote.com/'") !== false,
-    'The authenticated navbar must link to the Wiki SSO host.'
+    strpos($navbar, "tt_nav_community_href('https://wiki.traintote.com/'") !== false,
+    'The authenticated navbar must build the Wiki SSO link through the domain-aware helper.'
 );
 navbarExpect(
-    strpos($navbar, "'href' => 'https://forum.traintote.com/'") !== false,
-    'The authenticated navbar must link to the Forum SSO host.'
+    strpos($navbar, "tt_nav_community_href('https://forum.traintote.com/'") !== false,
+    'The authenticated navbar must build the Forum SSO link through the domain-aware helper.'
 );
 navbarExpect(
     strpos($navbar, 'data-bs-target="#navbarNav"') !== false
@@ -95,6 +95,19 @@ navbarExpect(
         && tt_nav_ops_href('/logout.php', 'forum.traintote.com') === 'https://ops.traintote.com/logout.php',
     'Wiki and Forum must receive working absolute links back to Ops.'
 );
+navbarExpect(
+    tt_nav_community_href('https://wiki.traintote.com/', 'demo.traintote.com') === 'https://wiki.traintote.com/?tt_ops_host=demo'
+        && tt_nav_community_href('https://forum.traintote.com/', 'demo.traintote.com') === 'https://forum.traintote.com/?tt_ops_host=demo',
+    'Demo must mark Wiki and Forum visits so the community topbar can return to Demo.'
+);
+
+$_COOKIE['TT_OPS_HOST'] = 'demo';
+navbarExpect(
+    tt_nav_ops_href('/dashboard.php', 'wiki.traintote.com') === 'https://demo.traintote.com/dashboard.php'
+        && tt_nav_ops_href('/logout.php', 'forum.traintote.com') === 'https://demo.traintote.com/logout.php',
+    'Wiki and Forum must return to Demo when the demo origin cookie is present.'
+);
+unset($_COOKIE['TT_OPS_HOST']);
 
 $wikiTopbar = tt_sso_topbar_html('wiki');
 $externalAiPosition = strpos($wikiTopbar, '>AI Scanner<');
@@ -120,6 +133,17 @@ navbarExpect(
     strpos($wikiTopbar, 'class="tt-sso-active active" aria-current="page" href="https://wiki.traintote.com/"') !== false,
     'The Wiki topbar must expose the same active-page state accessibly.'
 );
+
+$_COOKIE['TT_OPS_HOST'] = 'demo';
+$demoWikiTopbar = tt_sso_topbar_html('wiki');
+navbarExpect(
+    strpos($demoWikiTopbar, 'https://demo.traintote.com/dashboard.php') !== false
+        && strpos($demoWikiTopbar, 'https://demo.traintote.com/operations/dashboard.php') !== false
+        && strpos(tt_sso_topbar_css(), 'https://demo.traintote.com/assets/css/tt-community.css?v=4') !== false,
+    'Community topbar links and CSS must point back to Demo when the demo origin cookie is present.'
+);
+unset($_COOKIE['TT_OPS_HOST']);
+
 navbarExpect(
     strpos($communityCss, '--tt-sso-red: #8B1E24') !== false
         && strpos($communityCss, '--tt-sso-nav-height: 60px') !== false,

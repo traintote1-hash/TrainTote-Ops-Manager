@@ -13,8 +13,8 @@ $primaryNavItems = array(
     array('key' => 'waybills', 'label' => 'Waybills', 'href' => tt_nav_ops_href('/waybills/list.php', $currentNavHost)),
     array('key' => 'operations', 'label' => 'Operations', 'href' => tt_nav_ops_href('/operations/dashboard.php', $currentNavHost)),
     array('key' => 'ai', 'label' => 'AI Scanner', 'href' => tt_nav_ops_href('/ai/scan_equipment.php', $currentNavHost)),
-    array('key' => 'wiki', 'label' => 'Wiki', 'href' => 'https://wiki.traintote.com/'),
-    array('key' => 'forum', 'label' => 'Forum', 'href' => 'https://forum.traintote.com/'),
+    array('key' => 'wiki', 'label' => 'Wiki', 'href' => tt_nav_community_href('https://wiki.traintote.com/', $currentNavHost)),
+    array('key' => 'forum', 'label' => 'Forum', 'href' => tt_nav_community_href('https://forum.traintote.com/', $currentNavHost)),
 );
 
 ?>
