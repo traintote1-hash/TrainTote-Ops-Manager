@@ -60,6 +60,59 @@
 :root[data-theme="dark"] .tt-ops-page .tt-dispatcher-card .card-header,
 :root[data-theme="dark"] .tt-ops-page .tt-history-work-order .card-header { background: var(--tt-surface-alt); }
 :root[data-theme="dark"] .tt-ops-page .tt-yard-track-card ul { border-color: var(--tt-border); }
+:root[data-theme="dark"] .tt-ops-page .tt-work-order-summary,
+:root[data-theme="dark"] .tt-ops-page .tt-assigned-locomotives,
+:root[data-theme="dark"] .tt-ops-page .tt-work-order-moves {
+    background: var(--tt-surface);
+    color: var(--tt-text);
+    border-color: var(--tt-border);
+}
+:root[data-theme="dark"] .tt-ops-page .tt-work-order-title h1,
+:root[data-theme="dark"] .tt-ops-page .tt-work-order-title p,
+:root[data-theme="dark"] .tt-ops-page .tt-work-order-meta span,
+:root[data-theme="dark"] .tt-ops-page .tt-work-order-meta strong,
+:root[data-theme="dark"] .tt-ops-page .tt-assigned-locomotives h2,
+:root[data-theme="dark"] .tt-ops-page .tt-locomotive strong,
+:root[data-theme="dark"] .tt-ops-page .tt-work-order-table,
+:root[data-theme="dark"] .tt-ops-page .tt-work-order-table th,
+:root[data-theme="dark"] .tt-ops-page .tt-work-order-table td {
+    color: var(--tt-text);
+}
+:root[data-theme="dark"] .tt-ops-page .tt-work-order-meta span,
+:root[data-theme="dark"] .tt-ops-page .tt-work-order-table small,
+:root[data-theme="dark"] .tt-ops-page .tt-move-car small {
+    color: var(--tt-text-muted);
+}
+:root[data-theme="dark"] .tt-ops-page .tt-work-order-table thead th {
+    background: var(--tt-surface-alt);
+    color: var(--tt-text);
+    border-color: var(--tt-border);
+}
+:root[data-theme="dark"] .tt-ops-page .tt-work-order-table tbody tr:not(.tt-location-heading) {
+    background: var(--tt-surface);
+}
+:root[data-theme="dark"] .tt-ops-page .tt-work-order-table td,
+:root[data-theme="dark"] .tt-ops-page .tt-work-order-table th {
+    border-color: var(--tt-border);
+}
+:root[data-theme="dark"] .tt-ops-page .tt-location-heading th,
+:root[data-theme="dark"] .tt-work-order-table .tt-location-heading > th {
+    background: var(--tt-surface-alt) !important;
+    color: var(--tt-text) !important;
+    border-color: var(--tt-border) !important;
+}
+:root[data-theme="dark"] .tt-ops-page .tt-progress-check {
+    background-color: var(--tt-surface-alt);
+    border-color: #7f8b98;
+}
+:root[data-theme="dark"] .tt-ops-page .tt-work-order-details-body,
+:root[data-theme="dark"] .tt-ops-page .tt-work-order-moves .tt-move-instruction,
+:root[data-theme="dark"] .tt-ops-page .tt-work-order-moves .tt-move-from,
+:root[data-theme="dark"] .tt-ops-page .tt-work-order-moves .tt-move-to,
+:root[data-theme="dark"] .tt-ops-page .tt-work-order-moves .tt-move-exception-cell {
+    background: var(--tt-surface);
+    border-color: var(--tt-border) !important;
+}
 
 /* Compact crew-facing work order. Print uses the dedicated print-order view. */
 @media screen{

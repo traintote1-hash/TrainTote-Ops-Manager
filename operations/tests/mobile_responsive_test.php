@@ -61,6 +61,10 @@ mobileExpect(strpos($operationsCss, 'grid-template-areas:"photo car action done"
     && strpos($operationsCss, '@media screen and (max-width:430px)') !== false
     && strpos($operationsCss, '.tt-work-order-summary>.tt-fast-clock') !== false,
     'Phone work orders must keep the move identity row and Fast Clock compact through the narrowest breakpoint.');
+mobileExpect(strpos($operationsCss, ':root[data-theme="dark"] .tt-ops-page .tt-work-order-summary') !== false
+    && strpos($operationsCss, ':root[data-theme="dark"] .tt-ops-page .tt-assigned-locomotives') !== false
+    && strpos($operationsCss, ':root[data-theme="dark"] .tt-work-order-table .tt-location-heading > th') !== false,
+    'Dark mode work orders must keep summary, locomotive, and route-heading panels readable.');
 mobileExpect(strpos($operationsCss, 'width:1.75rem;height:1.75rem') !== false
     && strpos($operationsCss, 'min-height:52px') !== false,
     'Crew controls must provide large one-handed tap targets.');
