@@ -41,6 +41,11 @@ navbarExpect(
     'The authenticated navbar must build the Forum SSO link through the domain-aware helper.'
 );
 navbarExpect(
+    strpos($navbar, "\$currentNavHost === 'demo.traintote.com'") !== false
+        && strpos($navbar, "\$navItem['key'] !== 'forum'") !== false,
+    'The demo navbar must hide the Forum link.'
+);
+navbarExpect(
     strpos($navbar, 'data-bs-target="#navbarNav"') !== false
         && strpos($navbar, 'id="navbarNav"') !== false,
     'The shared navbar must preserve its responsive collapse target.'
@@ -100,6 +105,17 @@ navbarExpect(
         && tt_nav_community_href('https://forum.traintote.com/', 'demo.traintote.com') === 'https://forum.traintote.com/?tt_ops_host=demo',
     'Demo must mark Wiki and Forum visits so the community topbar can return to Demo.'
 );
+
+$_SERVER['HTTP_HOST'] = 'demo.traintote.com';
+$_SERVER['REQUEST_URI'] = '/dashboard.php';
+ob_start();
+require dirname(__DIR__) . '/includes/navbar.php';
+$demoNavbar = ob_get_clean();
+navbarExpect(
+    strpos($demoNavbar, '>Wiki<') !== false && strpos($demoNavbar, '>Forum<') === false,
+    'Demo must keep the Wiki link but hide the Forum link.'
+);
+unset($_SERVER['HTTP_HOST'], $_SERVER['REQUEST_URI']);
 
 $_COOKIE['TT_OPS_HOST'] = 'demo';
 navbarExpect(
