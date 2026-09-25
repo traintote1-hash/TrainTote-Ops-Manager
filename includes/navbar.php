@@ -27,7 +27,12 @@ if ($currentNavHost === 'demo.traintote.com') {
 
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4" aria-label="Main navigation">
     <div class="container-fluid">
-        <a class="navbar-brand" href="/dashboard.php">TrainTote Ops Manager</a>
+        <a class="navbar-brand" href="/dashboard.php">
+            TrainTote Ops Manager
+            <?php if ($currentNavHost === 'demo.traintote.com'): ?>
+                <span class="tt-demo-badge" aria-label="Demo site">DEMO</span>
+            <?php endif; ?>
+        </a>
 
         <button
             class="navbar-toggler"

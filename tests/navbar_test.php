@@ -58,6 +58,10 @@ navbarExpect(
     strpos($navigationCss, 'var(--tt-engine-red, #8B1E24)') !== false,
     'The active navigation item must use the TrainTote red treatment.'
 );
+navbarExpect(
+    strpos($navigationCss, '.tt-demo-badge') !== false,
+    'The demo badge must have a dedicated navbar treatment.'
+);
 
 $routes = array(
     array('dashboard', '/dashboard.php', 'ops.traintote.com'),
@@ -112,8 +116,21 @@ ob_start();
 require dirname(__DIR__) . '/includes/navbar.php';
 $demoNavbar = ob_get_clean();
 navbarExpect(
-    strpos($demoNavbar, '>Wiki<') !== false && strpos($demoNavbar, '>Forum<') === false,
-    'Demo must keep the Wiki link but hide the Forum link.'
+    strpos($demoNavbar, '>Wiki<') !== false
+        && strpos($demoNavbar, '>Forum<') === false
+        && strpos($demoNavbar, '>DEMO<') !== false,
+    'Demo must keep the Wiki link, hide the Forum link, and show the DEMO badge.'
+);
+unset($_SERVER['HTTP_HOST'], $_SERVER['REQUEST_URI']);
+
+$_SERVER['HTTP_HOST'] = 'ops.traintote.com';
+$_SERVER['REQUEST_URI'] = '/dashboard.php';
+ob_start();
+require dirname(__DIR__) . '/includes/navbar.php';
+$opsNavbar = ob_get_clean();
+navbarExpect(
+    strpos($opsNavbar, '>Forum<') !== false && strpos($opsNavbar, '>DEMO<') === false,
+    'Ops must keep the Forum link and omit the DEMO badge.'
 );
 unset($_SERVER['HTTP_HOST'], $_SERVER['REQUEST_URI']);
 
