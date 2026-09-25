@@ -34,10 +34,26 @@ function tt_nav_ops_href($path, $host)
     $host = strtolower((string) $host);
 
     if ($host === 'wiki.traintote.com' || $host === 'forum.traintote.com') {
-        return 'https://ops.traintote.com' . $path;
+        $targetHost = isset($_COOKIE['TT_OPS_HOST']) && $_COOKIE['TT_OPS_HOST'] === 'demo'
+            ? 'demo.traintote.com'
+            : 'ops.traintote.com';
+        return 'https://' . $targetHost . $path;
     }
 
     return $path;
+}
+
+function tt_nav_community_href($url, $host)
+{
+    $url = (string) $url;
+    $host = strtolower((string) $host);
+
+    if ($host !== 'demo.traintote.com') {
+        return $url;
+    }
+
+    $separator = strpos($url, '?') === false ? '?' : '&';
+    return $url . $separator . 'tt_ops_host=demo';
 }
 
 /**
