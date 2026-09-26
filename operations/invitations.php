@@ -8,6 +8,9 @@ $notice = '';
 $flash = null;
 try {
     $session = ttInviteOwnerSession($pdo, $sessionId, $ownerId);
+    if (!ttPlanCan($pdo, $ownerId, 'crew_access')) {
+        throw new TtInvitationError('Crew invitations and multi-person operations require Pro. Plus can still run one-person operating sessions.');
+    }
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ttInviteRequireCsrf();
         $action = ttInviteInput($_POST, 'action');

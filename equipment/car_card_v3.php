@@ -3,6 +3,7 @@
 session_start();
 
 require_once '../config/database.php';
+require_once '../includes/plan_access.php';
 
 if (!isset($_SESSION['user_id'])) {
     header('Location: ../login.php');
@@ -11,6 +12,13 @@ if (!isset($_SESSION['user_id'])) {
 
 if (!isset($_GET['id'])) {
     die('Equipment ID missing.');
+}
+
+try {
+    ttPlanRequireFeature($pdo, (int)$_SESSION['user_id'], 'car_cards', 'Car cards');
+} catch (RuntimeException $e) {
+    http_response_code(403);
+    die($e->getMessage());
 }
 
 $id = (int)$_GET['id'];
