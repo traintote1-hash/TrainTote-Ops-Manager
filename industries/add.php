@@ -3,6 +3,7 @@
 session_start();
 
 require_once '../config/database.php';
+require_once '../includes/plan_access.php';
 
 if (!isset($_SESSION['user_id'])) {
     header('Location: ../login.php');
@@ -284,6 +285,11 @@ $industryServiceOptions = buildIndustryServiceOptions(
 $active = (string)($_POST['active'] ?? '1') === '0' ? 0 : 1;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    try {
+        ttPlanRequireRoom($pdo, (int)$_SESSION['user_id'], (int)$railroad['id'], 'industries');
+    } catch (RuntimeException $e) {
+        $error = $e->getMessage();
+    }
 
     $industry_name = trim($_POST['industry_name']);
     $industry_type = trim($_POST['industry_type']);
@@ -294,6 +300,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $ships_services = buildIndustryServicePostValue('ships_services');
     $notes = trim($_POST['notes']);
 
+    if (!isset($error)) {
     $stmt = $pdo->prepare("
         INSERT INTO industries
         (
@@ -336,13 +343,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ]);
 
     $industryId = $pdo->lastInsertId();
+    }
 
 
     // -----------------------------------
     // Photo Upload
     // -----------------------------------
 
-    if (
+    if (!isset($error) &&
         isset($_FILES['photo']) &&
         $_FILES['photo']['error'] === UPLOAD_ERR_OK
     ) {
@@ -469,9 +477,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     }
 
-    header("Location: saved.php?id=$industryId");
-
-    exit;
+    if (!isset($error)) {
+        header("Location: saved.php?id=$industryId");
+        exit;
+    }
 
 }
 
@@ -490,6 +499,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="container mt-5">
 
 <h1>Add Industry</h1>
+
+<?php if (isset($error)): ?>
+<div class="alert alert-danger">
+<?php echo htmlspecialchars($error); ?>
+</div>
+<?php endif; ?>
 
 <form
 method="post"

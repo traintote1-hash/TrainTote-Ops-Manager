@@ -1,7 +1,15 @@
 <?php
 
+require_once __DIR__ . '/../includes/plan_access.php';
+
 function ttOperationsRailroad(PDO $pdo, int $userId): array
 {
+    if (!ttPlanCan($pdo, $userId, 'operations')) {
+        $plan = ttUserPlan($pdo, $userId);
+        http_response_code(403);
+        die('Operations is not included with ' . $plan['label'] . '. Upgrade to Plus or Pro to use operating sessions and switch lists.');
+    }
+
     $stmt = $pdo->prepare('SELECT id, name, operations_dispatcher_enabled FROM railroads WHERE user_id = ? LIMIT 1');
     $stmt->execute([$userId]);
     $railroad = $stmt->fetch(PDO::FETCH_ASSOC);

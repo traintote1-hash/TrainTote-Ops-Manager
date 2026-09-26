@@ -4,6 +4,7 @@ session_start();
 
 require_once '../config/database.php';
 require_once 'photo_service.php';
+require_once '../includes/plan_access.php';
 
 if (!isset($_SESSION['user_id'])) {
 
@@ -677,6 +678,11 @@ if ($aiPhoto !== '' && !$aiPhotoAvailable && $_SERVER['REQUEST_METHOD'] !== 'POS
 */
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    try {
+        ttPlanRequireRoom($pdo, (int)$_SESSION['user_id'], (int)$railroad['id'], 'equipment');
+    } catch (RuntimeException $e) {
+        $errors[] = $e->getMessage();
+    }
 
     /*
     |--------------------------------------------------------------------------
