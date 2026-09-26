@@ -30,17 +30,44 @@ $ids = array_map(
     $_POST['equipment_ids']
 );
 
-$idList = implode(
-    ',',
-    $ids
-);
+$ids =
+    array_values(
+        array_filter(
+            array_unique($ids),
+            fn($id) => $id > 0
+        )
+    );
 
-$stmt = $pdo->query("
-    SELECT *
-    FROM equipment
-    WHERE id IN ($idList)
+if (!$ids) {
+    die('No equipment selected.');
+}
+
+$placeholders =
+    implode(
+        ',',
+        array_fill(
+            0,
+            count($ids),
+            '?'
+        )
+    );
+
+$stmt = $pdo->prepare("
+    SELECT e.*
+    FROM equipment e
+    JOIN railroads r
+        ON e.railroad_id = r.id
+    WHERE r.user_id = ?
+    AND e.id IN ($placeholders)
     ORDER BY reporting_marks, road_number
 ");
+
+$stmt->execute(
+    array_merge(
+        [$_SESSION['user_id']],
+        $ids
+    )
+);
 
 $equipmentList = $stmt->fetchAll(
     PDO::FETCH_ASSOC
