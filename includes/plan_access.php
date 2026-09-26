@@ -69,13 +69,13 @@ function ttPlanLimitLabel(?int $limit): string
     return $limit === null ? 'unlimited' : (string)$limit;
 }
 
-function ttPlanCountActive(PDO $pdo, int $railroadId, string $table): int
+function ttPlanCountItems(PDO $pdo, int $railroadId, string $table): int
 {
     if (!in_array($table, ['equipment', 'industries'], true)) {
         throw new InvalidArgumentException('Unsupported plan limit table.');
     }
 
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM {$table} WHERE railroad_id=? AND active=1");
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM {$table} WHERE railroad_id=?");
     $stmt->execute([$railroadId]);
     return (int)$stmt->fetchColumn();
 }
@@ -91,10 +91,10 @@ function ttPlanRequireRoom(PDO $pdo, int $userId, int $railroadId, string $kind)
         return;
     }
 
-    $count = ttPlanCountActive($pdo, $railroadId, $kind === 'equipment' ? 'equipment' : 'industries');
+    $count = ttPlanCountItems($pdo, $railroadId, $kind === 'equipment' ? 'equipment' : 'industries');
 
     if ($count >= $limit) {
-        throw new RuntimeException($plan['label'] . ' allows ' . ttPlanLimitLabel($limit) . ' active ' . $label . '. Upgrade or deactivate an existing item before adding more.');
+        throw new RuntimeException($plan['label'] . ' allows ' . ttPlanLimitLabel($limit) . ' total ' . $label . '. Upgrade or delete an existing item before adding more.');
     }
 }
 

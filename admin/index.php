@@ -95,8 +95,8 @@ $usersStatement = $pdo->prepare("
            COALESCE(s.status,'active') status,
            r.name railroad_name,
            r.id railroad_id,
-           (SELECT COUNT(*) FROM equipment e WHERE e.railroad_id=r.id AND e.active=1) equipment_count,
-           (SELECT COUNT(*) FROM industries i WHERE i.railroad_id=r.id AND i.active=1) industry_count
+           (SELECT COUNT(*) FROM equipment e WHERE e.railroad_id=r.id) equipment_count,
+           (SELECT COUNT(*) FROM industries i WHERE i.railroad_id=r.id) industry_count
     FROM users u
     LEFT JOIN user_subscriptions s ON s.user_id=u.id
     LEFT JOIN railroads r ON r.user_id=u.id
