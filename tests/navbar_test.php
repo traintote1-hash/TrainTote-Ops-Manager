@@ -19,7 +19,7 @@ $aiPosition = strpos($navbar, "'key' => 'ai'");
 $wikiPosition = strpos($navbar, "'key' => 'wiki'");
 $forumPosition = strpos($navbar, "'key' => 'forum'");
 $primaryEndPosition = strpos($navbar, '</ul>', $forumPosition);
-$logoutPosition = strpos($navbar, "tt_nav_ops_href('/logout.php'");
+$profilePosition = strpos($navbar, "tt_nav_ops_href('/profile.php'");
 
 navbarExpect(
     $aiPosition !== false
@@ -29,8 +29,8 @@ navbarExpect(
     'Wiki and Forum must follow AI Scanner in the primary navigation group.'
 );
 navbarExpect(
-    $logoutPosition > $primaryEndPosition,
-    'Logout must remain in the separate account navigation group.'
+    $profilePosition > $primaryEndPosition,
+    'Profile must remain in the separate account navigation group.'
 );
 navbarExpect(
     strpos($navbar, "tt_nav_community_href('https://wiki.traintote.com/'") !== false,
