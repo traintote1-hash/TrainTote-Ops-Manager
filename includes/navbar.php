@@ -67,7 +67,7 @@ if (!empty($_SESSION['user_id'])) {
 
             <ul class="navbar-nav">
                 <li class="nav-item d-flex align-items-center px-lg-2">
-                    <label class="visually-hidden" for="tt-theme-select">Appearance</label>
+                    <label class="text-white small me-2 mb-0" for="tt-theme-select">Appearance</label>
                     <select id="tt-theme-select" class="form-select form-select-sm tt-theme-select" aria-label="Appearance">
                         <option value="system">System</option>
                         <option value="light">Light</option>
