@@ -23,6 +23,13 @@ if ($currentNavHost === 'demo.traintote.com') {
     }));
 }
 
+$profilePhoto = '';
+if (!empty($_SESSION['user_id'])) {
+    $photoFiles = glob(__DIR__ . '/../uploads/profile/user-' . (int) $_SESSION['user_id'] . '.*');
+    if (!empty($photoFiles)) {
+        $profilePhoto = '/uploads/profile/' . rawurlencode(basename($photoFiles[0]));
+    }
+}
 ?>
 
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4" aria-label="Main navigation">
@@ -67,8 +74,15 @@ if ($currentNavHost === 'demo.traintote.com') {
                         <option value="dark">Dark</option>
                     </select>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="<?= htmlspecialchars(tt_nav_ops_href('/logout.php', $currentNavHost), ENT_QUOTES, 'UTF-8') ?>">Logout</a>
+                <li class="nav-item d-flex align-items-center">
+                    <a class="nav-link p-0 ms-lg-2" href="<?= htmlspecialchars(tt_nav_ops_href('/profile.php', $currentNavHost), ENT_QUOTES, 'UTF-8') ?>" aria-label="Profile" title="Profile">
+                        <?php if ($profilePhoto): ?>
+                            <img src="<?= htmlspecialchars($profilePhoto, ENT_QUOTES, 'UTF-8') ?>" alt="" width="32" height="32" class="rounded-circle border border-secondary" style="object-fit: cover;">
+                        <?php else: ?>
+                            <span class="rounded-circle bg-secondary text-white d-inline-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" aria-hidden="true">👤</span>
+                        <?php endif; ?>
+                        <span class="visually-hidden">Profile</span>
+                    </a>
                 </li>
             </ul>
         </div>
