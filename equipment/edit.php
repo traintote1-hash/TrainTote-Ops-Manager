@@ -63,18 +63,11 @@ if (!$equipment) {
 $previousEquipmentId = null;
 $nextEquipmentId = null;
 
-$stmt = $pdo->prepare("
-    SELECT id
-    FROM equipment
-    WHERE railroad_id = :railroad_id
-    ORDER BY reporting_marks ASC, road_number ASC, id ASC
-");
-
-$stmt->execute([
-    'railroad_id' => $equipment['railroad_id']
-]);
-
-$equipmentIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+require_once __DIR__ . '/list_context.php';
+$listContext = tt_equipment_list_context();
+$listContextSuffix = htmlspecialchars(tt_equipment_context_suffix($listContext), ENT_QUOTES, 'UTF-8');
+$listUrl = htmlspecialchars(tt_equipment_list_url($listContext), ENT_QUOTES, 'UTF-8');
+$equipmentIds = tt_equipment_navigation_ids($pdo, (int)$equipment['railroad_id'], $listContext);
 $currentEquipmentIndex = array_search($equipment['id'], $equipmentIds);
 
 if ($currentEquipmentIndex !== false) {
@@ -652,7 +645,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        header("Location: view.php?id=$id");
+        header("Location: view.php?id=$id" . tt_equipment_context_suffix($listContext));
 
         exit;
 
@@ -763,7 +756,7 @@ Save Changes
 </button>
 
 <a
-href="view.php?id=<?php echo $id; ?>"
+href="view.php?id=<?php echo $id; ?><?php echo $listContextSuffix; ?>"
 class="btn btn-secondary me-2">
 
 Cancel
@@ -773,7 +766,7 @@ Cancel
 <?php if ($previousEquipmentId): ?>
 
 <a
-href="edit.php?id=<?php echo (int)$previousEquipmentId; ?>"
+href="edit.php?id=<?php echo (int)$previousEquipmentId; ?><?php echo $listContextSuffix; ?>"
 class="btn btn-outline-secondary me-2">
 
 Previous Equipment
@@ -793,7 +786,7 @@ Previous Equipment
 <?php if ($nextEquipmentId): ?>
 
 <a
-href="edit.php?id=<?php echo (int)$nextEquipmentId; ?>"
+href="edit.php?id=<?php echo (int)$nextEquipmentId; ?><?php echo $listContextSuffix; ?>"
 class="btn btn-outline-secondary me-2">
 
 Next Equipment
@@ -1409,7 +1402,7 @@ Save Changes
 </button>
 
 <a
-href="view.php?id=<?php echo $id; ?>"
+href="view.php?id=<?php echo $id; ?><?php echo $listContextSuffix; ?>"
 class="btn btn-secondary btn-lg me-2">
 
 Cancel
@@ -1419,7 +1412,7 @@ Cancel
 <?php if ($previousEquipmentId): ?>
 
 <a
-href="edit.php?id=<?php echo (int)$previousEquipmentId; ?>"
+href="edit.php?id=<?php echo (int)$previousEquipmentId; ?><?php echo $listContextSuffix; ?>"
 class="btn btn-outline-secondary btn-lg me-2">
 
 Previous Equipment
@@ -1439,7 +1432,7 @@ Previous Equipment
 <?php if ($nextEquipmentId): ?>
 
 <a
-href="edit.php?id=<?php echo (int)$nextEquipmentId; ?>"
+href="edit.php?id=<?php echo (int)$nextEquipmentId; ?><?php echo $listContextSuffix; ?>"
 class="btn btn-outline-secondary btn-lg me-2">
 
 Next Equipment

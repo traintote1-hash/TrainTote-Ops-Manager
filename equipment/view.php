@@ -53,18 +53,11 @@ if (!$equipment) {
 $previousEquipmentId = null;
 $nextEquipmentId = null;
 
-$stmt = $pdo->prepare("
-    SELECT id
-    FROM equipment
-    WHERE railroad_id = :railroad_id
-    ORDER BY reporting_marks ASC, road_number ASC, id ASC
-");
-
-$stmt->execute([
-    'railroad_id' => $equipment['railroad_id']
-]);
-
-$equipmentIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+require_once __DIR__ . '/list_context.php';
+$listContext = tt_equipment_list_context();
+$listContextSuffix = htmlspecialchars(tt_equipment_context_suffix($listContext), ENT_QUOTES, 'UTF-8');
+$listUrl = htmlspecialchars(tt_equipment_list_url($listContext), ENT_QUOTES, 'UTF-8');
+$equipmentIds = tt_equipment_navigation_ids($pdo, (int)$equipment['railroad_id'], $listContext);
 $currentEquipmentIndex = array_search($equipment['id'], $equipmentIds);
 
 if ($currentEquipmentIndex !== false) {
@@ -303,7 +296,7 @@ echo !empty($equipment['current_track'])
 <?php if ($previousEquipmentId): ?>
 
 <a
-href="view.php?id=<?php echo (int)$previousEquipmentId; ?>"
+href="view.php?id=<?php echo (int)$previousEquipmentId; ?><?php echo $listContextSuffix; ?>"
 class="btn btn-outline-secondary me-2">
 
 Previous Equipment
@@ -323,7 +316,7 @@ Previous Equipment
 <?php if ($nextEquipmentId): ?>
 
 <a
-href="view.php?id=<?php echo (int)$nextEquipmentId; ?>"
+href="view.php?id=<?php echo (int)$nextEquipmentId; ?><?php echo $listContextSuffix; ?>"
 class="btn btn-outline-secondary me-2">
 
 Next Equipment
@@ -342,7 +335,7 @@ Next Equipment
 
 
 <a
-href="edit.php?id=<?php echo $equipment['id']; ?>"
+href="edit.php?id=<?php echo $equipment['id']; ?><?php echo $listContextSuffix; ?>"
 class="btn btn-primary me-2">
 
 Edit Equipment
@@ -394,7 +387,7 @@ Delete Equipment
 </a>
 
 <a
-href="list.php"
+href="<?php echo $listUrl; ?>"
 class="btn btn-secondary">
 
 Back to List
