@@ -165,3 +165,18 @@
 }
 
 #workOrderViewToggle[hidden]{display:none!important}
+
+@media screen{
+.tt-work-order-form.is-card-view .tt-work-order-moves .tt-move-from::before,
+.tt-work-order-form.is-card-view .tt-work-order-moves .tt-move-to::before{content:attr(data-label)}
+.tt-work-order-form.is-card-view .tt-work-order-moves .tt-move-photo .tt-switch-list-thumb,
+.tt-work-order-form.is-card-view .tt-work-order-moves .tt-move-photo>.tt-no-photo{width:100px!important;height:64px!important;object-fit:contain}
+.tt-work-order-form.is-card-view .tt-work-order-moves>.tt-mobile-cards tr.tt-move-row{grid-template-areas:"photo car action done" "instruction instruction instruction instruction" "from from from from" "to to to to" "exception exception exception exception"}
+.tt-work-order-form.is-card-view .tt-work-order-moves .tt-move-car small,
+.tt-work-order-form.is-card-view .tt-work-order-moves .tt-move-from::before,
+.tt-work-order-form.is-card-view .tt-work-order-moves .tt-move-to::before{color:var(--tt-text-muted,#687382)}
+}
+@media screen and (max-width:575px){
+.tt-work-order-form.is-card-view .tt-work-order-moves .tt-move-photo .tt-switch-list-thumb,
+.tt-work-order-form.is-card-view .tt-work-order-moves .tt-move-photo>.tt-no-photo{width:52px!important;height:36px!important}
+}
