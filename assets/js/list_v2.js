@@ -119,7 +119,11 @@ document.querySelectorAll('.clickable-row').forEach(row => {
     if (!page || !buttons.length) return;
     const setView = (view) => {
         page.dataset.equipmentView = view;
-        buttons.forEach((button) => button.classList.toggle('active', button.dataset.view === view));
+        buttons.forEach((button) => {
+            const selected = button.dataset.view === view;
+            button.classList.toggle('active', selected);
+            button.setAttribute('aria-pressed', String(selected));
+        });
     };
     setView(localStorage.getItem(key) || 'list');
     buttons.forEach((button) => button.addEventListener('click', () => {
@@ -138,7 +142,11 @@ document.querySelectorAll('.clickable-row').forEach(row => {
         if (!key || !buttons.length) return;
         const setView = (view) => {
             page.dataset.displayView = view;
-            buttons.forEach((button) => button.classList.toggle('active', button.dataset.listViewToggle === view));
+            buttons.forEach((button) => {
+            const selected = button.dataset.listViewToggle === view;
+            button.classList.toggle('active', selected);
+            button.setAttribute('aria-pressed', String(selected));
+        });
         };
         setView(localStorage.getItem(key) || 'list');
         buttons.forEach((button) => button.addEventListener('click', () => {

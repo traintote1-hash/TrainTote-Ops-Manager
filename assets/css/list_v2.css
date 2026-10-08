@@ -549,3 +549,12 @@ SCROLLBAR
     background: #ccc;
     border-radius: 5px;
 }
+
+/* Compact view selector. */
+.tt-view-switch { display: inline-flex; align-items: center; gap: 4px; margin-right: 8px; }
+.tt-view-label { margin-right: 8px; color: var(--tt-text-muted, #64748b); font-size: .9rem; }
+.tt-view-button { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 5px; border: 0; border-radius: 4px; background: transparent; color: var(--tt-text-muted, #64748b); cursor: pointer; }
+.tt-view-button.active { color: var(--tt-text, #1f2937); }
+.tt-view-button:hover { background: var(--tt-surface-alt, #f3f6fa); }
+.tt-view-button:focus-visible { outline: 2px solid var(--tt-text-muted, #64748b); outline-offset: 2px; }
+
