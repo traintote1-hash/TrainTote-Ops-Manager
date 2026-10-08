@@ -216,7 +216,7 @@ document.querySelectorAll('.section-header').forEach(header => {
 
         if (content.classList.contains('collapsed')) {
 
-            arrow.textContent = '►';
+            arrow.textContent = 'â–º';
 
             localStorage.setItem(
                 'filter_' + title,
@@ -226,7 +226,7 @@ document.querySelectorAll('.section-header').forEach(header => {
         }
         else {
 
-            arrow.textContent = '▼';
+            arrow.textContent = 'â–¼';
 
             localStorage.setItem(
                 'filter_' + title,
@@ -317,7 +317,7 @@ document.querySelectorAll('.filter-section').forEach(section => {
             'collapsed'
         );
 
-        arrow.textContent = '▼';
+        arrow.textContent = 'â–¼';
 
         return;
 
@@ -329,7 +329,7 @@ document.querySelectorAll('.filter-section').forEach(section => {
             'collapsed'
         );
 
-        arrow.textContent = '►';
+        arrow.textContent = 'â–º';
 
         return;
 
@@ -347,7 +347,7 @@ document.querySelectorAll('.filter-section').forEach(section => {
             'collapsed'
         );
 
-        arrow.textContent = '▼';
+        arrow.textContent = 'â–¼';
 
     }
     else {
@@ -356,7 +356,7 @@ document.querySelectorAll('.filter-section').forEach(section => {
             'collapsed'
         );
 
-        arrow.textContent = '►';
+        arrow.textContent = 'â–º';
 
     }
 
@@ -467,4 +467,3 @@ if (searchBox) {
 DONE
 =========================================================
 */
-
