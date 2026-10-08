@@ -431,9 +431,10 @@ MAIN CONTENT
 
 </div>
 <div class="toolbar-right">
-    <div class="btn-group btn-group-sm" role="group" aria-label="Equipment display">
-        <button type="button" class="btn btn-outline-secondary equipment-view-toggle" data-view="list">List</button>
-        <button type="button" class="btn btn-outline-secondary equipment-view-toggle" data-view="card">Cards</button>
+    <div class="tt-view-switch" role="group" aria-label="Equipment display">
+        <span class="tt-view-label">View</span>
+        <button type="button" class="tt-view-button equipment-view-toggle" data-view="card" aria-label="Card view" title="Card view" aria-pressed="false"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false" fill="currentColor"><rect x="3" y="3" width="4" height="4"/><rect x="10" y="3" width="4" height="4"/><rect x="17" y="3" width="4" height="4"/><rect x="3" y="10" width="4" height="4"/><rect x="10" y="10" width="4" height="4"/><rect x="17" y="10" width="4" height="4"/><rect x="3" y="17" width="4" height="4"/><rect x="10" y="17" width="4" height="4"/><rect x="17" y="17" width="4" height="4"/></svg></button>
+        <button type="button" class="tt-view-button equipment-view-toggle" data-view="list" aria-label="List view" title="List view" aria-pressed="true"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false" fill="currentColor"><rect x="2" y="3" width="3" height="3"/><rect x="8" y="3" width="14" height="2"/><rect x="2" y="10" width="3" height="3"/><rect x="8" y="10" width="14" height="2"/><rect x="2" y="17" width="3" height="3"/><rect x="8" y="17" width="14" height="2"/></svg></button>
     </div>
     <label class="small me-2">Show</label>
     <select id="perPage" class="form-select form-select-sm">
@@ -648,3 +649,4 @@ MAIN CONTENT
 <script src="../assets/js/list_v2.js"></script>
 
 <?php include '../includes/footer.php'; ?>
+
