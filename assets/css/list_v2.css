@@ -391,6 +391,12 @@ THUMBNAILS / ROWS
 .tt-industries-page[data-display-view="cards"] .industry-card-view { display: grid; }
 .equipment-card .equipment-card-note { margin: 0 0 10px; color: var(--tt-text-muted); font-size: .82rem; }
 
+.status-card-select-all { grid-column: 1 / -1; color: var(--tt-text); }
+.status-card-fields { display: grid; gap: 12px; margin: 16px 0; }
+.status-card-field > label { display: block; margin-bottom: 4px; color: var(--tt-text-muted); font-size: .8rem; font-weight: 700; }
+.status-card-field .form-control,
+.status-card-field .form-select { width: 100%; min-width: 0; }
+
 :root[data-theme="dark"] .sidebar-card,
 :root[data-theme="dark"] .content-card,
 :root[data-theme="dark"] .table-responsive { background: var(--tt-surface); border-color: var(--tt-border); }

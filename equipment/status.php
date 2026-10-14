@@ -1058,9 +1058,9 @@ $matchedService = $currentService === ''
     || ttServiceOptionExists($operationsServiceOptions, $car['equipment_type'] ?? '', $currentService);
 $customServiceVisible = $currentService !== '' && !$matchedService;
 ?>
-<tr class="<?= (int)$car['active'] === 1 ? '' : 'table-light' ?>">
+<tr data-status-equipment="<?= $equipmentId ?>" class="<?= (int)$car['active'] === 1 ? '' : 'table-light' ?>">
 
-<td>
+<td data-status-field="selection">
     <input type="checkbox" name="equipment_ids[]" value="<?= $equipmentId ?>" onclick="event.stopPropagation()">
 </td>
 
@@ -1084,7 +1084,7 @@ $customServiceVisible = $currentService !== '' && !$matchedService;
     </div>
 </td>
 
-<td style="min-width: 150px;">
+<td data-status-field="active" style="min-width: 150px;">
     <input type="hidden" name="cars[<?= $equipmentId ?>][equipment_type]" value="<?= htmlspecialchars($car['equipment_type'] ?? '') ?>">
     <select name="cars[<?= $equipmentId ?>][active]" class="form-select form-select-sm">
         <option value="1" <?= (int)$car['active'] === 1 ? 'selected' : '' ?>>Active - On Layout</option>
@@ -1108,7 +1108,7 @@ $customServiceVisible = $currentService !== '' && !$matchedService;
     <?php endif; ?>
 </td>
 
-<td style="min-width: 190px;">
+<td data-status-field="location" style="min-width: 190px;">
     <select name="cars[<?= $equipmentId ?>][current_industry_id]" class="form-select form-select-sm">
         <option value="">No location</option>
         <?php foreach ($industryOptions as $industry): ?>
@@ -1119,7 +1119,7 @@ $customServiceVisible = $currentService !== '' && !$matchedService;
     </select>
 </td>
 
-<td style="min-width: 130px;">
+<td data-status-field="track" style="min-width: 130px;">
     <input
     type="text"
     name="cars[<?= $equipmentId ?>][current_track]"
@@ -1129,7 +1129,7 @@ $customServiceVisible = $currentService !== '' && !$matchedService;
     placeholder="Track / spot">
 </td>
 
-<td style="min-width: 120px;">
+<td data-status-field="load" style="min-width: 120px;">
     <select name="cars[<?= $equipmentId ?>][load_status]" class="form-select form-select-sm">
         <?php foreach ($loadOptions as $option): ?>
         <option value="<?= htmlspecialchars($option) ?>" <?= $car['load_status'] === $option ? 'selected' : '' ?>>
@@ -1139,7 +1139,7 @@ $customServiceVisible = $currentService !== '' && !$matchedService;
     </select>
 </td>
 
-<td style="min-width: 220px;">
+<td data-status-field="service" style="min-width: 220px;">
     <select
     name="cars[<?= $equipmentId ?>][operations_service]"
     class="form-select form-select-sm status-service-select"
@@ -1191,24 +1191,46 @@ $customServiceVisible = $currentService !== '' && !$matchedService;
 </div>
 
 <div class="status-card-view" aria-live="polite">
+<label class="status-card-select-all"><input type="checkbox" id="selectAllCards"> Select all visible equipment</label>
 <?php foreach ($cars as $car): ?>
 <?php
 $isReady = (int)$car['active'] === 1 && !empty($car['current_industry_id']) && trim($car['operations_service'] ?? '') !== '';
-$statusLabel = $isReady ? 'Ready' : ((int)$car['active'] === 1 ? 'On layout' : 'Inactive');
-$statusClass = $isReady ? 'bg-success' : 'bg-secondary';
+$isLocomotive = ttIsLocomotive($car);
 ?>
-    <article class="equipment-card">
+    <article class="equipment-card" data-status-card="<?= (int)$car['id'] ?>">
         <div class="equipment-card-photo">
         <?php if (!empty($car['photo_filename'])): ?>
             <img src="../uploads/<?= htmlspecialchars($car['photo_filename'], ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars($car['car'] . ' car', ENT_QUOTES, 'UTF-8') ?>">
         <?php else: ?><span>No photo</span><?php endif; ?>
         </div>
         <div class="equipment-card-body">
-            <div class="equipment-card-topline"><span><?= htmlspecialchars($car['equipment_type'] ?: 'Equipment') ?></span><span class="badge <?= $statusClass ?>"><?= $statusLabel ?></span></div>
+            <div class="equipment-card-topline">
+                <span><?= htmlspecialchars($car['equipment_type'] ?: 'Equipment') ?></span>
+                <?php if ($isReady): ?>
+        <span class="badge bg-success">Ready</span>
+                <?php elseif ((int)$car['active'] !== 1): ?>
+        <span class="badge bg-secondary">Inactive</span>
+                <?php elseif (empty($car['current_industry_id'])): ?>
+        <span class="badge bg-warning text-dark">Needs Location</span>
+                <?php elseif (!$isLocomotive && trim($car['operations_service'] ?? '') === ''): ?>
+        <span class="badge bg-warning text-dark">Needs Service</span>
+                <?php elseif ($isLocomotive): ?>
+        <span class="badge bg-secondary">On Layout</span>
+                <?php else: ?>
+        <span class="badge bg-secondary">Review</span>
+                            <?php endif; ?>
+            </div>
             <h2><?= htmlspecialchars($car['car']) ?></h2>
             <p class="equipment-card-road"><?= htmlspecialchars($car['road_name'] ?: 'No road name') ?></p>
             <div class="equipment-card-badges"><span><?= htmlspecialchars($car['load_status'] ?: 'Load not set') ?></span><span><?= htmlspecialchars($car['operations_service'] ?: 'Service not set') ?></span></div>
-            <dl><div><dt>Location</dt><dd><?= htmlspecialchars($car['industry_name'] ?: 'Not assigned') ?></dd></div><div><dt>Track</dt><dd><?= htmlspecialchars($car['current_track'] ?: 'Not set') ?></dd></div></dl>
+            <div class="status-card-fields">
+                <div class="status-card-field"><label for="status-card-selection-<?= (int)$car['id'] ?>">Select equipment</label><div data-status-slot="selection"></div></div>
+                <div class="status-card-field"><label for="status-card-active-<?= (int)$car['id'] ?>">Active</label><div data-status-slot="active"></div></div>
+                <div class="status-card-field"><label for="status-card-location-<?= (int)$car['id'] ?>">Location</label><div data-status-slot="location"></div></div>
+                <div class="status-card-field"><label for="status-card-track-<?= (int)$car['id'] ?>">Track / spot</label><div data-status-slot="track"></div></div>
+                <div class="status-card-field"><label for="status-card-load-<?= (int)$car['id'] ?>">Load</label><div data-status-slot="load"></div></div>
+                <div class="status-card-field"><label for="status-card-service-<?= (int)$car['id'] ?>">Operations service</label><div data-status-slot="service"></div></div>
+            </div>
             <a href="view.php?id=<?= (int)$car['id'] ?>" class="btn btn-sm btn-outline-primary">View</a>
         </div>
     </article>
@@ -1261,6 +1283,7 @@ $statusClass = $isReady ? 'bg-success' : 'bg-secondary';
 </div>
 
 <script src="../assets/js/list_v2.js"></script>
+<script src="../assets/js/status_cards.js"></script>
 <script>
 document.querySelectorAll('.status-service-select').forEach(function(select){
     function toggleCustomService(){
