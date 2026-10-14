@@ -75,6 +75,7 @@ if ($currentEquipmentIndex !== false) {
 <?php include '../includes/header.php'; ?>
 
 <title>Equipment Details</title>
+<link rel="stylesheet" href="../assets/css/equipment_view.css">
 
 </head>
 
@@ -291,13 +292,14 @@ echo !empty($equipment['current_track'])
 
 </div>
 
-<div class="mt-3 mb-5">
+<nav class="equipment-actions mt-3 mb-5" aria-label="Equipment actions">
+<div class="equipment-actions-navigation" role="group" aria-label="Browse equipment">
 
 <?php if ($previousEquipmentId): ?>
 
 <a
 href="view.php?id=<?php echo (int)$previousEquipmentId; ?><?php echo $listContextSuffix; ?>"
-class="btn btn-outline-secondary me-2">
+class="btn equipment-action">
 
 Previous Equipment
 
@@ -305,7 +307,7 @@ Previous Equipment
 
 <?php else: ?>
 
-<span class="btn btn-outline-secondary me-2 disabled">
+<span class="btn equipment-action disabled" aria-disabled="true">
 
 Previous Equipment
 
@@ -317,7 +319,7 @@ Previous Equipment
 
 <a
 href="view.php?id=<?php echo (int)$nextEquipmentId; ?><?php echo $listContextSuffix; ?>"
-class="btn btn-outline-secondary me-2">
+class="btn equipment-action">
 
 Next Equipment
 
@@ -325,7 +327,7 @@ Next Equipment
 
 <?php else: ?>
 
-<span class="btn btn-outline-secondary me-2 disabled">
+<span class="btn equipment-action disabled" aria-disabled="true">
 
 Next Equipment
 
@@ -334,9 +336,11 @@ Next Equipment
 <?php endif; ?>
 
 
+</div>
+<div class="equipment-actions-tools" role="group" aria-label="Manage equipment">
 <a
 href="edit.php?id=<?php echo $equipment['id']; ?><?php echo $listContextSuffix; ?>"
-class="btn btn-primary me-2">
+class="btn equipment-action equipment-action-primary">
 
 Edit Equipment
 
@@ -344,7 +348,7 @@ Edit Equipment
 
 <a
 href="upload_photo.php?id=<?php echo $equipment['id']; ?>"
-class="btn btn-success me-2">
+class="btn equipment-action">
 
 Upload Photo
 
@@ -354,7 +358,7 @@ Upload Photo
 
 <a
 href="../photo_editor/edit.php?type=equipment&id=<?php echo $equipment['id']; ?>"
-class="btn btn-warning me-2">
+class="btn equipment-action">
 
 Edit Photo
 
@@ -362,7 +366,7 @@ Edit Photo
 
 <a
 href="car_card_v3.php?id=<?php echo $equipment['id']; ?>"
-class="btn btn-dark me-2">
+class="btn equipment-action">
 
 Print Car Card
 
@@ -372,7 +376,7 @@ Print Car Card
 
 <a
 href="add_select.php"
-class="btn btn-info me-2">
+class="btn equipment-action">
 
 Add Another
 
@@ -380,7 +384,7 @@ Add Another
 
 <a
 href="delete.php?id=<?php echo $equipment['id']; ?>"
-class="btn btn-danger me-2">
+class="btn equipment-action equipment-action-danger">
 
 Delete Equipment
 
@@ -388,13 +392,13 @@ Delete Equipment
 
 <a
 href="<?php echo $listUrl; ?>"
-class="btn btn-secondary">
+class="btn equipment-action">
 
 Back to List
 
 </a>
-
 </div>
+</nav>
 
 </div>
 

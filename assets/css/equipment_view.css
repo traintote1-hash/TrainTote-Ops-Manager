@@ -1,0 +1,69 @@
+/* Equipment detail actions: quiet navigation, one primary action. */
+.equipment-actions {
+    padding-top: 20px;
+    border-top: 1px solid var(--tt-border);
+}
+
+.equipment-actions-navigation,
+.equipment-actions-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.equipment-actions-navigation { margin-bottom: 12px; }
+
+.equipment-actions .equipment-action {
+    --bs-btn-color: var(--tt-text);
+    --bs-btn-bg: var(--tt-surface);
+    --bs-btn-border-color: var(--tt-border);
+    --bs-btn-hover-color: var(--tt-text);
+    --bs-btn-hover-bg: var(--tt-surface-alt);
+    --bs-btn-hover-border-color: var(--tt-text-muted);
+    --bs-btn-active-color: var(--tt-text);
+    --bs-btn-active-bg: var(--tt-surface-alt);
+    --bs-btn-active-border-color: var(--tt-text-muted);
+    --bs-btn-disabled-color: var(--tt-text-muted);
+    --bs-btn-disabled-bg: var(--tt-surface-alt);
+    --bs-btn-disabled-border-color: var(--tt-border);
+    min-height: 44px;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-size: .875rem;
+    font-weight: 600;
+    line-height: 1.5;
+    text-decoration: none;
+}
+
+.equipment-actions .equipment-action-primary {
+    --bs-btn-color: #fff;
+    --bs-btn-bg: #8b1e24;
+    --bs-btn-border-color: #8b1e24;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: #73181d;
+    --bs-btn-hover-border-color: #73181d;
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: #73181d;
+    --bs-btn-active-border-color: #73181d;
+}
+
+.equipment-actions .equipment-action-danger {
+    --bs-btn-color: var(--tt-danger);
+    --bs-btn-hover-color: var(--tt-danger);
+    --bs-btn-hover-border-color: var(--tt-danger);
+    --bs-btn-active-color: var(--tt-danger);
+    --bs-btn-active-border-color: var(--tt-danger);
+    margin-left: auto;
+}
+
+.equipment-actions .equipment-action:focus-visible {
+    outline: 2px solid var(--tt-text);
+    outline-offset: 3px;
+    box-shadow: none;
+}
+
+@media (max-width: 575px) {
+    .equipment-actions .equipment-action { flex: 1 1 auto; }
+    .equipment-actions .equipment-action-danger { margin-left: 0; }
+}
