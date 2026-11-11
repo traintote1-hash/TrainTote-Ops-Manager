@@ -41,6 +41,10 @@ $limitedAssignment=$localAssignment;$limitedAssignment['requested_car_count']=3;
 $limitedResult=ttChooseOperationsMoves($limitedAssignment,$localCars,$localIndustries,[],[]);
 expectTrue(count($limitedResult['moves'])===2,'A move limit must never split a loaded-for-empty exchange pair.');
 
+$lightEngineAssignment = array_replace($localAssignment, ['operating_pattern' => 'light_engine']);
+$lightEngineResult = ttChooseOperationsMoves($lightEngineAssignment, $localCars, $localIndustries, [], []);
+expectTrue($lightEngineResult['moves'] === [], 'A Light Engine assignment must not generate freight moves on an entire-railroad job.');
+
 $routeAssignment=['requested_car_count'=>10,'operating_base_industry_id'=>2,'end_industry_id'=>2,'work_scope'=>'selected_route'];
 $routeStops=[[
     'id'=>1,'industry_id'=>3,'sequence_number'=>1,
@@ -57,6 +61,29 @@ expectTrue($routeResult['moves'][0]['work_location']==='Flour Mill'&&$routeResul
 expectTrue($routeResult['moves'][0]['destination_industry_id']===2,'Configured operating base may be the explicit pull destination.');
 expectTrue($routeResult['moves'][1]['destination_industry_id']===3,'Loaded replacement must be spotted at the served route stop.');
 expectTrue(!in_array(3,array_column($routeResult['moves'],'equipment_id'),true),'Unrelated-location cars must not be pulled to reach the target.');
+
+$loadRuleStops = $routeStops;
+$loadRuleStops[0]['outbound_load_status'] = 'Loaded';
+$loadRuleStops[0]['inbound_load_status'] = 'Empty';
+$mixedLoads = [
+    $car(2, 3, 'TT', 'grain', 'Empty'), $car(3, 3, 'TT', 'grain'),
+    $car(4, 2, 'TT', 'grain'), $car(5, 2, 'TT', 'flour', 'Empty'),
+];
+$loadRuleResult = ttChooseOperationsMoves($routeAssignment, $mixedLoads, $industries, [], [], $loadRuleStops);
+expectTrue(array_column($loadRuleResult['moves'], 'equipment_id') === [3, 5], 'Independent Pull and Spot rows must both honor the saved load rules.');
+
+$lightEngineRoute = array_replace($routeAssignment, ['operating_pattern' => 'light_engine']);
+$lightEngineRouteResult = ttChooseOperationsMoves($lightEngineRoute, $cars, $industries, [], [], $routeStops);
+expectTrue($lightEngineRouteResult['moves'] === [], 'A Light Engine assignment must not generate freight moves on a selected route.');
+foreach ([['prepared_cut', []], ['coupled_selected', [4]]] as [$startMethod, $startingCars]) {
+    $rejected = false;
+    try {
+        ttChooseOperationsMoves(array_replace($lightEngineRoute, ['start_method' => $startMethod]), $cars, $industries, $startingCars, [], $routeStops);
+    } catch (RuntimeException $e) {
+        $rejected = str_contains($e->getMessage(), 'Locomotives only');
+    }
+    expectTrue($rejected, 'A Light Engine assignment with starting cars must give a clear correction before generating a work order.');
+}
 
 $pullOnlyStops=$routeStops;$pullOnlyStops[0]['replacement_source_mode']='selected_location';$pullOnlyStops[0]['replacement_source_industry_id']=4;
 $pullOnly=ttChooseOperationsMoves($routeAssignment,$cars,$industries,[],[],$pullOnlyStops);
@@ -78,6 +105,7 @@ expectTrue($supportResult['moves'][0]['destination_industry_id']===5&&$supportRe
 expectTrue(!in_array(3,array_column($supportResult['moves'],'equipment_id'),true),'Unrelated-location cars must remain excluded when support locations are added.');
 
 $areaStops=$routeStops;$areaStops[0]['operating_area']='North';$areaStops[]=$areaStops[0];$areaStops[1]['id']=2;$areaStops[1]['industry_id']=1;$areaStops[1]['sequence_number']=1;
+$areaStops[1]['outbound_load_status'] = 'Loaded';
 $areaResult=ttChooseOperationsMoves($routeAssignment,$cars,$industries,[],[],$areaStops);
 $areaOrigins=array_column($areaResult['moves'],'origin_industry_id');
 expectTrue(in_array(1,$areaOrigins,true)&&in_array(3,$areaOrigins,true),'Industries sharing one Operating Area must all be eligible in that area.');

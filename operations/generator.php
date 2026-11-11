@@ -10,6 +10,12 @@ function ttChooseOperationsMoves(array $assignment, array $cars, array $industri
         }
         ttAssertUniqueRouteStops($routeStops, $industries);
     }
+    if (($assignment['operating_pattern'] ?? '') === 'light_engine') {
+        if (($assignment['start_method'] ?? '') === 'prepared_cut' || $startingIds) {
+            throw new RuntimeException('Light Engine / Hostler runs without freight cars. Edit the assignment and choose Locomotives only.');
+        }
+        return ['moves' => [], 'diagnostics' => ['Light Engine / Hostler assignment. No freight-car moves are required.']];
+    }
     if (($assignment['start_method'] ?? '') === 'prepared_cut') {
         return ttChoosePreparedCutMoves($assignment, $cars, $industries, $startingIds, $reservedIds, $routeStops);
     }
@@ -125,8 +131,27 @@ function ttChooseSelectedRouteMoves(array $assignment, array $cars, array $indus
                 $group=bin2hex(random_bytes(12));$pulls[]=ttPlannedCarMove($outCar,$destination,'PULL','Pull '.strtolower((string)$outCar['load_status']).' car for '.$destination['industry_name'],$group,$stopIndustry['industry_name']);$spots[]=ttPlannedCarMove($inCar,$stopIndustry,'SPOT','Spot '.strtolower((string)$inCar['load_status']).' replacement from '.$inCar['origin_name'],$group,$stopIndustry['industry_name']);$used[(int)$outCar['id']]=true;$used[(int)$inCar['id']]=true;$capacityDelta[$sourceId]=($capacityDelta[$sourceId]??0)-1;$capacityDelta[$destId]=($capacityDelta[$destId]??0)+1;
             }
         }else{
-            foreach($pullCandidates as $car){if(count($moves)+count($pulls)+count($spots)>=$max)break;$destination=ttResolvePullDestination($stop,$stopIndex,$routeStops,$industryById,$allowedIds,$baseId,$car,$occupancy,$capacityDelta);if(!$destination)continue;$pulls[]=ttPlannedCarMove($car,$destination,'PULL','Pull for '.$destination['industry_name'],null,$stopIndustry['industry_name']);$used[(int)$car['id']]=true;$capacityDelta[$stopId]=($capacityDelta[$stopId]??0)-1;$destId=(int)$destination['id'];$capacityDelta[$destId]=($capacityDelta[$destId]??0)+1;}
-            foreach($spotCandidates as $car){if(count($moves)+count($pulls)+count($spots)>=$max)break;if(!ttRouteCapacityAvailable($stopIndustry,$occupancy,$capacityDelta))break;$spots[]=ttPlannedCarMove($car,$stopIndustry,'SPOT','Spot from '.$car['origin_name'],null,$stopIndustry['industry_name']);$used[(int)$car['id']]=true;$sourceId=(int)$car['current_industry_id'];$capacityDelta[$sourceId]=($capacityDelta[$sourceId]??0)-1;$capacityDelta[$stopId]=($capacityDelta[$stopId]??0)+1;}
+            foreach ($pullCandidates as $car) {
+                if (count($moves) + count($pulls) + count($spots) >= $max) break;
+                if (!ttLoadMatches((string)$car['load_status'], (string)($stop['outbound_load_status'] ?? 'Any'))) continue;
+                $destination = ttResolvePullDestination($stop, $stopIndex, $routeStops, $industryById, $allowedIds, $baseId, $car, $occupancy, $capacityDelta);
+                if (!$destination) continue;
+                $pulls[] = ttPlannedCarMove($car, $destination, 'PULL', 'Pull for '.$destination['industry_name'], null, $stopIndustry['industry_name']);
+                $used[(int)$car['id']] = true;
+                $capacityDelta[$stopId] = ($capacityDelta[$stopId] ?? 0) - 1;
+                $destId = (int)$destination['id'];
+                $capacityDelta[$destId] = ($capacityDelta[$destId] ?? 0) + 1;
+            }
+            foreach ($spotCandidates as $car) {
+                if (count($moves) + count($pulls) + count($spots) >= $max) break;
+                if (!ttRouteCapacityAvailable($stopIndustry, $occupancy, $capacityDelta)) break;
+                if (!ttLoadMatches((string)$car['load_status'], (string)($stop['inbound_load_status'] ?? 'Any'))) continue;
+                $spots[] = ttPlannedCarMove($car, $stopIndustry, 'SPOT', 'Spot from '.$car['origin_name'], null, $stopIndustry['industry_name']);
+                $used[(int)$car['id']] = true;
+                $sourceId = (int)$car['current_industry_id'];
+                $capacityDelta[$sourceId] = ($capacityDelta[$sourceId] ?? 0) - 1;
+                $capacityDelta[$stopId] = ($capacityDelta[$stopId] ?? 0) + 1;
+            }
         }
         foreach(array_merge($pulls,$spots)as$move)$moves[]=$move;
         if((int)($stop['exchange_enabled']??0)===1&&$pullCandidates&&!$spots)$diagnostics[]=$stopIndustry['industry_name'].': paired exchange enabled, but no feasible compatible replacement pair was available.';
